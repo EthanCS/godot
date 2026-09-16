@@ -258,7 +258,7 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	delta = float(now - last_usec) / 1000000.0
 	elapsed += delta
-	if (stop_after > 0.0 or report_dir != "" or benchmark) and elapsed > warmup and (not benchmark or frames >= (280 if gi_enabled else 120)):
+	if (stop_after > 0.0 or report_dir != "" or benchmark) and elapsed > warmup and (not benchmark or frames >= (320 if gi_enabled else 120)):
 		if measurement_started < 0.0:
 			measurement_started = elapsed
 			if benchmark_dynamic:

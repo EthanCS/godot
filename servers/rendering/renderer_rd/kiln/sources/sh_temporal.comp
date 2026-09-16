@@ -43,7 +43,7 @@ void main(){
         age_sum=texelFetch(previous_age,q,0).r;
         for(int c=0;c<3;c++)history[c]=texelFetch(previous_sh,q+ivec2(c*size.x,0),0);
         old_visibility=texelFetch(previous_visibility,q,0).r;
-    }else if(!stationary && p.quality.y>.5){
+    }else if(p.quality.y>.5){
         vec2 old_pixel;
         if(history_coordinates(position,old_pixel)){
             ivec2 base=ivec2(floor(old_pixel));
@@ -60,7 +60,9 @@ void main(){
         }
     }
     bool valid=weights>1e-5;
-    if(stationary)rays=min(rays,p.gi.w-(valid?count_sum:0.0));
+    // Jittered stationary receivers keep a capped rolling estimate. They
+    // cannot freeze one screen texel after a finite batch as no-AA does.
+    if(stationary && p.quality.y<.5)rays=min(rays,p.gi.w-(valid?count_sum:0.0));
     // Keep the motion window bounded to limit reprojection diffusion. More
     // rays improve the estimate without shortening that 32-frame window.
     float motion_frames=p.source_bvh_state.w>.5?4.0:32.0;

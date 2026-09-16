@@ -217,7 +217,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		upload("light_grid", world.light_grid);
 	}
 	if (changed_light) {
-		state->lighting_remaining = 8;
+		// Keep the short lighting estimator active for a full motion window.
+		// Returning to 256-ray accumulation after only eight frames preserves
+		// a visible fraction of the previous illumination after lights turn off.
+		state->lighting_remaining = 32;
 		state->epoch++;
 	} else if (state->lighting_remaining) {
 		state->lighting_remaining--;
@@ -248,7 +251,11 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	auto vec = [&](Vector3 a, float w) { v(a.x, a.y, a.z, w); };
 	v(state->size.x, state->size.y, state->frames, state->frames > 0);
 	v(1.2, 1, moving ? -1 : state->stationary_samples, world.samples);
-	v(state->lighting_remaining ? MAX(4, world.rays) : world.rays, camera_moved, world.ao_quality, 0.22);
+	// A stationary camera still samples different receivers under TAA jitter.
+	// Reproject those samples without classifying the camera as moving, so
+	// stationary confidence can accumulate to the full quality budget.
+	bool reproject = camera_moved || scene->taa_jitter != Vector2() || scene->prev_taa_jitter != Vector2();
+	v(state->lighting_remaining ? MAX(4, world.rays) : world.rays, reproject, world.ao_quality, 0.22);
 	vec(world.world.bounds.position, 0.025);
 	vec(world.world.bounds.size, state->slots);
 	v(world.world.triangle_count, 1, 0, state->epoch);

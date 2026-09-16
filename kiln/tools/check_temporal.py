@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Predeclared image thresholds: off32 mean < 1% of lit, off32 maximum < .02;
-settled32 versus 280-frame reference mean RGB error < .035 (display range 0..1).
+settled32 versus converged reference mean RGB error < .035 (display range 0..1).
 Stationary 16-frame mean RGB standard deviation < .005; settled history median
 >= 64 rays and explicit reset maximum <= 4 rays.
 These bounds check residuals; they do not establish perceptual quality alone.

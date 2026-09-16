@@ -14,7 +14,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -272,7 +272,9 @@ void receiver_context(ivec2 q,ivec2 size,out float depth,out vec3 wp,out vec3 wn
             if(weights<1e-5 || count/max(weights,1e-5)<8.0)rays=4;
             sample_start=uint(mod(p.size_frame.z,256.0)*float(rays));
         }
-        if(p.gi.z>=0.0){
+        // Exact finite-batch caching requires an unjittered receiver. With TAA,
+        // trace fresh frame-sequenced samples and accumulate reprojected history.
+        if(p.gi.z>=0.0 && p.quality.y<.5){
             bool valid=stationary_history(vec4(wp,1),stored_normal,texelFetch(previous_position,q,0),texelFetch(previous_normal,q,0).xyz);
             float count=valid?texelFetch(previous_confidence,q,0).r:0.0;
             sample_start=uint(count);
@@ -380,7 +382,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -822,7 +824,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -1374,7 +1376,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -1625,7 +1627,7 @@ void main(){
         age_sum=texelFetch(previous_age,q,0).r;
         for(int c=0;c<3;c++)history[c]=texelFetch(previous_sh,q+ivec2(c*size.x,0),0);
         old_visibility=texelFetch(previous_visibility,q,0).r;
-    }else if(!stationary && p.quality.y>.5){
+    }else if(p.quality.y>.5){
         vec2 old_pixel;
         if(history_coordinates(position,old_pixel)){
             ivec2 base=ivec2(floor(old_pixel));
@@ -1642,7 +1644,9 @@ void main(){
         }
     }
     bool valid=weights>1e-5;
-    if(stationary)rays=min(rays,p.gi.w-(valid?count_sum:0.0));
+    // Jittered stationary receivers keep a capped rolling estimate. They
+    // cannot freeze one screen texel after a finite batch as no-AA does.
+    if(stationary && p.quality.y<.5)rays=min(rays,p.gi.w-(valid?count_sum:0.0));
     // Keep the motion window bounded to limit reprojection diffusion. More
     // rays improve the estimate without shortening that 32-frame window.
     float motion_frames=p.source_bvh_state.w>.5?4.0:32.0;
@@ -1678,7 +1682,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -1941,7 +1945,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -2180,7 +2184,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -2524,7 +2528,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -2730,7 +2734,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -3139,7 +3143,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -3354,7 +3358,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch
@@ -3654,7 +3658,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch

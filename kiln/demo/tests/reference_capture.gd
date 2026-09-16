@@ -18,7 +18,7 @@ func _ready() -> void:
 		gi.enabled = true
 		gi.set_ao_enabled(true)
 		ProjectSettings.set_setting("rendering/kiln/debug_view", 0)
-		await wait_frames(280)
+		await wait_frames(320)
 		get_viewport().get_texture().get_image().save_png(output.path_join("reference_%d_lit.png" % view))
 		ProjectSettings.set_setting("rendering/kiln/debug_view", 7)
 		await wait_frames(2)

@@ -7,7 +7,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, camera moved this frame, AO quality (0 off / 1..3), history position threshold
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
     vec4 voxel_min;        // min xyz, smallest cell size
     vec4 voxel_size;       // volume size xyz, world cache hash slots (power of two)
     vec4 voxel_state;      // triangle count, ready, exact publication cache available, world lighting epoch

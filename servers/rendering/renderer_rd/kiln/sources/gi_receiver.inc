@@ -47,7 +47,9 @@ void receiver_context(ivec2 q,ivec2 size,out float depth,out vec3 wp,out vec3 wn
             if(weights<1e-5 || count/max(weights,1e-5)<8.0)rays=4;
             sample_start=uint(mod(p.size_frame.z,256.0)*float(rays));
         }
-        if(p.gi.z>=0.0){
+        // Exact finite-batch caching requires an unjittered receiver. With TAA,
+        // trace fresh frame-sequenced samples and accumulate reprojected history.
+        if(p.gi.z>=0.0 && p.quality.y<.5){
             bool valid=stationary_history(vec4(wp,1),stored_normal,texelFetch(previous_position,q,0),texelFetch(previous_normal,q,0).xyz);
             float count=valid?texelFetch(previous_confidence,q,0).r:0.0;
             sample_start=uint(count);

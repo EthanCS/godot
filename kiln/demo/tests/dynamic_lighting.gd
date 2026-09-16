@@ -24,7 +24,7 @@ func box(pos: Vector3, size: Vector3, mat: ShaderMaterial, dynamic := false) -> 
 	add_child(mesh)
 	return mesh
 
-func settle(count := 280) -> void:
+func settle(count := 320) -> void:
 	for i in count:
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw

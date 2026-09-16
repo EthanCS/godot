@@ -74,8 +74,12 @@ indirect transport and genuine material emission remain separate inputs.
 GPU stages: receiver preparation, ray tracing, integration, SH temporal update,
 stationary world cache, three à-trous passes, SH decode, XeGTAO depth/main/denoise/
 temporal, then full-resolution diffuse/specular publication. A static pixel uses
-1 ray/frame toward 256 samples. Changing lighting uses 4 rays/frame and an
-8-frame update window. Original source history rejection threshold is .22.
+1 ray/frame toward 256 samples. Without TAA, a finite converged receiver is cached;
+with TAA jitter, compatible receivers are reprojected into a rolling estimate
+capped at 256 rays. Jitter does not count as camera motion or reset convergence.
+Changing lighting uses at least 4 rays/frame with a four-frame history weight for
+a 32-frame update window, allowing old illumination to clear before slow
+stationary accumulation resumes. Original source history rejection threshold is .22.
 Per-viewport resources are freed on resize/reconfiguration. Shader and sampler
 resources belong to the renderer. Output readbacks occur only on explicit
 `request_capture(directory)` and are excluded from benchmarks.
