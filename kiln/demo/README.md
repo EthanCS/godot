@@ -17,6 +17,7 @@ shadow lights, native Kiln GI, XeGTAO and TAA. Fixed exposure, no bloom.
 
 | Control | Action |
 | --- | --- |
+| F1 | Expand/collapse diagnostics and select G-buffer/lighting/history views |
 | Space | Pause/resume all timelines |
 | C / T / L / E | Camera / TOD / light / emission animation |
 | G / O / A / B | GI / AO / TAA / bloom |
@@ -55,7 +56,7 @@ python3 kiln/tools/benchmark.py --output /tmp/kiln-benchmark
 python3 kiln/tools/benchmark.py --dynamic --duration=35 --warmup=5 --output /tmp/kiln-dynamic-benchmark
 ```
 
-`--no-gi`, `--no-ao`, `--no-aa`, `--dense`, `--lights=N`, `--shadows=N`,
+`--diagnostics`, `--no-gi`, `--no-ao`, `--no-aa`, `--dense`, `--lights=N`, `--shadows=N`,
 `--preset=0..3`, `--size=1001x703`, `--warmup=5`, `--profile` and `--no-hud`
 `--tod-speed=4` and `--light-range=10` are supported. `--lifecycle` repeatedly resizes and switches cameras.
 `--capture-at`, `--capture-interval` and `--buffer-at` control diagnostic readbacks.

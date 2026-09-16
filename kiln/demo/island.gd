@@ -10,6 +10,9 @@ var sun: DirectionalLight3D
 var environment: Environment
 var sky_material: ShaderMaterial
 var hud: Label
+var diagnostics: PanelContainer
+var diagnostics_text: Label
+var show_diagnostics := false
 var lights: Array[Light3D] = []
 var emitters: Array[MeshInstance3D] = []
 var occluders: Array[MeshInstance3D] = []
@@ -66,6 +69,7 @@ func _ready() -> void:
 		if arg == "--lifecycle": lifecycle = true
 		if arg == "--reference": reference = true
 		if arg == "--no-hud": hide_hud = true
+		if arg == "--diagnostics": show_diagnostics = true
 		if arg.begins_with("--report-dir="): report_dir = arg.trim_prefix("--report-dir=")
 		if arg.begins_with("--buffer-at="): buffer_at = float(arg.get_slice("=", 1))
 		if arg.begins_with("--capture-at="): capture_at = float(arg.get_slice("=", 1))
@@ -176,7 +180,50 @@ func _ready() -> void:
 	hud.add_theme_constant_override("shadow_offset_y", 2)
 	canvas.add_child(hud)
 	hud.visible = not hide_hud
+	_build_diagnostics(canvas)
 	last_usec = Time.get_ticks_usec()
+
+func _build_diagnostics(canvas: CanvasLayer) -> void:
+	diagnostics = PanelContainer.new()
+	diagnostics.position = Vector2(18, 150)
+	diagnostics.visible = show_diagnostics and not hide_hud
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.035, 0.045, 0.055, 0.96)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	diagnostics.add_theme_stylebox_override("panel", style)
+	canvas.add_child(diagnostics)
+	var rows := VBoxContainer.new()
+	diagnostics.add_child(rows)
+	var title := Label.new()
+	title.text = "Kiln diagnostics · F1 to collapse"
+	rows.add_child(title)
+	var view := OptionButton.new()
+	view.disabled = RenderingServer.get_current_rendering_method() != "kiln_deferred"
+	view.tooltip_text = "Channel views are provided by the Kiln deferred resolve pass."
+	for name in ["Lit", "Albedo / metallic", "Normal", "Roughness", "Authored emission", "Material channels", "Depth", "Indirect light", "AO", "Motion vectors", "Direct light", "Cluster occupancy", "History confidence"]:
+		view.add_item(name)
+	view.select(clampi(int(ProjectSettings.get_setting("rendering/kiln/debug_view", 0)), 0, 12))
+	view.item_selected.connect(func(index: int): ProjectSettings.set_setting("rendering/kiln/debug_view", index))
+	rows.add_child(view)
+	diagnostics_text = Label.new()
+	diagnostics_text.custom_minimum_size.x = 410
+	diagnostics_text.add_theme_font_size_override("font_size", 14)
+	rows.add_child(diagnostics_text)
+	var reset := Button.new()
+	reset.text = "Reset GI history"
+	reset.pressed.connect(func(): gi.reset_history())
+	rows.add_child(reset)
+	var help := Label.new()
+	help.add_theme_font_size_override("font_size", 14)
+	help.text = "G / O / A: GI / AO / TAA   ·   B: bloom\n, / .: slow / fast TOD   ·   − / =: light range\n[ / ]: shift TOD   ·   S: shadow budget"
+	rows.add_child(help)
+
+func _update_diagnostics() -> void:
+	var s := gi.get_statistics()
+	diagnostics_text.text = ("Uploaded lights: %d omni + %d spot\nLocal shadows: %d active / %d configured\nCluster capacity: %d   overflow: %d\nTriangles: %d static + %d dynamic\nVersions · geometry %d / rigid %d / material %d\nVersions · lighting %d / history %d\nGI: %s   AO: %s   TAA: %s\nGI budget: %d rays (≥4 when lighting changes), %d samples\nLight range: %.1f m   TOD speed: %.2f×\nVideo memory: %.1f MiB   GPU timers: N/A" % [s.get("uploaded_omni", 0), s.get("uploaded_spot", 0), s.get("uploaded_local_shadows", 0), shadows, s.get("cluster_capacity", 0), s.get("light_overflow", 0), s.get("static_triangles", 0), s.get("dynamic_triangles", 0), s.get("geometry_version", 0), s.get("dynamic_version", 0), s.get("material_version", 0), s.get("light_version", 0), s.get("history_version", 0), "on" if gi_enabled else "off", "on" if ao_enabled else "off", "on" if get_viewport().use_taa else "off", s.get("rays_per_frame", 1), s.get("convergence_samples", 256), float(config.light_range), tod_speed, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
 
 func _bind_island(node: Node) -> int:
 	var count := 0
@@ -211,7 +258,7 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	delta = float(now - last_usec) / 1000000.0
 	elapsed += delta
-	if elapsed > warmup and (not benchmark or frames >= (280 if gi_enabled else 120)):
+	if (stop_after > 0.0 or report_dir != "" or benchmark) and elapsed > warmup and (not benchmark or frames >= (280 if gi_enabled else 120)):
 		if measurement_started < 0.0:
 			measurement_started = elapsed
 			if benchmark_dynamic:
@@ -278,8 +325,10 @@ func _process(delta: float) -> void:
 	for i in occluders.size():
 		occluders[i].position = Vector3(-9.0 + i * 6.0, 5.5, 7.0 + sin(emission_time * 0.7 + i) * 3.0)
 		occluders[i].rotation.y = emission_time * 0.25 + i
-	if frames % 15 == 0: runtime_statistics = gi.get_statistics()
-	hud.text = "%s • %.1f ms\n%d local lights • %d active local shadows • TOD %.2f\nKiln GI: software BVH\nSpace pause | C camera | T TOD | L lights | E emission\n1–4 count | S shadows | D dense | P isolation | A TAA | F view | Tab free | Home reset" % [RenderingServer.get_current_rendering_method(), delta * 1000.0, lights.size(), int(runtime_statistics.get("uploaded_local_shadows", 0)), day]
+	if frames % 15 == 0:
+		runtime_statistics = gi.get_statistics()
+		if diagnostics.visible: _update_diagnostics()
+	hud.text = "%s • %.1f ms\n%d local lights • %d active local shadows • TOD %.2f\nKiln GI: software BVH\nSpace pause | C camera | T TOD | L lights | E emission\n1–4 count | S shadows | D dense | P isolation | A TAA | F view | Tab free | Home reset | F1 diagnostics" % [RenderingServer.get_current_rendering_method(), delta * 1000.0, lights.size(), int(runtime_statistics.get("uploaded_local_shadows", 0)), day]
 	if capture_dir != "" and elapsed >= capture_at:
 		capture_at += capture_interval
 		_capture()
@@ -332,6 +381,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not event.is_pressed() or event.is_echo(): return
 	if free_camera and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]: return
 	match event.keycode:
+		KEY_F1:
+			diagnostics.visible = not diagnostics.visible
+			if diagnostics.visible: _update_diagnostics()
 		KEY_TAB: free_camera = not free_camera
 		KEY_HOME:
 			free_camera = false
