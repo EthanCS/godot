@@ -6,6 +6,8 @@ func picture(name: String) -> void:
 
 func _ready() -> void:
 	output = "/tmp/kiln-temporal"
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--output="): output = arg.trim_prefix("--output=")
 	DirAccess.make_dir_recursive_absolute(output)
 	get_window().size = Vector2i(800, 600)
 	get_viewport().use_taa = true
@@ -35,6 +37,9 @@ func _ready() -> void:
 	add_child(gi)
 	await settle()
 	await picture("lit")
+	for i in 16:
+		await settle(1)
+		await picture("stationary_%02d" % i)
 	emitter.material_override.set_shader_parameter("authored_emission", Vector3.ZERO)
 	for i in 32:
 		await settle(1)
@@ -54,6 +59,9 @@ func _ready() -> void:
 	await settle()
 	await picture("settled_reference")
 	gi.request_capture(output.path_join("buffers"))
+	await settle(3)
+	gi.reset_history()
+	gi.request_capture(output.path_join("history_reset"))
 	await settle(3)
 	camera.position = Vector3(0, 4, 6)
 	camera.look_at(Vector3(0, 0, 3))

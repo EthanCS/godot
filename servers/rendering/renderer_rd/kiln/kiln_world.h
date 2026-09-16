@@ -26,6 +26,7 @@ struct KilnWorld {
 	Geometry world;
 	Geometry dynamic;
 	uint64_t geometry_version = 0;
+	uint64_t material_version = 0;
 	uint64_t dynamic_version = 0;
 	uint64_t light_version = 0;
 	Vector3 sun_direction = Vector3(0, 1, 0);

@@ -58,7 +58,10 @@ provides geometry and local lights. `kiln_dynamic=true` marks rigid dynamic
 subtrees; `kiln_exclude=true` excludes auxiliary geometry. Mesh arrays are cached
 per mesh identity and surface. Static geometry rebuilds explicitly with
 `rebuild()`; dynamic transforms, visibility, tint and authored emission update
-separately. Local lights have a separate version and spatial grid. Camera,
+separately. Material reflectance/emission and explicit history invalidation have
+their own revision counters. Replacing a rigid mesh updates its dynamic BVH;
+in-place mesh-array edits require `rebuild()`, which refreshes both trees.
+Local lights have a separate version and spatial grid. Camera,
 lighting and geometry revisions reject/refresh radiance history without
 rebuilding the 1,224,801-triangle island for each moving lamp.
 
@@ -107,6 +110,7 @@ GI capture instead of becoming gray opaque occluders. Raster rendering is
 independent of this GI admission. Shader defaults are cached until `rebuild()`. It does not yet reproduce arbitrary shader
 vertex displacement, per-texel alpha holes or texture-dependent BVH reflectance.
 The imported island is untextured, opaque geometry with scalar leaf response.
-Skinned/multimesh GI, arbitrary shader material transport, SDFGI/VoxelGI/lightmap
+Skinned, blend-shape and MultiMesh geometry are diagnosed and omitted from GI.
+Arbitrary shader material transport is outside the uniform contract. SDFGI/VoxelGI/lightmap
 mixing, native SSAO/SSIL, SSR and volumetric fog are rejected in deferred. Forward transparent surfaces
 receive direct lighting and refraction; they do not sample the opaque pixel's GI.

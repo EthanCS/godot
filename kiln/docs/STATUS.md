@@ -1,6 +1,6 @@
 # Phase 1 development status
 
-Implementation and validation checkpoint, 2026-09-16. Phase 1 is not yet accepted.
+Implementation and validation checkpoint, 2026-09-16. Final performance measurement and regression checks are in progress.
 
 ## Implemented
 
@@ -38,23 +38,31 @@ query and ray tracing pipeline; actual backend is software BVH.
 | Dynamic numerical GI | `/tmp/kiln-dynamic-check-v1` | All 26 checks passed; thresholds from source test; compact values in dynamic-check-baseline.json |
 | Original 4.6.2 source reference | `/tmp/kiln-source-fiveviews`, `$TMPDIR/oc_shots/island_custom_gi/reference_*` | Five original camera views, no AA, lit/direct/indirect/albedo captured via isolated C# study adapter |
 | Source baseline first-dark-frame check | `/tmp/kiln-source-reference-run3.log` | Original quick check failed its first-dark-frame assertion; not reported as passed |
-| Native source-view comparison | `/tmp/kiln-reference-native` | Same courtyard camera, exposure and original sky model visually inspected; AA differences in initial source quick capture |
+| Native source-view comparison | `/tmp/kiln-reference-fiveviews` | Five matched 1080p/no-AA views captured; lit display-RGB MAE .00059–.00368, with no post-hoc acceptance threshold |
 | 1001×703 with TAA | `/tmp/kiln-oddsize` | Normal exit, no renderer errors, actual 96 omni + 32 spot uploaded, no overflow |
 | Continuous resize/camera changes | `/tmp/kiln-lifecycle` | Repeated 1080p/1001×703 transitions and camera cuts, no errors |
 | Material/transparent/refraction chart | `/tmp/kiln-material-contract-*` | Both renderer outputs inspected; no rendering errors |
 | Five-minute all-dynamic run | `/tmp/kiln-five-minute-v1` | 305 seconds, 4186 frames, 1080p/TAA, all 128 lights + 8 local shadows; no errors; static BVH version stayed 1 |
+| TAA flash/disocclusion and offscreen source | `/tmp/kiln-temporal` | Six initial checks passed; off32 residual zero; settled32 MAE .0000671; offscreen red incident .1152 |
+| Direct-shadow contact | `/tmp/kiln-shadow-contact` | Two 81-pixel seams pass <2% shadow/lit ratio; measured zero |
+| Scene reload and BVH query | `/tmp/kiln-reload-v2.log` | Three lifetimes; VRAM plateau 762,511,360 bytes; 128 deterministic tree/brute-force rays match exactly |
+| Final camera tour and exported app | `/tmp/kiln-final-tour` | 305.10 seconds, 2,801 frames, 146 captures, all dynamics/TAA/AO; no errors; geometry version 1 throughout |
+| Camera path clearance | `/tmp/kiln-camera-path.json` | 49 center/offset rays against 137 collision meshes; no island intersection (CPU geometry check) |
+| GI admission and quality switching | `/tmp/kiln-admission.json` | Unsupported material excluded; 1→8→1 ray budget reallocations passed |
 | Local standalone export | `/tmp/kiln-export/KilnIsland.app`, `/tmp/kiln-export-run` | Release template + exported PCK launched outside repository; full island rendered; normal exit |
 
 Dynamic checks cover emitter on/off/color/translation, old-position clearing,
 solid dynamic occlusion, omni/spot indirect light, finite floating-point SH,
 continuous motion, stationary-versus-cold bit equality and static rebuild equality.
-They are small controlled scenes, not a claim that every island temporal case is
-accepted. The five-minute run used the earlier orbit/approach camera; the newer
-configured courtyard tour still needs a full final run.
+These are bounded controlled scenes. Continuous island coverage is separately
+recorded by the final courtyard tour, including day/night, close occlusion edges,
+moving receivers/emitters and pullback. Captures establish functional visual
+behavior, not a 60 FPS performance pass.
 
 ## Performance evidence
 
-Three-repeat A/B pilot is running; full matrix remains pending. GPU timestamps
+The six-run A/B pilot completed. The full 192-run matrix is in progress using
+frozen binary/PCK files from source commit `f4e93aac42`. GPU timestamps
 returned zeros on this Metal backend and are reported as unavailable (`null`/N/A),
 not zero cost. CPU profile values describe submission, not GPU stage duration.
 Timing runs perform no image/buffer readbacks. The five-minute run included
@@ -66,12 +74,12 @@ more expensive than stationary convergence; this must remain visible in reports.
 
 - Full 32/128/512/1024-light scattered/dense A/B matrix, zero/fixed shadows and
   identical GI budgets; final dynamic performance and full source-view diffs.
-- Quantitative TAA fast flash/disocclusion, offscreen emitter check, direct-shadow
-  contact thresholds, reload/memory plateau, and final camera path coverage.
+- Final regression of the added material/mesh invalidation checks and explicit
+  temporal-variation/history-reset measurements.
 - Native GI texture-dependent reflectance/alpha holes, arbitrary material vertex
   deformation and skinned/multimesh capture are not supported. The complete
   imported island uses uniform, opaque materials; raster cutout/normal maps are
-  separately tested. Broader GI material admission still needs tightening.
+  separately tested. GI requires an explicit uniform material contract.
 - Deferred MSAA, XR/multiview, reflection probes and arbitrary custom light shaders
   are unsupported. SDFGI/VoxelGI/lightmap/SSR mixing is outside this contract.
 - Public redistribution terms for imported assets and recovered shader sources

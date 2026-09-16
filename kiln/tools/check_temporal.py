@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Predeclared image thresholds: off32 mean < 1% of lit, off32 maximum < .02;
 settled32 versus 280-frame reference mean RGB error < .035 (display range 0..1).
+Stationary 16-frame mean RGB standard deviation < .005; settled history median
+>= 64 rays and explicit reset maximum <= 4 rays.
 These bounds check residuals; they do not establish perceptual quality alone.
 """
 from pathlib import Path
@@ -23,5 +25,16 @@ values['offscreen_red']=float(light[0]);values['offscreen_dark']=float(np.linalg
 checks['offscreen_geometry_contributes']=light[0]>dark[0]+.001
 checks['offscreen_removed_clears']=np.linalg.norm(dark)<.0001
 checks['finite_sh']=np.isfinite(np.fromfile(p/'buffers/sh.bin','<f4')).all().item()
+sequence=np.stack([im('stationary_%02d'%i) for i in range(16)])
+mask=sequence[0].mean(axis=2)>.02
+assert mask.sum()>100
+values['stationary_mean_rgb_std']=float(sequence.std(axis=0)[mask].mean())
+checks['stationary_temporal_variation']=values['stationary_mean_rgb_std']<.005
+confidence=np.fromfile(p/'buffers/confidence.bin','<f2').astype('f4')
+reset=np.fromfile(p/'history_reset/confidence.bin','<f2').astype('f4')
+values['settled_confidence_median']=float(np.median(confidence[confidence>0]))
+values['reset_confidence_max']=float(reset.max())
+checks['settled_history_accumulates']=values['settled_confidence_median']>=64
+checks['reset_history_rejected']=values['reset_confidence_max']<=4
 checks={k:bool(v) for k,v in checks.items()}
 r={'measurements':values,'checks':checks,'passed':all(checks.values())};(p/'checks.json').write_text(json.dumps(r,indent=2));print(json.dumps(r,indent=2));sys.exit(0 if r['passed'] else 1)

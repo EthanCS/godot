@@ -13,7 +13,14 @@ if a.quick:conditions=[(128,False,8,True)]
 if a.dynamic:conditions=[(128,False,8,False),(128,False,8,True)]
 metadata={'source_commit':subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'],text=True).strip(),'working_diff_sha256':hashlib.sha256(subprocess.check_output(['git','-C',str(root),'diff'])).hexdigest(),'binary_sha256':hashlib.sha256(a.engine.read_bytes()).hexdigest(),'duration':a.duration,'warmup':a.warmup,'steady_sample_seconds':a.duration-a.warmup,'conditions':conditions,'dynamic':a.dynamic,'gpu_timestamps':'N/A on this Metal device; raw CPU profiles retained'}
 if a.pack:metadata['pack_sha256']=hashlib.sha256(a.pack.read_bytes()).hexdigest()
-(a.output/'metadata.json').write_text(json.dumps(metadata,indent=2))
+if a.resume and (a.output/'metadata.json').exists():
+ old=json.loads((a.output/'metadata.json').read_text())
+ for key in ['binary_sha256','pack_sha256','duration','warmup','conditions','dynamic']:
+  if json.dumps(old.get(key))!=json.dumps(metadata.get(key)):raise ValueError(f'Resume mismatch: {key}')
+ metadata=old
+else:
+ if list(a.output.glob('*/run.json')):raise ValueError('Output contains runs; choose a fresh directory or --resume')
+ (a.output/'metadata.json').write_text(json.dumps(metadata,indent=2))
 rows=[]
 for lights,dense,shadows,gi in conditions:
  for repeat in range(3):

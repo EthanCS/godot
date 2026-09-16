@@ -8,6 +8,7 @@
 #include "core/templates/hashfuncs.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/multimesh_instance_3d.h"
 #include "scene/resources/material.h"
 #include "servers/rendering/rendering_server.h"
 
@@ -18,6 +19,8 @@ Dictionary KilnGIWorld::get_statistics() const {
 	result["static_triangles"] = snapshot.world.triangle_count;
 	result["dynamic_triangles"] = snapshot.dynamic.triangle_count;
 	result["geometry_version"] = snapshot.geometry_version;
+	result["material_version"] = snapshot.material_version;
+	result["history_version"] = snapshot.history_version;
 	result["dynamic_version"] = snapshot.dynamic_version;
 	result["light_version"] = snapshot.light_version;
 	result["local_lights"] = snapshot.local_light_count;
@@ -97,17 +100,29 @@ void KilnGIWorld::set_lighting(Vector3 p_direction, Vector3 p_color, float p_sun
 	snapshot.sky_energy = p_sky_energy;
 	snapshot.time_of_day = p_time_of_day;
 }
-void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash) {
+void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash) {
 	if (p_node == this || bool(p_node->get_meta(SNAME("kiln_exclude"), false))) {
 		return;
 	}
 	bool dynamic = p_dynamic_parent || bool(p_node->get_meta(SNAME("kiln_dynamic"), false));
+	if (Object::cast_to<MultiMeshInstance3D>(p_node) && !unsupported_geometry.has(p_node->get_instance_id())) {
+		unsupported_geometry.insert(p_node->get_instance_id());
+		WARN_PRINT("Kiln GI omitted MultiMesh geometry: only rigid MeshInstance3D capture is supported.");
+	}
 	MeshInstance3D *instance = Object::cast_to<MeshInstance3D>(p_node);
+	if (instance && (instance->get_skin().is_valid() || instance->get_blend_shape_count() > 0)) {
+		if (!unsupported_geometry.has(instance->get_instance_id())) {
+			unsupported_geometry.insert(instance->get_instance_id());
+			WARN_PRINT("Kiln GI omitted skinned/blend-shape geometry: only rigid MeshInstance3D capture is supported.");
+		}
+		instance = nullptr;
+	}
 	if (instance && dynamic == p_dynamic_pass && instance->is_visible_in_tree() && instance->get_mesh().is_valid()) {
 		Ref<Mesh> mesh = instance->get_mesh();
 		Transform3D transform = instance->get_global_transform();
 		Basis normal_transform = transform.basis.inverse().transposed();
 		r_hash = hash_murmur3_one_64(instance->get_instance_id(), r_hash);
+		r_hash = hash_murmur3_one_64(mesh->get_instance_id(), r_hash);
 		r_hash = hash_murmur3_one_32(Variant(transform).hash(), r_hash);
 		for (int surface = 0; surface < mesh->get_surface_count(); surface++) {
 			if (mesh->surface_get_primitive_type(surface) != Mesh::PRIMITIVE_TRIANGLES) {
@@ -126,7 +141,7 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				mesh_cache[key].insert(surface, data);
 			}
 			const MeshData &data = mesh_cache[key][surface];
-			Vector3 color(0.6, 0.6, 0.6), emission;
+			Vector3 color(1, 1, 1), emission;
 			float metal = 0;
 			Ref<Material> material = instance->get_active_material(surface);
 			Ref<ShaderMaterial> shader_material = material;
@@ -181,6 +196,9 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				}
 				continue;
 			}
+			color = color.clamp(Vector3(), Vector3(1, 1, 1)) * (1.0f - CLAMP(metal, 0.0f, 1.0f));
+			r_material_hash = hash_murmur3_one_32(Variant(color).hash(), r_material_hash);
+			r_material_hash = hash_murmur3_one_32(Variant(emission).hash(), r_material_hash);
 			r_hash = hash_murmur3_one_32(Variant(color).hash(), r_hash);
 			r_hash = hash_murmur3_one_32(Variant(emission).hash(), r_hash);
 			int count = data.indices.is_empty() ? data.positions.size() : data.indices.size();
@@ -197,14 +215,14 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 					continue;
 				}
 				tri.normal = data.normals.size() == data.positions.size() ? normal_transform.xform(data.normals[a] + data.normals[b] + data.normals[c]).normalized() : -face.normalized();
-				tri.albedo = color.clamp(Vector3(), Vector3(1, 1, 1)) * (1.0f - CLAMP(metal, 0.0f, 1.0f));
+				tri.albedo = color;
 				tri.emission = emission;
 				r_triangles.push_back(tri);
 			}
 		}
 	}
 	for (int i = 0; i < p_node->get_child_count(); i++) {
-		collect(p_node->get_child(i), dynamic, p_dynamic_pass, r_triangles, r_hash);
+		collect(p_node->get_child(i), dynamic, p_dynamic_pass, r_triangles, r_hash, r_material_hash);
 	}
 }
 
@@ -505,19 +523,28 @@ void KilnGIWorld::_notification(int p_what) {
 	if (p_what != NOTIFICATION_INTERNAL_PROCESS || environment.is_null() || !get_parent()) {
 		return;
 	}
+	bool force_dynamic_rebuild = rebuild_pending;
 	if (rebuild_pending) {
 		Vector<Triangle> triangles;
-		uint32_t hash = 0;
-		collect(get_parent(), false, false, triangles, hash);
+		uint32_t hash = 0, material_hash = 0;
+		collect(get_parent(), false, false, triangles, hash, material_hash);
+		if (static_material_hash != material_hash) {
+			snapshot.material_version++;
+			static_material_hash = material_hash;
+		}
 		snapshot.world = build(triangles);
 		snapshot.geometry_version++;
 		rebuild_pending = false;
 		print_line(vformat("[KILN_WORLD] static triangles=%d nodes=%d", snapshot.world.triangle_count, snapshot.world.node_count));
 	}
 	Vector<Triangle> dynamic;
-	uint32_t hash = 0;
-	collect(get_parent(), false, true, dynamic, hash);
-	if (snapshot.dynamic_version == 0 || hash != dynamic_hash) {
+	uint32_t hash = 0, material_hash = 0;
+	collect(get_parent(), false, true, dynamic, hash, material_hash);
+	if (material_hash != dynamic_material_hash) {
+		snapshot.material_version++;
+		dynamic_material_hash = material_hash;
+	}
+	if (force_dynamic_rebuild || snapshot.dynamic_version == 0 || hash != dynamic_hash) {
 		snapshot.dynamic = build(dynamic);
 		snapshot.dynamic_version++;
 		dynamic_hash = hash;

@@ -70,6 +70,11 @@ python3 kiln/tools/export_macos.py --output /tmp/kiln-export
 /tmp/kiln-export/KilnIsland.app/Contents/MacOS/KilnIsland -- --duration=15
 ```
 
+Run the complete serial GPU check suite with
+`python3 kiln/tools/validate_macos.py --output /tmp/kiln-validation`.
+Generate timing tables and raw CSV with
+`python3 kiln/tools/analyze_benchmark.py /tmp/kiln-benchmark --require-complete`.
+
 Additional checks use `res://tests/temporal.tscn` (then
 `python3 kiln/tools/check_temporal.py /tmp/kiln-temporal`),
 `res://tests/shadow_contact.tscn`, `res://tests/admission.tscn`, and

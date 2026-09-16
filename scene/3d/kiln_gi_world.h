@@ -22,13 +22,14 @@ class KilnGIWorld : public Node3D {
 	Ref<Environment> environment;
 	RendererRD::KilnWorld snapshot;
 	HashMap<uint64_t, HashMap<int, MeshData>> mesh_cache;
-	HashSet<ObjectID> unsupported_materials;
+	HashSet<ObjectID> unsupported_materials, unsupported_geometry;
 	HashMap<ObjectID, Dictionary> shader_defaults;
 	uint32_t dynamic_hash = 0, local_light_hash = 0;
+	uint32_t static_material_hash = 0, dynamic_material_hash = 0;
 	void collect_lights(Node *p_node, Vector<Vector4> &r_lights, uint32_t &r_hash);
 	void update_lights();
 	bool rebuild_pending = true;
-	void collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash);
+	void collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash);
 	RendererRD::KilnWorld::Geometry build(Vector<Triangle> p_triangles);
 
 protected:
