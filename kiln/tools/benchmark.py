@@ -32,7 +32,7 @@ for lights,dense,shadows,gi in conditions:
     cmd.append('--benchmark-dynamic')
    if a.pack:cmd[1:3]=['--main-pack',str(a.pack)]
    if dense:cmd.append('--dense')
-   if not gi:cmd.append('--no-gi')
+   cmd.append('--gi' if gi else '--no-gi')
    print(name,flush=True)
    if not (a.resume and (d/'run.json').exists()):
     with (d/'engine.log').open('w') as log:r=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,timeout=180)

@@ -3081,6 +3081,10 @@ void EditorHelp::_gen_doc_thread(void *p_udata) {
 }
 
 void EditorHelp::_gen_extensions_docs() {
+	// A deferred documentation callback can outlive the editor during CLI export.
+	if (!doc) {
+		return;
+	}
 	doc->generate((DocTools::GENERATE_FLAG_SKIP_BASIC_TYPES | DocTools::GENERATE_FLAG_EXTENSION_CLASSES_ONLY));
 
 	// Append extra doc data, as it gets overridden by the generation step.
@@ -3093,6 +3097,10 @@ static void _load_script_doc_cache(bool p_changes) {
 }
 
 void EditorHelp::load_script_doc_cache() {
+	// cleanup_doc() waits for the worker, but its queued callback can run later.
+	if (!EditorNode::get_singleton()) {
+		return;
+	}
 	if (!ProjectSettings::get_singleton()->is_project_loaded()) {
 		print_verbose("Skipping loading script doc cache since no project is open.");
 		return;

@@ -2,7 +2,7 @@ extends Node3D
 
 var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://timeline.json"))
 var gi: KilnGIWorld
-var gi_enabled := true
+var gi_enabled := false
 var ao_enabled := true
 var authored_emissions: Dictionary = {}
 var camera: Camera3D
@@ -86,6 +86,7 @@ func _ready() -> void:
 		if arg.begins_with("--view="): fixed_view = int(arg.get_slice("=", 1))
 		if arg.begins_with("--preset="): preset = int(arg.get_slice("=", 1))
 		if arg == "--no-ao": ao_enabled = false
+		if arg == "--gi": gi_enabled = true
 		if arg == "--no-gi": gi_enabled = false
 		if arg == "--no-aa": get_viewport().use_taa = false
 		if arg == "--dense": dense = true
@@ -328,7 +329,7 @@ func _process(delta: float) -> void:
 	if frames % 15 == 0:
 		runtime_statistics = gi.get_statistics()
 		if diagnostics.visible: _update_diagnostics()
-	hud.text = "%s • %.1f ms\n%d local lights • %d active local shadows • TOD %.2f\nKiln GI: software BVH\nSpace pause | C camera | T TOD | L lights | E emission\n1–4 count | S shadows | D dense | P isolation | A TAA | F view | Tab free | Home reset | F1 diagnostics" % [RenderingServer.get_current_rendering_method(), delta * 1000.0, lights.size(), int(runtime_statistics.get("uploaded_local_shadows", 0)), day]
+	hud.text = "%s • %.1f ms\n%d local lights • %d active local shadows • TOD %.2f\nKiln GI: %s (software BVH)\nSpace pause | C camera | T TOD | L lights | E emission\n1–4 count | S shadows | D dense | P isolation | A TAA | F view | Tab free | Home reset | F1 diagnostics" % [RenderingServer.get_current_rendering_method(), delta * 1000.0, lights.size(), int(runtime_statistics.get("uploaded_local_shadows", 0)), day, "on" if gi_enabled else "off"]
 	if capture_dir != "" and elapsed >= capture_at:
 		capture_at += capture_interval
 		_capture()
