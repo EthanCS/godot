@@ -1,0 +1,34 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83\n",
+  "hardware": "Apple M5",
+  "upstream": "ed1daf0bf001b61586d9930840f2f1394092c079",
+  "source": "4befd49d1f8e0cdc00b512e4e821f703b94ce39f",
+  "build_options": [
+    "platform=macos",
+    "arch=arm64",
+    "vulkan=no",
+    "metal=yes"
+  ],
+  "memory_bytes": 34359738368,
+  "metal": "4.0",
+  "matrix_source_commit": "f4e93aac42f704dcf9ea8d1983b363e55e0c6ea1",
+  "benchmarked_binaries": {
+    "godot.macos.editor.arm64": "2f1fcad327987e30f5d4f6e0067461525a9bbdaaf49bd9f218f6c28510e36904",
+    "godot.macos.template_release.arm64": "6fbe47f46ec98dd1a8592073ce05b5f1d21dc9565132f85f5aa6369e12ac0c12"
+  },
+  "benchmarked_pack_sha256": "319b0fea2f43ba884381899f468442efd6dfd030fc3f4dcd71e09e8ff84974eb",
+  "rendering_validation_source_commit": "06843311c6520e289017422c7a6dbbd4d0798143",
+  "delivery_source_commit": "b3129706fd5045b0dc99e8183c50f71934167efb",
+  "delivery_binaries": {
+    "godot.macos.editor.arm64": "5dd294d6dff93ad87fb5c97c436e58f7f0f6fd0e4ee9c90fcfaedf9633a57699",
+    "godot.macos.template_release.arm64": "f80fe38ca3d9eb80c8f6de7006e87f2b315508a8a86e79b274e5d178edd72723"
+  },
+  "delivery_pack_sha256": "8d1c7d3b31d74ef734abccc0a9baffcd0e33242f098de7aeae9d116b4d8512d8",
+  "delivery_gi_default": false,
+  "delivery_checks": {
+    "import_export_log": "/tmp/kiln-delivery-export.log",
+    "real_gpu_run": "/tmp/kiln-delivery",
+    "gi": "off",
+    "no_errors": true
+  }
+}

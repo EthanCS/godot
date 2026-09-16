@@ -4,5 +4,5 @@
   "commit": "ed1daf0bf001b61586d9930840f2f1394092c079",
   "fork": "https://github.com/EthanCS/godot",
   "branch": "codex/kiln-deferred-4.7.2",
-  "status": "native G-buffer and Kiln GI implemented; macOS Metal validation in progress, see docs/STATUS.md"
+  "status": "non-GI renderer delivery compiled and GPU-verified on macOS arm64 Metal; GI opt-in and further GI work deferred at user request; see docs/STATUS.md"
 }

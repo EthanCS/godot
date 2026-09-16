@@ -51,10 +51,11 @@ if a.dynamic:
             if curves:
                 curves = np.asarray(curves)
                 ax.plot(bins[:-1] + .5, np.nanmedian(curves, axis=0), color=colors[renderer], linestyle='-' if gi else '--', label=labels[renderer]+(' · GI on' if gi else ' · GI off'))
+                ax.fill_between(bins[:-1] + .5, np.nanmin(curves, axis=0), np.nanmax(curves, axis=0), color=colors[renderer], alpha=.10)
     ax.axhline(1000/60, color='#555555', linewidth=1, label='60 FPS budget')
     ax.set_xlabel('Deterministic replay time (seconds)')
     ax.set_ylabel('Median frame time per 1-second bin (ms)')
-    ax.set_title('All-dynamic island · 128 lights / 8 local shadows · 1080p · TAA/AO on')
+    ax.set_title('All-dynamic island · 128 lights / 8 local shadows · 1080p · TAA/AO on\nThree-run median; shading shows run range')
     ax.grid(axis='y', alpha=.2)
     ax.legend(frameon=False, ncol=2)
     fig.savefig(a.dynamic/'timeline.png', dpi=180)

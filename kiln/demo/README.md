@@ -13,7 +13,11 @@ bin/godot.macos.editor.arm64 --path kiln/demo
 
 Default: automatic 120-second camera tour, 180-second TOD, 12 animated emissive
 bodies, four moving occluders, 128 local lights (96 omni, 32 spot), eight local
-shadow lights, native Kiln GI, XeGTAO and TAA. Fixed exposure, no bloom.
+shadow lights, XeGTAO and TAA. Fixed exposure, no bloom.
+
+This delivery starts with **GI off** as requested. Existing experimental native
+Kiln GI remains opt-in via **G** or `--gi`; GI performance/quality work is deferred.
+The HUD reports the actual on/off state. Benchmarks explicitly select both modes.
 
 | Control | Action |
 | --- | --- |
@@ -44,7 +48,7 @@ island-only composition. The source snapshot/provenance is in `../docs`.
 # Fixed comparison; replace renderer with forward_plus for the other path.
 bin/godot.macos.editor.arm64 --path kiln/demo --rendering-method kiln_deferred -- --time=4 --view=0 --no-aa --size=1920x1080 --duration=15 --report-dir=/tmp/kiln-fixed
 # Diagnostic sequence (readbacks contaminate timing; never benchmark these).
-bin/godot.macos.editor.arm64 --path kiln/demo -- --preset=1 --debug=7 --capture-dir=/tmp/kiln-local --duration=12
+bin/godot.macos.editor.arm64 --path kiln/demo -- --gi --preset=1 --debug=7 --capture-dir=/tmp/kiln-local --duration=12
 # Native GI dynamic check and numerical evaluation.
 bin/godot.macos.editor.arm64 --path kiln/demo res://tests/dynamic_lighting.tscn -- --output=/tmp/kiln-check
 python3 kiln/tools/check_dynamic.py /tmp/kiln-check
@@ -56,7 +60,7 @@ python3 kiln/tools/benchmark.py --output /tmp/kiln-benchmark
 python3 kiln/tools/benchmark.py --dynamic --duration=35 --warmup=5 --output /tmp/kiln-dynamic-benchmark
 ```
 
-`--diagnostics`, `--no-gi`, `--no-ao`, `--no-aa`, `--dense`, `--lights=N`, `--shadows=N`,
+`--diagnostics`, `--gi`, `--no-gi`, `--no-ao`, `--no-aa`, `--dense`, `--lights=N`, `--shadows=N`,
 `--preset=0..3`, `--size=1001x703`, `--warmup=5`, `--profile` and `--no-hud`
 `--tod-speed=4` and `--light-range=10` are supported. `--lifecycle` repeatedly resizes and switches cameras.
 `--capture-at`, `--capture-interval` and `--buffer-at` control diagnostic readbacks.

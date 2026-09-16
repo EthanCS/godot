@@ -33,8 +33,12 @@ tracing and MegaLights/ReSTIR are later work, not Phase 1 dependencies.
 
 ## Current status
 
+The current delivery focuses on the non-GI renderer, per the user’s scope update.
+GI starts off in the demo and is opt-in with G / `--gi`; further GI work is deferred.
+
 A native opaque G-buffer, clustered deferred lighting and Kiln GI now run on
 macOS Metal. See [implementation and validation status](docs/STATUS.md),
-[pipeline contract](docs/PIPELINE.md) and [demo instructions](demo/README.md).
+[pipeline contract](docs/PIPELINE.md), [upstream integration map](docs/CHANGESET.md),
+[performance measurements](docs/PERFORMANCE.md) and [demo instructions](demo/README.md).
 Phase 1 acceptance remains distinct from implementation. Captures and full logs
 are temporary local artifacts. Source asset/shader redistribution is not cleared.

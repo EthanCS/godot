@@ -1,0 +1,47 @@
+{
+  "/tmp/kiln-matrix-final": {
+    "profile_snapshots": 74104,
+    "max_overflow": 0,
+    "geometry_versions": [
+      1
+    ],
+    "upload_range": [
+      32,
+      1024
+    ],
+    "shadow_range": [
+      0,
+      8
+    ]
+  },
+  "/tmp/kiln-final-quick": {
+    "profile_snapshots": 2381,
+    "max_overflow": 0,
+    "geometry_versions": [
+      1
+    ],
+    "upload_range": [
+      128,
+      128
+    ],
+    "shadow_range": [
+      8,
+      8
+    ]
+  },
+  "/tmp/kiln-dynamic-accepted": {
+    "profile_snapshots": 12268,
+    "max_overflow": 0,
+    "geometry_versions": [
+      1
+    ],
+    "upload_range": [
+      128,
+      128
+    ],
+    "shadow_range": [
+      8,
+      8
+    ]
+  }
+}
