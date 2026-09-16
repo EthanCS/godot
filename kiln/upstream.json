@@ -1,0 +1,8 @@
+{
+  "upstream": "https://github.com/godotengine/godot.git",
+  "tag": "4.7.2-stable",
+  "commit": "ed1daf0bf001b61586d9930840f2f1394092c079",
+  "fork": "https://github.com/EthanCS/godot",
+  "branch": "codex/kiln-deferred-4.7.2",
+  "status": "bootstrap; deferred renderer not implemented yet"
+}
