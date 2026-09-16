@@ -32,6 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/math/math_defs.h"
+#include "core/os/os.h"
 #include "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h"
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #include "servers/rendering/renderer_rd/storage_rd/material_storage.h"
@@ -209,6 +210,23 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_tangent |= uses_normal_map;
 	uses_tangent |= uses_bent_normal_map;
 
+	kiln_unsupported = String();
+	for (const String &define : gen_code.defines) {
+		for (const char *unsupported : { "LIGHT_CLEARCOAT_USED", "LIGHT_ANISOTROPY_USED", "LIGHT_RIM_USED", "SSS_USED", "SSS_TRANSMITTANCE_USED", "BENT_NORMAL_MAP_USED", "DIFFUSE_TOON", "DIFFUSE_LAMBERT_WRAP", "SPECULAR_TOON", "SPECULAR_DISABLED" }) {
+			if (define.contains(unsupported)) {
+				kiln_unsupported += String(unsupported) + " ";
+			}
+		}
+	}
+	if (gen_code.code.has("LIGHT") && !gen_code.code["LIGHT"].is_empty()) {
+		kiln_unsupported += "custom light() ";
+	}
+	if (stencil_referencei != -1) {
+		kiln_unsupported += "stencil ";
+	}
+	if (depth_test_disabledi || depth_test_invertedi || depth_drawi == DEPTH_DRAW_DISABLED) {
+		kiln_unsupported += "nonstandard depth ";
+	}
 	stencil_enabled = stencil_referencei != -1;
 	stencil_flags = stencil_readi | stencil_writei | stencil_write_depth_faili;
 	stencil_compare = StencilCompare(stencil_comparei);
@@ -296,6 +314,8 @@ uint16_t SceneShaderForwardClustered::ShaderData::_get_shader_version(PipelineVe
 			return ShaderVersion::SHADER_VERSION_DEPTH_PASS_WITH_MATERIAL + ubershader_base;
 		case PIPELINE_VERSION_DEPTH_PASS_WITH_SDF:
 			return ShaderVersion::SHADER_VERSION_DEPTH_PASS_WITH_SDF + ubershader_base;
+		case PIPELINE_VERSION_KILN_GBUFFER:
+			return ShaderVersion::SHADER_VERSION_COLOR_PASS * 2 + SHADER_COLOR_PASS_FLAG_COUNT + (p_ubershader ? 1 : 0);
 		case PIPELINE_VERSION_COLOR_PASS: {
 			int shader_flags = 0;
 
@@ -467,6 +487,9 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 			case PIPELINE_VERSION_DEPTH_PASS_WITH_NORMAL_AND_ROUGHNESS_AND_VOXEL_GI_MULTIVIEW:
 				blend_state = blend_state_depth_normal_roughness_giprobe;
 				break;
+			case PIPELINE_VERSION_KILN_GBUFFER:
+				blend_state = RD::PipelineColorBlendState::create_disabled(6);
+				break;
 			case PIPELINE_VERSION_DEPTH_PASS_WITH_MATERIAL:
 				// Writes to normal and roughness in opaque way.
 				blend_state = RD::PipelineColorBlendState::create_disabled(5);
@@ -624,6 +647,9 @@ SceneShaderForwardClustered::SceneShaderForwardClustered() {
 SceneShaderForwardClustered::~SceneShaderForwardClustered() {
 	RendererRD::MaterialStorage *material_storage = RendererRD::MaterialStorage::get_singleton();
 
+	if (kiln_resolve_version.is_valid()) {
+		kiln_resolve_shader.version_free(kiln_resolve_version);
+	}
 	RD::get_singleton()->free_rid(default_vec4_xform_buffer);
 	RD::get_singleton()->free_rid(shadow_sampler);
 
@@ -687,9 +713,23 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 			shader_versions.push_back(ShaderRD::VariantDefine(group, version, false));
 		}
 
+		for (uint32_t uber = 0; uber < 2; uber++) {
+			shader_versions.push_back(ShaderRD::VariantDefine(SHADER_GROUP_KILN,
+					String(uber ? "\n#define UBERSHADER\n" : "") + "\n#define MODE_RENDER_DEPTH\n#define MODE_KILN_GBUFFER\n#define MOTION_VECTORS\n", true));
+		}
+
 		Vector<uint64_t> dynamic_buffers;
 		dynamic_buffers.push_back(ShaderRD::DynamicBuffer::encode(RenderForwardClustered::RENDER_PASS_UNIFORM_SET, 2));
 		shader.initialize(shader_versions, p_defines, Vector<RD::PipelineImmutableSampler>(), dynamic_buffers);
+
+		if (OS::get_singleton()->get_current_rendering_method() == "kiln_deferred") {
+			shader.enable_group(SHADER_GROUP_KILN);
+			Vector<String> resolve_defines;
+			resolve_defines.push_back("\n#define MODE_KILN_RESOLVE\n#define DIFFUSE_BURLEY\n#define LIGHT_BACKLIGHT_USED\n");
+			kiln_resolve_shader.initialize(resolve_defines, p_defines, Vector<RD::PipelineImmutableSampler>(), dynamic_buffers);
+			kiln_resolve_version = kiln_resolve_shader.version_create();
+			kiln_resolve_shader.version_set_code(kiln_resolve_version, HashMap<String, String>(), "", "", "", Vector<String>());
+		}
 
 		if (RendererCompositorRD::get_singleton()->is_xr_enabled()) {
 			shader.enable_group(SHADER_GROUP_MULTIVIEW);
@@ -883,6 +923,7 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.render_mode_defines["specular_toon"] = "#define SPECULAR_TOON\n";
 		actions.render_mode_defines["specular_disabled"] = "#define SPECULAR_DISABLED\n";
 		actions.render_mode_defines["shadows_disabled"] = "#define SHADOWS_DISABLED\n";
+		actions.render_mode_defines["kiln_surface"] = "#define KILN_SURFACE\n";
 		actions.render_mode_defines["ambient_light_disabled"] = "#define AMBIENT_LIGHT_DISABLED\n";
 		actions.render_mode_defines["shadow_to_opacity"] = "#define USE_SHADOW_TO_OPACITY\n";
 		actions.render_mode_defines["unshaded"] = "#define MODE_UNSHADED\n";

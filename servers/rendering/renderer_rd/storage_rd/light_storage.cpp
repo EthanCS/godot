@@ -720,6 +720,7 @@ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const Paged
 	r_directional_light_count = 0;
 	r_positional_light_count = 0;
 
+	light_overflow_count = 0;
 	omni_light_count = 0;
 	spot_light_count = 0;
 	area_light_count = 0;
@@ -866,6 +867,8 @@ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const Paged
 			} break;
 			case RSE::LIGHT_OMNI: {
 				if (omni_light_count >= max_lights) {
+					light_overflow_count++;
+					WARN_PRINT_ONCE("Cluster omni-light capacity exceeded. Increase rendering/limits/cluster_builder/max_clustered_elements.");
 					continue;
 				}
 
@@ -891,6 +894,8 @@ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const Paged
 			} break;
 			case RSE::LIGHT_SPOT: {
 				if (spot_light_count >= max_lights) {
+					light_overflow_count++;
+					WARN_PRINT_ONCE("Cluster spot-light capacity exceeded. Increase rendering/limits/cluster_builder/max_clustered_elements.");
 					continue;
 				}
 

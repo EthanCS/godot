@@ -1,0 +1,44 @@
+#version 450
+// @GI_COMMON@
+// @GI_REPROJECTION@
+// @GI_RECEIVER@
+// @GI_RECEIVER_DATA@
+#define GI_WORLD_OWNER_WRITE
+// @GI_WORLD_CACHE@
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=21,std430) writeonly buffer Receivers { RayReceiver receivers[]; };
+layout(set=0,binding=24,std430) buffer DirtyTiles { uint dirty_tiles[]; };
+shared uint group_dirty;
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.debug.yz);
+    if(gl_LocalInvocationIndex==0u)group_dirty=0u;
+    barrier();
+    if(all(lessThan(q,size))){
+        float depth;vec3 wp,wn,stored_normal;int rays;uint sample_start;
+        receiver_context(q,size,depth,wp,wn,stored_normal,rays,sample_start);
+        int index=q.y*size.x+q.x;
+        bool cached=false;
+        uint cache_slot=0u;
+        if(depth>1e-7 && (rays>0 || p.gi.z<0.0) && p.source_bvh_state.w<.5 && p.voxel_state.w>=1.0){
+            if(p.gi.z>=0.0){
+                ivec4 key=world_key(wp,stored_normal);uint slot=world_slot(key);
+                atomicMax(world_owners[slot],uint(index+1));
+            }
+            cached=p.gi.z<0.0 && world_lookup(wp,stored_normal,cache_slot);
+            if(cached)rays=0;
+        }
+        receivers[index].position_depth=vec4(wp,depth);
+        receivers[index].normal=wn;
+        receivers[index].samples=cached?(0x80000000u|(cache_slot<<8)):(uint(rays)|(sample_start<<8));
+        vec4 previous=texelFetch(previous_position,q,0);
+        vec3 previous_n=texelFetch(previous_normal,q,0).xyz;
+        vec4 position=depth>1e-7?vec4(wp,1):vec4(0);
+        bool dirty=cached || rays>0 || any(notEqual(position,previous)) || any(notEqual(stored_normal,previous_n));
+        if(dirty)atomicOr(group_dirty,1u);
+    }
+    barrier();
+    if(gl_LocalInvocationIndex==0u && group_dirty!=0u){
+        ivec2 tile=ivec2(gl_WorkGroupID.xy)/2;
+        atomicOr(dirty_tiles[tile.y*((size.x+15)/16)+tile.x],1u);
+    }
+}

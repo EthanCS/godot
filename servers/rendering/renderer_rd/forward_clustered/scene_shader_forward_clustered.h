@@ -48,6 +48,7 @@ public:
 		SHADER_GROUP_ADVANCED,
 		SHADER_GROUP_MULTIVIEW,
 		SHADER_GROUP_ADVANCED_MULTIVIEW,
+		SHADER_GROUP_KILN,
 	};
 
 	// Not an enum because these values are constants that are processed as numbers
@@ -84,6 +85,7 @@ public:
 		PIPELINE_VERSION_DEPTH_PASS_MULTIVIEW,
 		PIPELINE_VERSION_DEPTH_PASS_WITH_NORMAL_AND_ROUGHNESS_MULTIVIEW,
 		PIPELINE_VERSION_DEPTH_PASS_WITH_NORMAL_AND_ROUGHNESS_AND_VOXEL_GI_MULTIVIEW,
+		PIPELINE_VERSION_KILN_GBUFFER,
 		PIPELINE_VERSION_COLOR_PASS,
 		PIPELINE_VERSION_MAX
 	};
@@ -220,7 +222,7 @@ public:
 
 		RID version;
 
-		static const uint32_t VERTEX_INPUT_MASKS_SIZE = ShaderVersion::SHADER_VERSION_COLOR_PASS * 2 + SHADER_COLOR_PASS_FLAG_COUNT;
+		static const uint32_t VERTEX_INPUT_MASKS_SIZE = ShaderVersion::SHADER_VERSION_COLOR_PASS * 2 + SHADER_COLOR_PASS_FLAG_COUNT + 2;
 		std::atomic<uint64_t> vertex_input_masks[VERTEX_INPUT_MASKS_SIZE] = {};
 
 		Vector<ShaderCompiler::GeneratedCode::Texture> texture_uniforms;
@@ -238,6 +240,7 @@ public:
 		int depth_test_invertedi = 0;
 		int alpha_antialiasing_mode = ALPHA_ANTIALIASING_OFF;
 
+		String kiln_unsupported;
 		bool uses_point_size = false;
 		bool uses_alpha = false;
 		bool uses_blend_alpha = false;
@@ -345,6 +348,8 @@ public:
 	}
 
 	SceneForwardClusteredShaderRD shader;
+	SceneForwardClusteredShaderRD kiln_resolve_shader;
+	RID kiln_resolve_version;
 	ShaderCompiler compiler;
 	bool emulate_point_size = false;
 

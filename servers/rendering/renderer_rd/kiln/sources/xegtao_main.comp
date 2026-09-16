@@ -1,0 +1,86 @@
+#version 450
+// Copyright (C) 2016-2021, Intel Corporation. SPDX-License-Identifier: MIT.
+// @GI_COMMON@
+// GLSL adaptation of Intel XeGTAO_MainPass, Copyright (C) 2016-2021 Intel Corporation.
+// MIT license: rendering/xegtao/LICENSE. FP32 depths, visibility-only, Hilbert R2 spatiotemporal noise.
+layout(local_size_x=8,local_size_y=8) in;
+layout(set=0,binding=1) uniform sampler2D depth0;
+layout(set=0,binding=2) uniform sampler2D depth1;
+layout(set=0,binding=3) uniform sampler2D depth2;
+layout(set=0,binding=4) uniform sampler2D depth3;
+layout(set=0,binding=5) uniform sampler2D depth4;
+layout(set=0,binding=6) uniform sampler2D normals;
+layout(set=0,binding=7,r16f) uniform writeonly image2D ao;
+layout(set=0,binding=8,rgba8) uniform writeonly image2D edges;
+layout(set=0,binding=9) uniform usampler2D hilbert_curve;
+float depth_at(vec2 uv,int mip){
+    if(mip==0)return textureLod(depth0,uv,0).r;
+    if(mip==1)return textureLod(depth1,uv,0).r;
+    if(mip==2)return textureLod(depth2,uv,0).r;
+    if(mip==3)return textureLod(depth3,uv,0).r;
+    return textureLod(depth4,uv,0).r;
+}
+// Reconstruct through the actual GPU projection, also supporting orthographic cameras.
+vec3 position_at(vec2 uv,float z){
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,1,1);
+    // Perspective points lie on a ray through the view origin; orthographic
+    // XY is independent of depth. One unprojection avoids reconstructing and
+    // interpolating two endpoints at every horizon sample.
+    if(abs(p.projection[3][3])>.5)return vec3(point.xy/point.w,z);
+    return vec3(point.xy*(-z/point.z),z);
+
+}
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=textureSize(depth0,0);
+    if(any(greaterThanEqual(q,size)))return;
+    float z=texelFetch(depth0,q,0).r;
+    vec3 encoded=texelFetch(normals,q,0).rgb;
+    if(z>=1e5||(p.engine_state.x<.5&&all(lessThan(encoded,vec3(.001))))){imageStore(ao,q,vec4(1));imageStore(edges,q,vec4(0));return;}
+    vec4 delta=vec4(texelFetch(depth0,max(q-ivec2(1,0),ivec2(0)),0).r,
+        texelFetch(depth0,min(q+ivec2(1,0),size-1),0).r,
+        texelFetch(depth0,max(q-ivec2(0,1),ivec2(0)),0).r,
+        texelFetch(depth0,min(q+ivec2(0,1),size-1),0).r)-z;
+    vec2 slope=vec2(delta.y-delta.x,delta.w-delta.z)*.5;
+    vec4 e=clamp(1.25-min(abs(delta),abs(delta+vec4(slope.x,-slope.x,slope.y,-slope.y)))/(z*.011),0.0,1.0);
+    imageStore(edges,q,e);
+    vec2 uv=(vec2(q)+.5)/vec2(size);
+    vec3 center=position_at(uv,z*.99999),view=abs(p.projection[3][3])>.5?vec3(0,0,-1):normalize(-center);
+    vec3 normal=normalize((p.engine_state.x>.5?encoded:encoded*2.0-1.0)*vec3(1,1,-1));
+    normal=normalize(normal+max(0.0,.001-dot(normal,view))*view);
+    float radius=p.gi.x*1.457,pixel_size=length(position_at(uv+vec2(1.0/float(size.x),0),z)-position_at(uv,z));
+    float screen_radius=radius/max(pixel_size,1e-6);
+    if(screen_radius<1.3){imageStore(ao,q,vec4(1));return;}
+    vec2 noise=fract(.5+(float(texelFetch(hilbert_curve,q%64,0).r)+float(int(p.size_frame.z)%64)*288.0+1.0)*vec2(.75487766624669276,.56984029099805326));
+    int quality=int(p.quality.z),slices=quality==1?1:quality==2?2:3,steps=quality==3?3:2;
+    float visibility=clamp((10.0-screen_radius)/100.0,0.0,1.0)*.5;
+    for(int slice=0;slice<slices;slice++){
+        float phi=(float(slice)+noise.x)/float(slices)*PI;
+        vec2 direction=vec2(cos(phi),sin(phi)),omega=direction*vec2(1,-1)*screen_radius;
+        vec3 dir=vec3(direction,0),ortho=dir-dot(dir,view)*view,axis=normalize(cross(ortho,view));
+        vec3 projected=normal-axis*dot(normal,axis);
+        float len=length(projected),cos_n=clamp(dot(projected,view)/max(len,1e-6),0.0,1.0);
+        float n=sign(dot(ortho,projected))*acos(cos_n);
+        vec2 low=cos(n+vec2(PI*.5,-PI*.5)),horizon=low;
+        for(int step=0;step<steps;step++){
+            float step_noise=fract(noise.y+float(slice+step*steps)*.61803398875);
+            float s=pow((float(step)+step_noise)/float(steps),2.0)+1.3/screen_radius;
+            vec2 offset=s*omega;
+            int mip=int(clamp(round(log2(max(length(offset),1.0))-3.30),0.0,4.0));
+            offset=round(offset)/vec2(size);
+            for(int side=0;side<2;side++){
+                vec2 sample_uv=uv+offset*(side==0?1.0:-1.0);
+                if(any(lessThan(sample_uv,vec2(0)))||any(greaterThanEqual(sample_uv,vec2(1))))continue;
+                float sample_z=depth_at(sample_uv,mip);
+                vec3 d=position_at(sample_uv,sample_z)-center;
+                float distance=length(d),weight=clamp((radius-distance)/(radius*.615),0.0,1.0);
+                float h=dot(d/max(distance,1e-6),view);
+                horizon[side]=max(horizon[side],mix(low[side],h,weight));
+            }
+        }
+        len=mix(len,1.0,.05);
+        vec2 h=vec2(-acos(clamp(horizon.y,-1.0,1.0)),acos(clamp(horizon.x,-1.0,1.0)));
+        vec2 integral=(cos_n+2.0*h*sin(n)-cos(2.0*h-n))*.25;
+        visibility+=len*(integral.x+integral.y);
+    }
+    imageStore(ao,q,vec4(clamp(pow(max(visibility/float(slices),0.0),2.2),.03,1.0)));
+}

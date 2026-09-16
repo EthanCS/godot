@@ -1,0 +1,40 @@
+#version 450
+// @GI_COMMON@
+#define GI_DIRTY_BINDING 7
+// @GI_DIRTY@
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(push_constant,std430) uniform FilterStep { int stride; int padding0; int padding1; int padding2; } step;
+layout(set=0,binding=1) uniform sampler2D input_sh;
+layout(set=0,binding=2) uniform sampler2D positions;
+layout(set=0,binding=3) uniform sampler2D normals;
+layout(set=0,binding=4) uniform sampler2D visibility;
+layout(set=0,binding=5) uniform sampler2D confidence;
+layout(set=0,binding=6,rgba16f) uniform writeonly image2D output_sh;
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.debug.yz);
+    if(any(greaterThanEqual(q,size)))return;
+    if(p.gi.z>0.0 && !filter_region_dirty(q))return;
+    vec4 center=texelFetch(positions,q,0);vec3 n=texelFetch(normals,q,0).xyz;
+    float z=(p.view*vec4(center.xyz,1)).z,ao=texelFetch(visibility,q,0).r;
+    // Undecimated B-spline wavelet steps 1/2/4 on lighting coefficients only.
+    // World-plane and normal guidance preserve eaves, contacts and silhouettes.
+    float kernel[5]=float[5](1,4,6,4,1);
+    float world_pixel=max(.006,abs(z)*2.0/(abs(p.projection[1][1])*float(size.y)));
+    float plane_sigma=max(.025,world_pixel*.6*float(step.stride));
+    vec4 r=vec4(0),g=vec4(0),b=vec4(0);float weights=0;
+    if(center.w>.5)for(int y=-2;y<=2;y++)for(int x=-2;x<=2;x++){
+        ivec2 tap=q+ivec2(x,y)*step.stride;
+        if(any(lessThan(tap,ivec2(0)))||any(greaterThanEqual(tap,size)))continue;
+        vec4 position=texelFetch(positions,tap,0);if(position.w<.5)continue;
+        vec3 sn=texelFetch(normals,tap,0).xyz;float nd=max(0.0,dot(n,sn));
+        vec3 difference=position.xyz-center.xyz;
+        float plane_distance=max(abs(dot(difference,n)),abs(dot(difference,sn)));
+        // Random visibility must not modulate reconstruction and pulse lighting.
+        float w=kernel[x+2]*kernel[y+2]*pow(nd,16.0)*exp(-plane_distance/plane_sigma);
+        w*=mix(.2,1.0,clamp(texelFetch(confidence,tap,0).r/32.0,0.0,1.0));
+        r+=texelFetch(input_sh,tap,0)*w;g+=texelFetch(input_sh,tap+ivec2(size.x,0),0)*w;
+        b+=texelFetch(input_sh,tap+ivec2(size.x*2,0),0)*w;weights+=w;
+    }
+    imageStore(output_sh,q,r/max(weights,1e-10));imageStore(output_sh,q+ivec2(size.x,0),g/max(weights,1e-10));
+    imageStore(output_sh,q+ivec2(size.x*2,0),b/max(weights,1e-10));
+}

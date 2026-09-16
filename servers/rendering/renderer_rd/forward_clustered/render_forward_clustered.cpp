@@ -113,6 +113,7 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::free_data() {
 	// JIC, should already have been cleared
 	if (render_buffers) {
 		render_buffers->clear_context(RB_SCOPE_FORWARD_CLUSTERED);
+		render_buffers->clear_context(RB_SCOPE_KILN);
 		render_buffers->clear_context(RB_SCOPE_SSDS);
 		render_buffers->clear_context(RB_SCOPE_SSIL);
 		render_buffers->clear_context(RB_SCOPE_SSAO);
@@ -157,6 +158,97 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::configure(RenderS
 
 	RID sampler = RendererRD::MaterialStorage::get_singleton()->sampler_rd_get_default(RSE::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RSE::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 	cluster_builder->setup(p_render_buffers->get_internal_size(), p_render_buffers->get_max_cluster_elements(), p_render_buffers->get_depth_texture(), sampler, p_render_buffers->get_internal_texture());
+}
+
+RID RenderForwardClustered::RenderBufferDataForwardClustered::get_kiln_gbuffer_fb() {
+	const StringName names[] = { SNAME("albedo_metallic"), SNAME("normal_roughness"), SNAME("emission"), SNAME("material"), SNAME("instance") };
+	const RD::DataFormat formats[] = { RD::DATA_FORMAT_R8G8B8A8_UNORM, RD::DATA_FORMAT_R16G16B16A16_SFLOAT, RD::DATA_FORMAT_R16G16B16A16_SFLOAT, RD::DATA_FORMAT_R8G8B8A8_UNORM, RD::DATA_FORMAT_R32_UINT };
+	Vector<RID> attachments;
+	for (int i = 0; i < 5; i++) {
+		if (!render_buffers->has_texture(RB_SCOPE_KILN, names[i])) {
+			render_buffers->create_texture(RB_SCOPE_KILN, names[i], formats[i], RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT);
+		}
+		attachments.push_back(render_buffers->get_texture(RB_SCOPE_KILN, names[i]));
+	}
+	render_buffers->ensure_velocity();
+	attachments.push_back(render_buffers->get_velocity_buffer(false));
+	attachments.push_back(render_buffers->get_depth_texture());
+	return FramebufferCacheRD::get_singleton()->get_cache_multipass(attachments, Vector<RD::FramebufferPass>());
+}
+
+void RenderForwardClustered::_kiln_resolve(Ref<RenderSceneBuffersRD> p_buffers, bool p_gi, RID p_render_pass_uniform_set, const SceneShaderForwardClustered::ShaderSpecialization &p_specialization, const Color &p_clear_color) {
+	RD *rd = RD::get_singleton();
+	// A color-only attachment avoids reading a depth texture while it is bound for writing.
+	RID framebuffer = FramebufferCacheRD::get_singleton()->get_cache(p_buffers->get_internal_texture());
+	RID shader = scene_shader.kiln_resolve_shader.version_get_shader(scene_shader.kiln_resolve_version, 0);
+	ERR_FAIL_COND(shader.is_null());
+	RD::FramebufferFormatID format = rd->framebuffer_get_format(framebuffer);
+	SceneShaderForwardClustered::ShaderSpecialization spec = p_specialization;
+	spec.use_light_soft_shadows = true;
+	spec.use_directional_soft_shadows = true;
+	spec.use_light_projector = true;
+	String key = uitos(format) + ":" + uitos(spec.packed_0) + ":" + uitos(spec.packed_1);
+	if (!kiln_resolve_pipelines.has(key)) {
+		Vector<RD::PipelineSpecializationConstant> constants;
+		for (uint32_t i = 0; i < 2; i++) {
+			RD::PipelineSpecializationConstant constant;
+			constant.constant_id = i;
+			constant.type = RD::PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT;
+			constant.int_value = i == 0 ? spec.packed_0 : spec.packed_1;
+			constants.push_back(constant);
+		}
+		RD::PipelineRasterizationState raster;
+		raster.cull_mode = RD::POLYGON_CULL_DISABLED;
+		RID pipeline = rd->render_pipeline_create(shader, format, RD::INVALID_ID, RD::RENDER_PRIMITIVE_TRIANGLES, raster, RD::PipelineMultisampleState(), RD::PipelineDepthStencilState(), RD::PipelineColorBlendState::create_disabled(1), 0, 0, constants);
+		ERR_FAIL_COND(pipeline.is_null());
+		kiln_resolve_pipelines.insert(key, pipeline);
+	}
+	const StringName names[] = { SNAME("albedo_metallic"), SNAME("normal_roughness"), SNAME("emission"), SNAME("material"), SNAME("instance") };
+	LocalVector<RD::Uniform> uniforms;
+	RID sampler = RendererRD::MaterialStorage::get_singleton()->sampler_rd_get_default(RSE::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RSE::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+	for (int i = 0; i < 6; i++) {
+		RD::Uniform uniform;
+		uniform.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		uniform.binding = i;
+		uniform.append_id(sampler);
+		uniform.append_id(i == 5 ? p_buffers->get_depth_texture() : p_buffers->get_texture(RB_SCOPE_KILN, names[i]));
+		uniforms.push_back(uniform);
+	}
+	Ref<RendererRD::KilnGI::View> gi_view;
+	if (p_gi) {
+		gi_view = p_buffers->get_custom_data(SNAME("kiln_gi"));
+	}
+	for (int i = 0; i < 3; i++) {
+		RD::Uniform u;
+		u.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		u.binding = 6 + i;
+		u.append_id(sampler);
+		u.append_id(p_gi ? gi_view->t(i == 0 ? "diffuse" : i == 1 ? "specular"
+																  : "ao")
+						 : RendererRD::TextureStorage::get_singleton()->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
+		uniforms.push_back(u);
+	}
+	for (int i = 0; i < 2; i++) {
+		RD::Uniform u;
+		u.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		u.binding = 9 + i;
+		u.append_id(sampler);
+		u.append_id(i == 0 ? p_buffers->get_velocity_buffer(false) : (p_gi ? gi_view->t("confidence", 1 - gi_view->index) : RendererRD::TextureStorage::get_singleton()->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK)));
+		uniforms.push_back(u);
+	}
+	RID gbuffer_set = UniformSetCacheRD::get_singleton()->get_cache_vec(shader, MATERIAL_UNIFORM_SET, uniforms);
+	Vector<Color> clears;
+	clears.push_back(p_clear_color);
+	RD::DrawListID list = rd->draw_list_begin(framebuffer, RD::DRAW_CLEAR_COLOR_ALL, clears);
+	rd->draw_list_bind_render_pipeline(list, kiln_resolve_pipelines[key]);
+	rd->draw_list_bind_uniform_set(list, render_base_uniform_set, SCENE_UNIFORM_SET);
+	rd->draw_list_bind_uniform_set(list, p_render_pass_uniform_set, RENDER_PASS_UNIFORM_SET);
+	rd->draw_list_bind_uniform_set(list, scene_shader.default_vec4_xform_uniform_set, TRANSFORMS_UNIFORM_SET);
+	rd->draw_list_bind_uniform_set(list, gbuffer_set, MATERIAL_UNIFORM_SET);
+	uint32_t push[4] = { 0, uint32_t(int(GLOBAL_GET("rendering/kiln/debug_view"))), uint32_t(p_gi), 0 };
+	rd->draw_list_set_push_constant(list, push, sizeof(push));
+	rd->draw_list_draw(list, false, 1, 3);
+	rd->draw_list_end();
 }
 
 RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_only_fb() {
@@ -458,6 +550,10 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 
 				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_COLOR_PASS;
 			} break;
+			case PASS_MODE_KILN_GBUFFER: {
+				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_KILN_GBUFFER;
+				pipeline_key.color_pass_flags = SceneShaderForwardClustered::PIPELINE_COLOR_PASS_FLAG_MOTION_VECTORS;
+			} break;
 			case PASS_MODE_SHADOW:
 			case PASS_MODE_DEPTH: {
 				pipeline_key.version = p_params->view_count > 1 ? SceneShaderForwardClustered::PIPELINE_VERSION_DEPTH_PASS_MULTIVIEW : SceneShaderForwardClustered::PIPELINE_VERSION_DEPTH_PASS;
@@ -652,6 +748,9 @@ void RenderForwardClustered::_render_list(RenderingDevice::DrawListID p_draw_lis
 			}
 
 		} break;
+		case PASS_MODE_KILN_GBUFFER: {
+			_render_list_template<PASS_MODE_KILN_GBUFFER>(p_draw_list, p_framebuffer_Format, p_params, p_from_element, p_to_element);
+		} break;
 		case PASS_MODE_SHADOW: {
 			_render_list_template<PASS_MODE_SHADOW>(p_draw_list, p_framebuffer_Format, p_params, p_from_element, p_to_element);
 		} break;
@@ -769,7 +868,7 @@ uint32_t RenderForwardClustered::_setup_environment(const RenderDataRD *p_render
 				}
 			}
 		}
-		scene_state.ubo.ss_effects_flags = ss_flags;
+		scene_state.ubo.ss_effects_flags = ss_flags | ((kiln_forward_gi_ready && p_opaque_render_buffers) ? 16u : 0u);
 	} else {
 		scene_state.ubo.ss_effects_flags = 0;
 	}
@@ -1703,6 +1802,7 @@ void RenderForwardClustered::_process_sss(Ref<RenderSceneBuffersRD> p_render_buf
 
 void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Color &p_default_bg_color) {
 	scene_state.used_uniform_buffer_count = 0;
+	kiln_forward_gi_ready = false;
 
 	RendererRD::LightStorage *light_storage = RendererRD::LightStorage::get_singleton();
 
@@ -1717,6 +1817,10 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 		rb_data = rb->get_custom_data(RB_SCOPE_FORWARD_CLUSTERED);
 	}
 	bool is_reflection_probe = p_render_data->reflection_probe.is_valid();
+	if (kiln_deferred) {
+		ERR_FAIL_COND_MSG(is_reflection_probe || p_render_data->scene_data->view_count != 1, "Kiln deferred does not yet support reflection probe capture or multiview.");
+		ERR_FAIL_COND_MSG(rb->get_msaa_3d() != RSE::VIEWPORT_MSAA_DISABLED, "Kiln deferred requires MSAA disabled; use TAA or no AA.");
+	}
 
 	static const int texture_multisamples[RSE::VIEWPORT_MSAA_MAX] = { 1, 2, 4, 8 };
 
@@ -1727,7 +1831,9 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 	// get info about our rendering effects
 	bool ce_needs_motion_vectors = _compositor_effects_has_flag(p_render_data, RSE::COMPOSITOR_EFFECT_FLAG_NEEDS_MOTION_VECTORS);
-	bool ce_needs_normal_roughness = _compositor_effects_has_flag(p_render_data, RSE::COMPOSITOR_EFFECT_FLAG_NEEDS_ROUGHNESS);
+	RendererRD::KilnWorld kiln_world;
+	bool needs_kiln = RendererRD::KilnWorld::read(p_render_data->environment, kiln_world) && (kiln_world.enabled || kiln_world.ao_quality > 0);
+	bool ce_needs_normal_roughness = _compositor_effects_has_flag(p_render_data, RSE::COMPOSITOR_EFFECT_FLAG_NEEDS_ROUGHNESS) || (needs_kiln && !kiln_deferred);
 	bool ce_needs_separate_specular = _compositor_effects_has_flag(p_render_data, RSE::COMPOSITOR_EFFECT_FLAG_NEEDS_SEPARATE_SPECULAR);
 
 	// sdfgi first
@@ -1805,7 +1911,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 	// check if we need motion vectors
 	bool motion_vectors_required;
-	if (using_debug_mvs) {
+	if (using_debug_mvs || kiln_deferred) {
 		motion_vectors_required = true;
 	} else if (ce_needs_motion_vectors) {
 		motion_vectors_required = true;
@@ -1837,7 +1943,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 	bool using_voxelgi = false;
 	bool reverse_cull = p_render_data->scene_data->cam_transform.basis.determinant() < 0;
 	bool using_ssil = !is_reflection_probe && p_render_data->environment.is_valid() && environment_get_ssil_enabled(p_render_data->environment);
-	bool using_motion_pass = rb_data.is_valid() && using_upscaling;
+	bool using_motion_pass = rb_data.is_valid() && using_upscaling && !kiln_deferred;
 
 	if (is_reflection_probe) {
 		uint32_t resolution = light_storage->reflection_probe_instance_get_resolution(p_render_data->reflection_probe);
@@ -2185,6 +2291,14 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 		base_specialization.cluster_has_area_light = current_cluster_builder->get_cluster_count_by_type(ClusterBuilderRD::ELEMENT_TYPE_AREA_LIGHT) != 0;
 	}
 
+	if (needs_kiln && !kiln_deferred && rb_data.is_valid() && rb_data->has_normal_roughness()) {
+		if (!kiln_gi) {
+			kiln_gi = memnew(RendererRD::KilnGI);
+		}
+		RENDER_TIMESTAMP("Kiln GI Forward+");
+		kiln_forward_gi_ready = kiln_gi->process(rb, p_render_data->scene_data, p_render_data->environment, rb_data->get_normal_roughness(), false);
+	}
+
 	RENDER_TIMESTAMP("Render Opaque Pass");
 
 	RD::get_singleton()->draw_command_begin_label("Render Opaque Pass");
@@ -2192,6 +2306,14 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 	p_render_data->scene_data->directional_light_count = p_render_data->directional_light_count;
 	p_render_data->scene_data->opaque_prepass_threshold = 0.0f;
 
+	if (kiln_world.geometry_version > 0) {
+		Dictionary statistics;
+		statistics["uploaded_omni"] = light_storage->get_uploaded_omni_count();
+		statistics["uploaded_spot"] = light_storage->get_uploaded_spot_count();
+		statistics["light_overflow"] = light_storage->get_light_overflow_count();
+		statistics["cluster_capacity"] = light_storage->get_max_cluster_elements();
+		RendererRD::KilnWorld::report(p_render_data->environment, statistics);
+	}
 	// Shadow pass can change the base uniform set samplers.
 	_update_render_base_uniform_set();
 
@@ -2199,7 +2321,32 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 	RID rp_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_OPAQUE, p_render_data, radiance_texture, samplers, opaque_pass_uniform_buffer_index, true);
 
-	{
+	if (kiln_deferred) {
+		RENDER_TIMESTAMP("Kiln G-buffer");
+		RID gbuffer = rb_data->get_kiln_gbuffer_fb();
+		Vector<Color> clears;
+		for (int i = 0; i < 6; i++) {
+			clears.push_back(Color(0, 0, 0, 0));
+		}
+		RenderListParameters params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_KILN_GBUFFER, 0, false, false, rp_uniform_set, false, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, 1, 0, base_specialization);
+		_render_list_with_draw_list(&params, gbuffer, RD::DRAW_CLEAR_COLOR_ALL | (depth_pre_pass ? RD::DRAW_DEFAULT_ALL : RD::DRAW_CLEAR_DEPTH), clears, 0.0f);
+		bool gi_ready = false;
+		RendererRD::KilnWorld world;
+		if (RendererRD::KilnWorld::read(p_render_data->environment, world) && (world.enabled || world.ao_quality > 0)) {
+			if (!kiln_gi) {
+				kiln_gi = memnew(RendererRD::KilnGI);
+			}
+			RENDER_TIMESTAMP("Kiln GI");
+			gi_ready = kiln_gi->process(rb, p_render_data->scene_data, p_render_data->environment, rb->get_texture(RB_SCOPE_KILN, SNAME("normal_roughness")));
+		}
+		RENDER_TIMESTAMP("Kiln deferred lighting");
+		SceneShaderForwardClustered::ShaderSpecialization resolve_specialization = base_specialization;
+		resolve_specialization.use_directional_soft_shadows = p_render_data->directional_light_soft_shadows;
+		resolve_specialization.use_light_soft_shadows = true;
+		resolve_specialization.use_light_projector = true;
+		_kiln_resolve(rb, gi_ready, rp_uniform_set, resolve_specialization, clear_color.srgb_to_linear());
+		RD::get_singleton()->draw_command_end_label();
+	} else {
 		bool render_motion_pass = !render_list[RENDER_LIST_MOTION].elements.is_empty();
 
 		{
@@ -3762,6 +3909,19 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 		uniforms.push_back(u);
 	}
 
+	Ref<RendererRD::KilnGI::View> kiln_view;
+	if (kiln_forward_gi_ready && rb.is_valid() && rb->has_custom_data(SNAME("kiln_gi"))) {
+		kiln_view = rb->get_custom_data(SNAME("kiln_gi"));
+	}
+	for (int i = 0; i < 3; i++) {
+		RD::Uniform u;
+		u.binding = 37 + i;
+		u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
+		u.append_id(kiln_view.is_valid() ? kiln_view->t(i == 0 ? "diffuse" : i == 1 ? "specular"
+																					: "ao")
+										 : texture_storage->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
+		uniforms.push_back(u);
+	}
 	return UniformSetCacheRD::get_singleton()->get_cache_vec(scene_shader.default_shader_rd, RENDER_PASS_UNIFORM_SET, uniforms);
 }
 
@@ -3976,6 +4136,13 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 		ERR_FAIL_COND_V(scene_shader.default_shader_sdfgi_rd.is_null(), RID());
 	}
 
+	for (int i = 0; i < 3; i++) {
+		RD::Uniform u;
+		u.binding = 37 + i;
+		u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
+		u.append_id(texture_storage->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
+		uniforms.push_back(u);
+	}
 	return UniformSetCacheRD::get_singleton()->get_cache_vec(scene_shader.default_shader_sdfgi_rd, RENDER_PASS_UNIFORM_SET, uniforms);
 }
 
@@ -4159,6 +4326,7 @@ void RenderForwardClustered::_update_global_pipeline_data_requirements_from_ligh
 void RenderForwardClustered::_geometry_instance_add_surface_with_material(GeometryInstanceForwardClustered *ginstance, uint32_t p_surface, SceneShaderForwardClustered::MaterialData *p_material, uint32_t p_material_id, uint32_t p_shader_id, RID p_mesh) {
 	RendererRD::MeshStorage *mesh_storage = RendererRD::MeshStorage::get_singleton();
 	uint32_t flags = 0;
+	ERR_FAIL_COND_MSG(kiln_deferred && !p_material->shader_data->uses_alpha_pass() && !p_material->shader_data->kiln_unsupported.is_empty(), "Kiln deferred rejected unsupported opaque shader " + p_material->shader_data->path + ": " + p_material->shader_data->kiln_unsupported);
 
 	if (p_material->shader_data->uses_sss) {
 		flags |= GeometryInstanceSurfaceDataCache::FLAG_USES_SUBSURFACE_SCATTERING;
@@ -5100,8 +5268,10 @@ void RenderForwardClustered::_update_shader_quality_settings() {
 	base_uniforms_changed(); //also need this
 }
 
-RenderForwardClustered::RenderForwardClustered() {
+RenderForwardClustered::RenderForwardClustered(bool p_kiln_deferred) :
+		kiln_deferred(p_kiln_deferred) {
 	singleton = this;
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/debug_view", PROPERTY_HINT_ENUM, "Lit,Albedo,Normal,Roughness,Emission,Material,Depth,Indirect,AO,Motion,Direct,ClusterCount,History"), 0);
 
 	/* SCENE SHADER */
 
@@ -5246,6 +5416,12 @@ RenderForwardClustered::RenderForwardClustered() {
 }
 
 RenderForwardClustered::~RenderForwardClustered() {
+	if (kiln_gi) {
+		memdelete(kiln_gi);
+	}
+	for (const KeyValue<String, RID> &entry : kiln_resolve_pipelines) {
+		RD::get_singleton()->free_rid(entry.value);
+	}
 	if (ss_effects != nullptr) {
 		memdelete(ss_effects);
 		ss_effects = nullptr;

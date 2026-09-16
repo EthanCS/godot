@@ -1,0 +1,16 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://rendering/shaders/main_island_surface.gdshader" id="1"]
+
+[resource]
+resource_local_to_scene = true
+resource_name = "terracotta1"
+shader = ExtResource("1")
+shader_parameter/tint_linear = Vector3(0.56471151, 0.18782078, 0.09530747)
+shader_parameter/textured = false
+shader_parameter/detail_maps = false
+shader_parameter/constant_roughness = 0.89999998
+shader_parameter/metalness = 0.0
+shader_parameter/transmission = 0.00000000
+shader_parameter/authored_emission = Vector3(0.00000000, 0.00000000, 0.00000000)
+shader_parameter/cut_seabed = false

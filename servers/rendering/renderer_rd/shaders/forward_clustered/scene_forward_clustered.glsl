@@ -18,6 +18,12 @@
 #define OUTPUT_IS_MULTIVIEW false
 #endif
 
+#ifdef MODE_KILN_RESOLVE
+void main() {
+	vec2 p = vec2(float((gl_VertexIndex << 1) & 2), float(gl_VertexIndex & 2));
+	gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+#else
 /* INPUT ATTRIBS */
 
 // Always contains vertex position in XYZ, can contain tangent angle in W.
@@ -450,6 +456,7 @@ void vertex_shader(vec3 vertex_input,
 #CODE : VERTEX
 	}
 
+
 	float roughness = roughness_highp;
 #ifdef NORMAL_USED
 	vec3 normal = normal_highp;
@@ -552,6 +559,9 @@ void vertex_shader(vec3 vertex_input,
 	uint cluster_offset = (implementation_data.cluster_width * cluster_pos.y + cluster_pos.x) * (implementation_data.max_cluster_element_count_div_32 + 32);
 	uint cluster_z = uint(clamp((-vertex_interp.z / scene_data.z_far) * 32.0, 0.0, 31.0));
 
+#ifdef MODE_KILN_RESOLVE
+	uint kiln_cluster_count = 0u;
+#endif
 	{ //omni lights
 
 		uint cluster_omni_offset = cluster_offset;
@@ -860,6 +870,8 @@ void main() {
 			screen_position);
 }
 
+#endif // !MODE_KILN_RESOLVE
+
 #[fragment]
 
 #version 450
@@ -882,6 +894,23 @@ void main() {
 
 /* Varyings */
 
+#ifdef MODE_KILN_RESOLVE
+layout(set = 3, binding = 0) uniform sampler2D kiln_albedo;
+layout(set = 3, binding = 1) uniform sampler2D kiln_normal;
+layout(set = 3, binding = 2) uniform sampler2D kiln_emission;
+layout(set = 3, binding = 3) uniform sampler2D kiln_material;
+layout(set = 3, binding = 4) uniform usampler2D kiln_instance;
+layout(set = 3, binding = 5) uniform sampler2D kiln_depth;
+layout(set = 3, binding = 6) uniform sampler2D kiln_gi_diffuse;
+layout(set = 3, binding = 7) uniform sampler2D kiln_gi_specular;
+layout(set = 3, binding = 8) uniform sampler2D kiln_gi_ao;
+layout(set = MATERIAL_UNIFORM_SET, binding = 9) uniform sampler2D kiln_motion;
+layout(set = MATERIAL_UNIFORM_SET, binding = 10) uniform sampler2D kiln_history;
+
+vec3 vertex_interp;
+vec3 normal_interp;
+uint instance_index_interp;
+#else
 layout(location = 0) in vec3 vertex_interp;
 
 #ifdef NORMAL_USED
@@ -917,6 +946,7 @@ layout(location = 9) in float dp_clip;
 #endif
 
 layout(location = 10) in flat uint instance_index_interp;
+#endif // !MODE_KILN_RESOLVE
 
 #ifdef USE_LIGHTMAP
 // w0, w1, w2, and w3 are the four cubic B-spline basis functions
@@ -1036,6 +1066,14 @@ layout(set = MATERIAL_UNIFORM_SET, binding = 0, std140) uniform MaterialUniforms
 
 #ifdef MODE_RENDER_DEPTH
 
+#ifdef MODE_KILN_GBUFFER
+layout(location = 0) out vec4 kiln_albedo_out;
+layout(location = 1) out vec4 kiln_normal_out;
+layout(location = 2) out vec4 kiln_emission_out;
+layout(location = 3) out vec4 kiln_material_out;
+layout(location = 4) out uint kiln_instance_out;
+#endif
+
 #ifdef MODE_RENDER_MATERIAL
 
 layout(location = 0) out vec4 albedo_output_buffer;
@@ -1068,7 +1106,11 @@ layout(location = 0) out vec4 frag_color;
 #endif // RENDER DEPTH
 
 #ifdef MOTION_VECTORS
+#ifdef MODE_KILN_GBUFFER
+layout(location = 5) out vec2 motion_vector;
+#else
 layout(location = 2) out vec2 motion_vector;
+#endif
 #endif
 
 #include "../scene_forward_aa_inc.glsl"
@@ -1080,6 +1122,9 @@ layout(location = 2) out vec2 motion_vector;
 #define SPECULAR_SCHLICK_GGX
 #endif
 
+#if defined(MODE_KILN_RESOLVE) || defined(KILN_SURFACE)
+bool kiln_use_brdf = false;
+#endif
 #include "../scene_forward_lights_inc.glsl"
 
 #include "../scene_forward_gi_inc.glsl"
@@ -1203,6 +1248,22 @@ vec3 encode24(vec3 v) {
 #endif // MODE_RENDER_NORMAL_ROUGHNESS
 
 void fragment_shader(in SceneData scene_data) {
+#if defined(KILN_SURFACE) && !defined(MODE_RENDER_DEPTH)
+	kiln_use_brdf = true;
+#endif
+#ifdef MODE_KILN_RESOLVE
+	ivec2 pixel = ivec2(gl_FragCoord.xy);
+	uint encoded_instance = texelFetch(kiln_instance, pixel, 0).r;
+	if (encoded_instance == 0u) {
+		discard;
+	}
+	kiln_use_brdf = (encoded_instance & 0x80000000u) != 0u;
+	instance_index_interp = (encoded_instance & 0x7fffffffu) - 1u;
+	float depth = texelFetch(kiln_depth, pixel, 0).r;
+	vec4 reconstructed = inv_projection_matrix * vec4(gl_FragCoord.xy * scene_data.screen_pixel_size * 2.0 - 1.0, depth, 1.0);
+	vertex_interp = reconstructed.xyz / reconstructed.w;
+	normal_interp = texelFetch(kiln_normal, pixel, 0).xyz;
+#endif
 	uint instance_index = instance_index_interp;
 
 #ifdef PREMUL_ALPHA_USED
@@ -1350,6 +1411,36 @@ void fragment_shader(in SceneData scene_data) {
 	{
 #CODE : FRAGMENT
 	}
+
+#ifdef MODE_KILN_RESOLVE
+	vec4 stored_albedo = texelFetch(kiln_albedo, pixel, 0);
+	vec4 stored_material = texelFetch(kiln_material, pixel, 0);
+	albedo_highp = stored_albedo.rgb;
+	metallic_highp = stored_albedo.a;
+	roughness_highp = texelFetch(kiln_normal, pixel, 0).a;
+	emission = texelFetch(kiln_emission, pixel, 0).rgb;
+	specular = stored_material.r;
+	ao = stored_material.g;
+	ao_light_affect = stored_material.b;
+	backlight = vec3(stored_material.a);
+	alpha_highp = 1.0;
+	if (draw_call.uv_offset == 9u) { frag_color = vec4(texelFetch(kiln_motion, pixel, 0).rg * 30.0 + 0.5, 0.5, 1); return; }
+	if (draw_call.uv_offset == 12u) { frag_color = vec4(vec3(texelFetch(kiln_history, pixel / 2, 0).r / 256.0), 1); return; }
+	if (draw_call.uv_offset > 0u && draw_call.uv_offset <= 6u) {
+		vec3 value = albedo_highp;
+		if (draw_call.uv_offset == 2u) value = normal_interp * 0.5 + 0.5;
+		if (draw_call.uv_offset == 3u) value = vec3(roughness_highp);
+		if (draw_call.uv_offset == 4u) value = emission;
+		if (draw_call.uv_offset == 5u) value = stored_material.rgb;
+		if (draw_call.uv_offset == 6u) value = vec3(-vertex.z / 150.0);
+		frag_color = vec4(value, 1.0);
+		return;
+	}
+	if (stored_material.a > 0.5) {
+		frag_color = vec4(albedo_highp, 1.0);
+		return;
+	}
+#endif
 
 	float roughness = roughness_highp;
 	float metallic = metallic_highp;
@@ -1654,7 +1745,7 @@ void fragment_shader(in SceneData scene_data) {
 #endif //not render depth
 	/////////////////////// LIGHTING //////////////////////////////
 
-#ifdef NORMAL_USED
+#if defined(NORMAL_USED) && !defined(MODE_KILN_RESOLVE)
 	if (bool(scene_data.flags & SCENE_DATA_FLAGS_USE_ROUGHNESS_LIMITER)) {
 		//https://www.jp.square-enix.com/tech/library/pdf/ImprovedGeometricSpecularAA.pdf
 		float roughness2 = roughness * roughness;
@@ -1671,6 +1762,20 @@ void fragment_shader(in SceneData scene_data) {
 		}
 	}
 #endif
+#ifdef MODE_KILN_GBUFFER
+	kiln_albedo_out = vec4(albedo, metallic);
+	kiln_normal_out = vec4(normal, roughness);
+	kiln_emission_out = vec4(emission, 0.0);
+	kiln_material_out = vec4(specular, ao, ao_light_affect, clamp(backlight.r, 0.0, 0.49));
+#ifdef MODE_UNSHADED
+	kiln_material_out.a = 1.0;
+#endif
+	kiln_instance_out = instance_index + 1u;
+#ifdef KILN_SURFACE
+	kiln_instance_out |= 0x80000000u;
+#endif
+#endif
+
 	//apply energy conservation
 
 	vec3 direct_specular_light = vec3(0.0, 0.0, 0.0);
@@ -2695,6 +2800,9 @@ void fragment_shader(in SceneData scene_data) {
 	}
 
 #ifndef USE_VERTEX_LIGHTING
+#ifdef MODE_KILN_RESOLVE
+	uint kiln_cluster_count = 0u;
+#endif
 	{ //omni lights
 
 		uint cluster_omni_offset = cluster_offset;
@@ -2732,6 +2840,9 @@ void fragment_shader(in SceneData scene_data) {
 					continue; // Statically baked light and object uses lightmap, skip
 				}
 
+#ifdef MODE_KILN_RESOLVE
+				kiln_cluster_count++;
+#endif
 				light_process_omni(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, roughness, metallic, scene_data.taa_frame_count, albedo, alpha, screen_uv, energy_compensation,
 #ifdef LIGHT_BACKLIGHT_USED
 						backlight,
@@ -2793,6 +2904,9 @@ void fragment_shader(in SceneData scene_data) {
 					continue; // Statically baked light and object uses lightmap, skip
 				}
 
+#ifdef MODE_KILN_RESOLVE
+				kiln_cluster_count++;
+#endif
 				light_process_spot(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, roughness, metallic, scene_data.taa_frame_count, albedo, alpha, screen_uv, energy_compensation,
 #ifdef LIGHT_BACKLIGHT_USED
 						backlight,
@@ -3043,6 +3157,41 @@ void fragment_shader(in SceneData scene_data) {
 
 //nothing happens, so a tree-ssa optimizer will result in no fragment shader :)
 #else
+
+#ifdef MODE_KILN_RESOLVE
+	if (draw_call.uv_offset == 11u) { frag_color = vec4(float(kiln_cluster_count) / 128.0, float(kiln_cluster_count) / 512.0, float(kiln_cluster_count) / 1024.0, 1); return; }
+	if (draw_call.uv_offset == 10u) emission = vec3(0);
+	if (draw_call.multimesh_motion_vectors_current_offset != 0u && draw_call.uv_offset != 10u) {
+		vec4 gi_diffuse = texelFetch(kiln_gi_diffuse, pixel, 0);
+		vec4 gi_specular = texelFetch(kiln_gi_specular, pixel, 0);
+		vec3 gi_f0 = mix(vec3(0.04), albedo, metallic);
+		vec3 integral = gi_f0 * gi_diffuse.a + gi_specular.a;
+		float directional_albedo = gi_diffuse.a + gi_specular.a;
+		vec3 multiscatter = mix(integral / max(directional_albedo, 1e-8), vec3(1), 0.4) * (1.0 - directional_albedo);
+		vec3 fresnel = integral * (1.0 + multiscatter / max(vec3(1) - multiscatter, vec3(1e-8)));
+		float kiln_ao = texelFetch(kiln_gi_ao, pixel, 0).r;
+		if (draw_call.uv_offset == 8u) { frag_color = vec4(vec3(kiln_ao), 1.0); return; }
+		vec3 indirect = ((vec3(1) - fresnel) * albedo * (1.0 - metallic) * gi_diffuse.rgb + fresnel * gi_specular.rgb) * kiln_ao;
+		if (draw_call.uv_offset == 7u) {
+			frag_color = vec4(indirect, 1.0);
+			return;
+		}
+		emission += indirect * scene_data.emissive_exposure_normalization;
+	}
+#endif
+
+#if defined(KILN_SURFACE) && !defined(MODE_KILN_RESOLVE)
+	if ((implementation_data.ss_effects_flags & 16u) != 0u) {
+		vec4 gi_diffuse = texelFetch(sampler2D(kiln_forward_diffuse, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0);
+		vec4 gi_specular = texelFetch(sampler2D(kiln_forward_specular, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0);
+		vec3 gi_f0 = mix(vec3(0.04), albedo, metallic);
+		vec3 integral = gi_f0 * gi_diffuse.a + gi_specular.a;
+		float directional_albedo = gi_diffuse.a + gi_specular.a;
+		vec3 multiscatter = mix(integral / max(directional_albedo, 1e-8), vec3(1), 0.4) * (1.0 - directional_albedo);
+		vec3 fresnel = integral * (1.0 + multiscatter / max(vec3(1) - multiscatter, vec3(1e-8)));
+		emission += ((vec3(1) - fresnel) * albedo * (1.0 - metallic) * gi_diffuse.rgb + fresnel * gi_specular.rgb) * texelFetch(sampler2D(kiln_forward_ao, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0).r * scene_data.emissive_exposure_normalization;
+	}
+#endif
 
 	// multiply by albedo
 	diffuse_light *= albedo; // ambient must be multiplied by albedo at the end

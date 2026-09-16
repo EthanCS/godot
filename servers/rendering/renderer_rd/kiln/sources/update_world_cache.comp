@@ -1,0 +1,33 @@
+#version 450
+// @GI_COMMON@
+#define GI_WORLD_LIGHT_WRITE
+// @GI_WORLD_CACHE@
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=1) uniform sampler2D positions;
+layout(set=0,binding=2) uniform sampler2D normals;
+layout(set=0,binding=3) uniform sampler2D coefficients;
+layout(set=0,binding=4) uniform sampler2D confidence;
+layout(set=0,binding=5) uniform sampler2D visibility;
+layout(set=0,binding=6) uniform sampler2D raw_radiance;
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.debug.yz);
+    // Only stationary finite integrals may seed the world table. A moving
+    // estimator can contain a transferred cache sample through screen history,
+    // even after tracing new rays; writing it would spread that approximation.
+    if(any(greaterThanEqual(q,size)) || p.gi.z<0.0 || p.source_bvh_state.w>.5 || p.voxel_state.w<1.0)return;
+    if(texelFetch(raw_radiance,q,0).a<=0.0)return;
+    vec4 position=texelFetch(positions,q,0);
+    float count=texelFetch(confidence,q,0).r;
+    if(position.w<.5 || count<32.0)return;
+    vec3 normal=texelFetch(normals,q,0).xyz;
+    ivec4 key=world_key(position.xyz,normal);uint slot=world_slot(key);
+    if(world_owners[slot]!=uint(q.y*size.x+q.x+1))return;
+    WorldLight old=world_lights[slot];
+    if(world_match(old,key,position.xyz,normal) && old.position_count.w>=count)return;
+    world_lights[slot].key=key;
+    world_lights[slot].position_count=vec4(position.xyz,count);
+    world_lights[slot].normal_visibility=vec4(normal,texelFetch(visibility,q,0).r);
+    world_lights[slot].r=texelFetch(coefficients,q,0);
+    world_lights[slot].g=texelFetch(coefficients,q+ivec2(size.x,0),0);
+    world_lights[slot].b=texelFetch(coefficients,q+ivec2(2*size.x,0),0);
+}

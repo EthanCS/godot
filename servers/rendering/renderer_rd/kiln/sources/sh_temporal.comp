@@ -1,0 +1,84 @@
+#version 450
+// @GI_COMMON@
+// @GI_REPROJECTION@
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=1) uniform sampler2D current_sh;
+layout(set=0,binding=2) uniform sampler2D positions;
+layout(set=0,binding=3) uniform sampler2D normals;
+layout(set=0,binding=4) uniform sampler2D previous_sh;
+layout(set=0,binding=5) uniform sampler2D previous_position;
+layout(set=0,binding=6) uniform sampler2D previous_normal;
+layout(set=0,binding=7) uniform sampler2D previous_confidence;
+layout(set=0,binding=8,rgba32f) uniform writeonly image2D output_sh;
+layout(set=0,binding=9,r16f) uniform writeonly image2D output_confidence;
+layout(set=0,binding=10) uniform sampler2D current_visibility;
+layout(set=0,binding=11) uniform sampler2D previous_visibility;
+layout(set=0,binding=12,r16f) uniform writeonly image2D output_visibility;
+layout(set=0,binding=13) uniform sampler2D current_radiance_rays;
+layout(set=0,binding=14) uniform sampler2D previous_age;
+layout(set=0,binding=15,r16f) uniform writeonly image2D output_age;
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.debug.yz);
+    if(any(greaterThanEqual(q,size)))return;
+    vec4 position=texelFetch(positions,q,0);vec3 normal=texelFetch(normals,q,0).xyz;
+    float rays=texelFetch(current_radiance_rays,q,0).a;
+    if(rays<0.0){
+        for(int c=0;c<3;c++){
+            ivec2 index=q+ivec2(c*size.x,0);
+            imageStore(output_sh,index,texelFetch(current_sh,index,0));
+        }
+        imageStore(output_confidence,q,vec4(-rays));
+        imageStore(output_visibility,q,texelFetch(current_visibility,q,0));
+        imageStore(output_age,q,vec4(1));
+        return;
+    }
+    float weights=0,count_sum=0,age_sum=0,old_visibility=0;vec4 history[3];
+    for(int c=0;c<3;c++)history[c]=vec4(0);
+    bool stationary=p.gi.z>=0.0;
+    // Brief gaps in camera input continue the moving estimator, with strict
+    // same-pixel validation while the camera itself is unchanged.
+    bool same_pixel=stationary?p.gi.z>0.0:p.quality.y<.5;
+    if(same_pixel && same_receiver(position,normal,texelFetch(previous_position,q,0),texelFetch(previous_normal,q,0).xyz)){
+        weights=1.0;count_sum=texelFetch(previous_confidence,q,0).r;
+        age_sum=texelFetch(previous_age,q,0).r;
+        for(int c=0;c<3;c++)history[c]=texelFetch(previous_sh,q+ivec2(c*size.x,0),0);
+        old_visibility=texelFetch(previous_visibility,q,0).r;
+    }else if(!stationary && p.quality.y>.5){
+        vec2 old_pixel;
+        if(history_coordinates(position,old_pixel)){
+            ivec2 base=ivec2(floor(old_pixel));
+            for(int y=0;y<2;y++)for(int x=0;x<2;x++){
+                ivec2 tap=base+ivec2(x,y);
+                if(any(lessThan(tap,ivec2(0)))||any(greaterThanEqual(tap,size)))continue;
+                if(!compatible_history(position,normal,texelFetch(previous_position,tap,0),texelFetch(previous_normal,tap,0).xyz))continue;
+                vec2 offset=abs(vec2(tap)-old_pixel);float w=(1.0-offset.x)*(1.0-offset.y);
+                for(int c=0;c<3;c++)history[c]+=texelFetch(previous_sh,tap+ivec2(c*size.x,0),0)*w;
+                old_visibility+=texelFetch(previous_visibility,tap,0).r*w;
+                count_sum+=texelFetch(previous_confidence,tap,0).r*w;weights+=w;
+                age_sum+=texelFetch(previous_age,tap,0).r*w;
+            }
+        }
+    }
+    bool valid=weights>1e-5;
+    if(stationary)rays=min(rays,p.gi.w-(valid?count_sum:0.0));
+    // Keep the motion window bounded to limit reprojection diffusion. More
+    // rays improve the estimate without shortening that 32-frame window.
+    float motion_frames=p.source_bvh_state.w>.5?4.0:32.0;
+    float count=valid?min(count_sum/weights+rays,stationary?p.gi.w:min(p.gi.w,motion_frames*p.quality.x)):rays;
+    // Diagnostic frame age stays separate from actual ray weight: a four-ray
+    // disocclusion burst is still only one frame, never fabricated history.
+    float age=valid?min(age_sum/weights+1.0,32.0):1.0;
+    float alpha=rays/max(count,1.0);
+    for(int c=0;c<3;c++){
+        ivec2 index=q+ivec2(c*size.x,0);vec4 value=texelFetch(current_sh,index,0);
+        // Changing lighting uses a short history above; a noisy instantaneous
+        // neighbourhood is not a valid bound on a converged lighting integral.
+        if(valid)value=mix(history[c]/weights,value,alpha);
+        imageStore(output_sh,index,position.w>.5?value:vec4(0));
+    }
+    float visibility=texelFetch(current_visibility,q,0).r;
+    if(valid)visibility=mix(old_visibility/weights,visibility,rays/count);
+    imageStore(output_visibility,q,vec4(visibility));
+    imageStore(output_confidence,q,vec4(position.w>.5?count:0));
+    imageStore(output_age,q,vec4(position.w>.5?age:0));
+}

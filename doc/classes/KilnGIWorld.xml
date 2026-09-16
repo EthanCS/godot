@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="KilnGIWorld" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>Native Kiln software-BVH illumination world.</brief_description>
+	<description>Captures rigid MeshInstance3D geometry and local lights from the parent subtree for the Kiln renderer. Set kiln_dynamic metadata on moving geometry and kiln_exclude on auxiliary geometry. Static geometry changes require rebuild(). Native GI transport currently uses uniform authored material reflectance and emission. This experimental API is specific to the Kiln engine fork.</description>
+	<tutorials />
+	<methods>
+		<method name="get_statistics" qualifiers="const"><return type="Dictionary" /><description>Returns geometry/light versions, uploaded light counts, overflow diagnostics and optional frame profile data. Unavailable GPU times are null.</description></method>
+		<method name="rebuild"><return type="void" /><description>Requests a static geometry rebuild and clears mesh-array caches.</description></method>
+		<method name="request_capture"><return type="void" /><param index="0" name="directory" type="String" /><description>Requests raw diagnostic texture readback to a directory. Synchronous GPU readbacks must not be used during benchmark measurements.</description></method>
+		<method name="reset_history"><return type="void" /><description>Rejects temporal and world-cache history without rebuilding geometry.</description></method>
+		<method name="set_ao_enabled"><return type="void" /><param index="0" name="enabled" type="bool" /><description>Controls XeGTAO independently of indirect light tracing.</description></method>
+		<method name="set_lighting"><return type="void" /><param index="0" name="direction" type="Vector3" /><param index="1" name="color" type="Vector3" /><param index="2" name="sun_energy" type="float" /><param index="3" name="sky_energy" type="float" /><param index="4" name="time_of_day" type="float" /><description>Supplies the direction toward the sun, linear color, energies and normalized time of day.</description></method>
+		<method name="set_profiling"><return type="void" /><param index="0" name="enabled" type="bool" /><description>Enables engine frame timestamp collection. GPU availability depends on the active device driver.</description></method>
+		<method name="set_sky"><return type="void" /><param index="0" name="horizon" type="Vector3" /><param index="1" name="zenith" type="Vector3" /><param index="2" name="procedural" type="bool" /><description>Selects shared procedural sky radiance or the original reference sky model using linear horizon and zenith colors.</description></method>
+	</methods>
+	<members>
+		<member name="enabled" type="bool" setter="set_enabled" getter="is_enabled" default="true">Enables native indirect light tracing.</member>
+		<member name="environment" type="Environment" setter="set_environment" getter="get_environment">Environment associated with this illumination world.</member>
+	</members>
+</class>

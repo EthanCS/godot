@@ -1,0 +1,298 @@
+{
+  "source_repository": "OceanCastle",
+  "source_commit": "4befd49d1f8e0cdc00b512e4e821f703b94ce39f",
+  "tracked_source_changes": false,
+  "license": "Source-owned original assets. No open redistribution license supplied. Local development authorized; do not publish imported assets until terms are recorded.",
+  "files": [
+    {
+      "path": "assets/materials/main_island/blue0.tres",
+      "sha256": "db44b5edcca7261497918b590355237c2a6357822293b5095c3abfcafd573fc7",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/blue1.tres",
+      "sha256": "e1521d4cd50d998c3b97cca2ee38d030c2ec2ec03e8ddd76d60ec509017e7990",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/blue2.tres",
+      "sha256": "d1a3f7661efdd4f77d57cdb3dae8e712d6306fd75728627f7bd3281fe4c2f85e",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/blue3.tres",
+      "sha256": "cac30ebeeef40ec0b7217ca473a42671f96d65f9b5214b601f3c5ed40628b484",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/blue4.tres",
+      "sha256": "91c9dc5ad3ed8c3abfa52fa5eed090feef5cb262bc8ea963bd611c0fc87e1cb8",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/brass.tres",
+      "sha256": "798f387d5b8dcc9d7b2a87e2ef19d226e191472ff8139c576695dcc03c1d79a9",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/cloth.tres",
+      "sha256": "39709775455074a9ebd30bb80d20ca35aa5a7352bec403afaadeca9356a9e24c",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/flower_red.tres",
+      "sha256": "1d6e8932f93b95f3ee98d945663a1bce2f73c3135cfdea5806133101c38730f4",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/flower_white.tres",
+      "sha256": "124e3f53c10403e904212e171f218f67ed9dda9ac00ebcf0f690f2f7e07e30f4",
+      "bytes": 643
+    },
+    {
+      "path": "assets/materials/main_island/flower_yellow.tres",
+      "sha256": "869f04a8fb07399d4f96975aaa454a9381cdd0d22359c21cfba4b3820c37ce0a",
+      "bytes": 644
+    },
+    {
+      "path": "assets/materials/main_island/glass.tres",
+      "sha256": "d6fcad92370d5ce5266549b598fec043c1d48058a552fe84504bfe31e695ccf2",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/grass.tres",
+      "sha256": "7618f75a0b1a28f767f28a32d6b4598dc3aa765987151235affed7ff61b9569e",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/greenroof0.tres",
+      "sha256": "74de2f6b144b14a84f82216a0549f647db71cf2bc88d3682fba87ad84fc5d5ec",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/greenroof1.tres",
+      "sha256": "8d0939b1e0f45be27d728f24ccc2e5525e8aed05396bb59ee4d8a3e228ee9e23",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/greenroof2.tres",
+      "sha256": "ee06b97b53f7b904aea4490d3a20344bae16b3fc8f3341f43bb6341fe82bc8e1",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/greenroof3.tres",
+      "sha256": "313a85288ab92ad1b124dd795d6d29e6cdab7887edee26552ebd2f13d118ae27",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/greenroof4.tres",
+      "sha256": "b29bd1ae121a52cf45ed445aee5f67f58df09ee06bf30d63083c97100328c75b",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/iron.tres",
+      "sha256": "48b4591d3e0b157aa3658b5c93bd9aa57a7e6c903ab3fca558946a354b8ec09c",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/lamp.tres",
+      "sha256": "979c00c2629f874026f4b8206e7c5f42b0077a86d755669c195a043aea20d922",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/leaf0.tres",
+      "sha256": "ddf05c4c593e101f794eb3d3c9d021c9d891f5bd09549771d08fad225799b63d",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/leaf1.tres",
+      "sha256": "d36f9928bb941a950dbcdf52b1176b51347d973b4ae108301bee15f1fee337d1",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/leaf2.tres",
+      "sha256": "7d0101958e117f44e7058e7df844dd8b682e0b4c5c40b97e68c55a04243cdc43",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/leaf3.tres",
+      "sha256": "ae52e9609bb99dd19421ab68ca749842e13308cbc4fec5bcccc4c496efe0a162",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/leaf4.tres",
+      "sha256": "2656708d22bf5229c75eb073f5a6908c7f42f9a742efc30e1907cbcd5d1b4853",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/plaster.tres",
+      "sha256": "bb6331abfd3b60e85cf97d822a3409c1ad07a96bc2271cecb473afad177b57a4",
+      "bytes": 638
+    },
+    {
+      "path": "assets/materials/main_island/recess.tres",
+      "sha256": "d8d6d76e0f8a4874b53c6d2ca47cf6b90c2433caa57b2f836d0ef51fca826641",
+      "bytes": 637
+    },
+    {
+      "path": "assets/materials/main_island/red.tres",
+      "sha256": "6e9b2d799b62ee4bb9c5e0a61c5cbdc28cfdb2234b93475c7112ac5c9f74997a",
+      "bytes": 634
+    },
+    {
+      "path": "assets/materials/main_island/rock0.tres",
+      "sha256": "252d1231897fb6761015d92cf879bc3c2c16f87069a7e94fd95fa8634f40f186",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/rock1.tres",
+      "sha256": "0a1223ed1982074344a0675b6ef1ed76780c0045c32b2b2b8a8afac3b6e723ce",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/rock2.tres",
+      "sha256": "ab204832ff69e42a5dfcfb933f45e524b8a1ce1bf5e1c94ff059d8510fd40c5c",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/rock3.tres",
+      "sha256": "510c0e304f9e78bb609c743ff3dab65f1e203620faf1985e93d04559a7c27b44",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/rock4.tres",
+      "sha256": "5085fb9764ac9f7aeaa058fef7e35cf26c9519dfba33eb488809607a3ae4dd39",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/rope.tres",
+      "sha256": "10c8875ce95e8eccc7339a0ab7c7b5b391b45a6ba4c46b85d1fb8b8942b3a5de",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/sand.tres",
+      "sha256": "485fe6cfb5fbcdb7b4d4e23f3369f207a4ba73e6e09b8784aeda4871e41915b9",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/stone0.tres",
+      "sha256": "f6c5d44cfa874144e865aabd60ab0ac890732f2d2f59d29d288a10303e5af4c9",
+      "bytes": 637
+    },
+    {
+      "path": "assets/materials/main_island/stone1.tres",
+      "sha256": "103021412bdb6e997393367342c8f4ff72e40d82ec4245f5f4153a1ba777abec",
+      "bytes": 637
+    },
+    {
+      "path": "assets/materials/main_island/stone2.tres",
+      "sha256": "fa48a756caf189344897bd7aa260deb0c07bce64b4ae3443e73ddd0d38711e78",
+      "bytes": 637
+    },
+    {
+      "path": "assets/materials/main_island/teal.tres",
+      "sha256": "77ffad36b38c1d8d59669cdd0901af87d6c58036bd9e4843c3a771769a3d9f51",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/teal_light.tres",
+      "sha256": "0c16a54ba2ff66100fa70fad35af531fcbe2d2a5729e09c2950c8315abd52238",
+      "bytes": 641
+    },
+    {
+      "path": "assets/materials/main_island/terracotta0.tres",
+      "sha256": "a88b914d3446387589ea09d4dbb24a06990bc335e1094e390fcf0280f1127009",
+      "bytes": 642
+    },
+    {
+      "path": "assets/materials/main_island/terracotta1.tres",
+      "sha256": "bf81a9a52891062a38c739023d037220237c2afed9f2d4be1a739ca64159c4d5",
+      "bytes": 642
+    },
+    {
+      "path": "assets/materials/main_island/terracotta2.tres",
+      "sha256": "17f50a4247035065d00859c0d19483ee2d4c74739d406c0befa95d6badbda98a",
+      "bytes": 642
+    },
+    {
+      "path": "assets/materials/main_island/terracotta3.tres",
+      "sha256": "5c667049467e9c53dc1d3a4d59c026506a62d726a87343ebf9d4c84101f55e11",
+      "bytes": 642
+    },
+    {
+      "path": "assets/materials/main_island/terracotta4.tres",
+      "sha256": "b7ebe4893a961e2d23cd267db1e9a724dd20af3229865a4726d8a1c606d1f852",
+      "bytes": 642
+    },
+    {
+      "path": "assets/materials/main_island/thatch.tres",
+      "sha256": "b38952e43ed46fc37c659590208fcc9193d182ce05c5a943eafb28c5f70d7669",
+      "bytes": 637
+    },
+    {
+      "path": "assets/materials/main_island/timber.tres",
+      "sha256": "c7383f32cb85b00b68fa98d8fae6a6877fe981ee78f99cdf00509afe4584bb0d",
+      "bytes": 637
+    },
+    {
+      "path": "assets/materials/main_island/trim.tres",
+      "sha256": "19f984006788d11c999a32e5b2677729edd90947c3ed520d099a767a29075bf3",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/water_basin.tres",
+      "sha256": "37e335ec2ade614a4b6b95d0f8fd4be1c47706ee27f17fa657bf29eb3da4248a",
+      "bytes": 642
+    },
+    {
+      "path": "assets/materials/main_island/wet_sand.tres",
+      "sha256": "be34f6a8f0468ab23378b7aead188635e8e1e4f06f8701366e9f896000e99744",
+      "bytes": 639
+    },
+    {
+      "path": "assets/materials/main_island/wood.tres",
+      "sha256": "2893e408a737a5f6a14936dad881badf9eb673b7bde7f38be59dd952d9ac8e84",
+      "bytes": 635
+    },
+    {
+      "path": "assets/materials/main_island/wood0.tres",
+      "sha256": "1a0da4bd9f19b1c36a681c67aa57c3355c86dd92eb49efe78c61c5039652947b",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/wood1.tres",
+      "sha256": "3ad22918b2cfdce7aa83ee9debcc2e205bed729aad501f821fd11dd18dd1eeb6",
+      "bytes": 636
+    },
+    {
+      "path": "assets/materials/main_island/wood2.tres",
+      "sha256": "b6fcffd6b20a064e6e5eede4aa31c4348e1512ad2d86f8595df6cb6e24ed591b",
+      "bytes": 636
+    },
+    {
+      "path": "assets/models/environments/main_island/layout_manifest.json",
+      "sha256": "9b09c0fe78e029001421451de3f179a3bb611a1dae2a52684730e2f84226bbdd",
+      "bytes": 1983
+    },
+    {
+      "path": "assets/models/environments/main_island/main_island.glb",
+      "sha256": "a71390ec64cc0c4cdb412754eded08664784013087729d1d32d72823275f6fb0",
+      "bytes": 54923024
+    },
+    {
+      "path": "assets/models/environments/main_island/material_manifest.json",
+      "sha256": "ec493dbfa6f8714dc2e36ae53938903fb1d01d5a0d8a9f30b5249ae55bca10ad",
+      "bytes": 17700
+    },
+    {
+      "path": "rendering/sky/sky.gdshader",
+      "sha256": "31b1ea7af8cc41eff8270f5b146f00646fc6f7746b89d2b5a2bd424888322f81",
+      "bytes": 790
+    },
+    {
+      "path": "rendering/sky/sky_radiance.gdshaderinc",
+      "sha256": "42d83aacab3d5e919b8a409bc6694e02c9501750f5085c16fa379b15cb631969",
+      "bytes": 3359
+    }
+  ]
+}

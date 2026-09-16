@@ -244,6 +244,7 @@
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/iterate_ik_3d.h"
 #include "scene/3d/jacobian_ik_3d.h"
+#include "scene/3d/kiln_gi_world.h"
 #include "scene/3d/label_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/lightmap_gi.h"
@@ -658,6 +659,9 @@ void register_scene_types() {
 	GDREGISTER_CLASS(VoxelGI);
 	GDREGISTER_CLASS(VoxelGIData);
 	GDREGISTER_CLASS(LightmapGI);
+#ifdef RD_ENABLED
+	GDREGISTER_CLASS(KilnGIWorld);
+#endif
 	GDREGISTER_CLASS(LightmapGIData);
 	GDREGISTER_CLASS(LightmapProbe);
 	GDREGISTER_ABSTRACT_CLASS(Lightmapper);

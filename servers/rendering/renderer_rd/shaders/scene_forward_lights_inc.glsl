@@ -118,6 +118,30 @@ void light_compute(hvec3 N, hvec3 L, hvec3 V, half A, hvec3 light_color, bool is
 		hvec3 B, hvec3 T, half anisotropy,
 #endif
 		inout hvec3 diffuse_light, inout hvec3 specular_light) {
+#if defined(MODE_KILN_RESOLVE) || defined(KILN_SURFACE)
+	// Source island Burley/GGX/height-correlated Smith response. The engine
+	// applies albedo and (1-metallic) to diffuse once after all light samples.
+	if (kiln_use_brdf) {
+		float nl = max(float(dot(N,L)), 0.0), nv = max(float(dot(N,V)), 0.0001);
+		vec3 h = normalize(vec3(L) + vec3(V));
+		float lh = clamp(dot(vec3(L),h), 0.0, 1.0), nh = max(dot(vec3(N),h),0.0);
+		float a = max(float(roughness)*float(roughness), 0.002), a2 = a*a;
+		float fd = 2.0*a*lh*lh-0.5;
+		float diffuse = (1.0+fd*pow(1.0-nl,5.0))*(1.0+fd*pow(1.0-nv,5.0));
+		diffuse_light += light_color * attenuation * half(nl*diffuse/M_PI);
+#ifdef LIGHT_BACKLIGHT_USED
+		diffuse_light += light_color * attenuation * backlight * half(max(-float(dot(N,L)),0.0)/M_PI);
+#endif
+		if (nl>0.0 && dot(N,V)>0.0) {
+			float denominator=nh*nh*(a2-1.0)+1.0;
+			float distribution=a2/(M_PI*denominator*denominator);
+			float visibility=0.5/max(nl*sqrt(nv*nv*(1.0-a2)+a2)+nv*sqrt(nl*nl*(1.0-a2)+a2),0.00001);
+			vec3 fresnel=mix(mix(vec3(0.04),vec3(albedo),float(metallic)),vec3(1),pow(1.0-lh,5.0));
+			specular_light += light_color * attenuation * hvec3(nl*distribution*visibility*fresnel);
+		}
+		return;
+	}
+#endif
 #if defined(LIGHT_CODE_USED)
 	// Light is written by the user shader.
 	mat4 inv_view_matrix = transpose(mat4(scene_data_block.data.inv_view_matrix[0],

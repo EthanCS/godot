@@ -1119,7 +1119,7 @@ void RendererViewport::_viewport_set_size(Viewport *p_viewport, int p_width, int
 }
 
 bool RendererViewport::_viewport_requires_motion_vectors(Viewport *p_viewport) {
-	return p_viewport->use_taa ||
+	return OS::get_singleton()->get_current_rendering_method() == "kiln_deferred" || p_viewport->use_taa ||
 			RSE::scaling_3d_mode_type(p_viewport->scaling_3d_mode) == RSE::VIEWPORT_SCALING_3D_TYPE_TEMPORAL ||
 			p_viewport->debug_draw == RSE::VIEWPORT_DEBUG_DRAW_MOTION_VECTORS || p_viewport->force_motion_vectors;
 }
@@ -1446,7 +1446,7 @@ void RendererViewport::viewport_set_screen_space_aa(RID p_viewport, RSE::Viewpor
 void RendererViewport::viewport_set_use_taa(RID p_viewport, bool p_use_taa) {
 	Viewport *viewport = viewport_owner.get_or_null(p_viewport);
 	ERR_FAIL_NULL(viewport);
-	if (OS::get_singleton()->get_current_rendering_method() != "forward_plus") {
+	if (OS::get_singleton()->get_current_rendering_method() != "forward_plus" && OS::get_singleton()->get_current_rendering_method() != "kiln_deferred") {
 		WARN_PRINT_ONCE_ED("TAA is only available when using the Forward+ renderer.");
 		return;
 	}

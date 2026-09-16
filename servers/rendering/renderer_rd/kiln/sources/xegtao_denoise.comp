@@ -1,0 +1,24 @@
+#version 450
+// Copyright (C) 2016-2021, Intel Corporation. SPDX-License-Identifier: MIT.
+// XeGTAO edge-aware spatial denoiser, scalar visibility adaptation. MIT: rendering/xegtao/LICENSE.
+layout(local_size_x=8,local_size_y=8) in;
+layout(set=0,binding=1) uniform sampler2D input_ao;
+layout(set=0,binding=2) uniform sampler2D input_edges;
+layout(set=0,binding=3,r16f) uniform writeonly image2D output_ao;
+layout(push_constant,std430) uniform Pass { int final_pass; } pass;
+vec4 edges(ivec2 q){return texelFetch(input_edges,clamp(q,ivec2(0),textureSize(input_edges,0)-1),0);}
+float ao(ivec2 q){return texelFetch(input_ao,clamp(q,ivec2(0),textureSize(input_ao,0)-1),0).r;}
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(q,imageSize(output_ao))))return;
+    vec4 l=edges(q+ivec2(-1,0)),r=edges(q+ivec2(1,0)),t=edges(q+ivec2(0,-1)),b=edges(q+ivec2(0,1));
+    vec4 c=edges(q)*vec4(l.y,r.x,t.w,b.z);
+    float leak=clamp((1.5-dot(c,vec4(1)))/1.5,0.0,1.0)*.5;
+    c=clamp(c+leak,0.0,1.0);
+    vec4 diagonal=.425*vec4(c.x*l.z+c.z*t.x,c.z*t.y+c.y*r.z,c.w*b.x+c.x*l.w,c.y*r.w+c.w*b.y);
+    float weights=pass.final_pass!=0?1.2:.24,sum=ao(q)*weights;
+    sum+=dot(c,vec4(ao(q+ivec2(-1,0)),ao(q+ivec2(1,0)),ao(q+ivec2(0,-1)),ao(q+ivec2(0,1))));
+    sum+=dot(diagonal,vec4(ao(q+ivec2(-1,-1)),ao(q+ivec2(1,-1)),ao(q+ivec2(-1,1)),ao(q+ivec2(1,1))));
+    weights+=dot(c+diagonal,vec4(1));
+    imageStore(output_ao,q,vec4(sum/weights));
+}

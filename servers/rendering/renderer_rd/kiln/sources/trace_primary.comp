@@ -1,0 +1,24 @@
+#version 450
+// @GI_COMMON@
+// @GI_REPROJECTION@
+// @BVH@
+// @GI_RECEIVER_DATA@
+layout(set=0,binding=21,std430) readonly buffer Receivers { RayReceiver receivers[]; };
+// @GI_SEQUENCE@
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=20,std430) writeonly buffer PrimaryHits { uvec2 primary_hits[]; };
+void main(){
+    ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.debug.yz);
+    if(any(greaterThanEqual(q,size)))return;
+    RayReceiver receiver=receivers[q.y*size.x+q.x];
+    vec3 wp=receiver.position_depth.xyz,wn=receiver.normal;
+    uint packed=receiver.samples,sample_start=packed>>8;
+    int rays=int(packed&255u),i=int(gl_GlobalInvocationID.z);
+    if(i>=rays)return;
+    vec4 rotation=sequence_rotation(q);
+    vec4 xi=sequence(rotation,sample_start+uint(i));
+    vec3 ray=uniform_hemisphere(wn,xi.xy),origin=wp+wn*.025+ray*.015;
+    int id;float distance;vec3 normal;
+    world_trace(origin,ray,1000.0,false,id,distance,normal);
+    primary_hits[(q.y*size.x+q.x)*max(int(p.quality.x),4)+i]=uvec2(uint(id),floatBitsToUint(distance));
+}

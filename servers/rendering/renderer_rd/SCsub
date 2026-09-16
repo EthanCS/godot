@@ -12,3 +12,5 @@ SConscript("forward_mobile/SCsub")
 SConscript("shaders/SCsub")
 SConscript("spirv-reflect/SCsub")
 SConscript("storage_rd/SCsub")
+
+SConscript("kiln/SCsub")

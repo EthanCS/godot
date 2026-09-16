@@ -38,6 +38,7 @@
 #include "servers/rendering/renderer_rd/effects/ss_effects.h"
 #include "servers/rendering/renderer_rd/effects/taa.h"
 #include "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h"
+#include "servers/rendering/renderer_rd/kiln/kiln_gi.h"
 #include "servers/rendering/renderer_rd/renderer_scene_render_rd.h"
 #include "servers/rendering/renderer_rd/shaders/forward_clustered/best_fit_normal.glsl.gen.h"
 #include "servers/rendering/renderer_rd/shaders/forward_clustered/integrate_dfg.glsl.gen.h"
@@ -45,6 +46,8 @@
 #ifdef METAL_ENABLED
 #include "servers/rendering/renderer_rd/effects/metal_fx.h"
 #endif
+
+#define RB_SCOPE_KILN SNAME("kiln_deferred")
 
 #define RB_SCOPE_FORWARD_CLUSTERED SNAME("forward_clustered")
 
@@ -86,6 +89,11 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 	/* Scene Shader */
 
 	SceneShaderForwardClustered scene_shader;
+	bool kiln_deferred = false;
+	bool kiln_forward_gi_ready = false;
+	RendererRD::KilnGI *kiln_gi = nullptr;
+	HashMap<String, RID> kiln_resolve_pipelines;
+	void _kiln_resolve(Ref<RenderSceneBuffersRD> p_buffers, bool p_gi, RID p_render_pass_uniform_set, const SceneShaderForwardClustered::ShaderSpecialization &p_specialization, const Color &p_clear_color);
 
 public:
 	/* Framebuffer */
@@ -150,6 +158,7 @@ public:
 		RendererRD::MFXTemporalContext *get_mfx_temporal_context() const { return mfx_temporal_context; }
 #endif
 
+		RID get_kiln_gbuffer_fb();
 		RID get_color_only_fb();
 		RID get_color_pass_fb(uint32_t p_color_pass_flags);
 		RID get_depth_fb(DepthFrameBufferType p_type = DEPTH_FB);
@@ -199,6 +208,7 @@ private:
 
 	enum PassMode {
 		PASS_MODE_COLOR,
+		PASS_MODE_KILN_GBUFFER,
 		PASS_MODE_SHADOW,
 		PASS_MODE_SHADOW_DP,
 		PASS_MODE_DEPTH,
@@ -849,7 +859,7 @@ public:
 
 	virtual void update() override;
 
-	RenderForwardClustered();
+	RenderForwardClustered(bool p_kiln_deferred = false);
 	~RenderForwardClustered();
 };
 } // namespace RendererSceneRenderImplementation

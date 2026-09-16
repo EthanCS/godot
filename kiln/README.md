@@ -33,7 +33,8 @@ tracing and MegaLights/ReSTIR are later work, not Phase 1 dependencies.
 
 ## Current status
 
-Repository bootstrap only. No deferred rendering or Kiln integration is claimed
-by the existence of this branch. Record build and graphics validation separately.
-Keep benchmark captures and build logs outside source control. Imported assets
-must include provenance and retain their original license terms.
+A native opaque G-buffer, clustered deferred lighting and Kiln GI now run on
+macOS Metal. See [implementation and validation status](docs/STATUS.md),
+[pipeline contract](docs/PIPELINE.md) and [demo instructions](demo/README.md).
+Phase 1 acceptance remains distinct from implementation. Captures and full logs
+are temporary local artifacts. Source asset/shader redistribution is not cleared.
