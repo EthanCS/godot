@@ -10,10 +10,11 @@ Opaque and cutout geometry use a real G-buffer and clustered deferred lighting;
 transparency, additive effects, and refraction use an explicit forward stage.
 Retain a working Forward+ path for controlled comparisons.
 
-The standalone island demo must include an automatic camera, continuous time of
-day, moving emissive surfaces, moving occluders, and moving point/spot lights.
-Default load: 128 local lights, including 8 shadowed lights, plus the sun;
-stress presets: 32/128/512/1024 lights and 0/8/16/32 local shadow lights.
+The standalone Sponza GI benchmark defaults to sun/sky diffuse illumination,
+continuous time of day and an automatic camera, with a manual TOD slider.
+The optional multi-light workload adds 12 local lights (four shadowed), three
+emissive meshes and moving occluders.
+The historical island stress presets remain in kiln/demo.
 Kiln must update correctly while camera, geometry, and lighting move together.
 
 Milestones:
@@ -28,17 +29,19 @@ Milestones:
    and fair Forward+ versus deferred performance with raw measurements.
 
 The 1080p/60 FPS target applies to the default load on explicitly documented
-hardware; it is an optimization target, not a measured result. Hardware ray
-tracing and MegaLights/ReSTIR are later work, not Phase 1 dependencies.
+hardware; it is an optimization target, not a measured result. Vulkan hardware
+ray queries are implemented with a compute software-BVH fallback. Metal hardware
+ray tracing and MegaLights/ReSTIR remain later work.
 
 ## Current status
 
-The current delivery focuses on the non-GI renderer, per the user’s scope update.
-GI starts off in the demo and is opt-in with G / `--gi`; further GI work is deferred.
+GI uses automatically imported, persistent geometry/material proxies, live material
+updates, Vulkan hardware ray queries, a compute software-BVH fallback and temporal
+denoising. **Sponza is
+the active GI benchmark**, with GI enabled by default. Start with
+[the Sponza instructions](sponza/README.md) and
+[the implementation/validation record](docs/GI-PROXY.md).
 
-A native opaque G-buffer, clustered deferred lighting and Kiln GI now run on
-macOS Metal. See [implementation and validation status](docs/STATUS.md),
-[pipeline contract](docs/PIPELINE.md), [upstream integration map](docs/CHANGESET.md),
-[performance measurements](docs/PERFORMANCE.md) and [demo instructions](demo/README.md).
-Phase 1 acceptance remains distinct from implementation. Captures and full logs
-are temporary local artifacts. Source asset/shader redistribution is not cleared.
+The prior non-GI delivery and its macOS evidence remain in [STATUS.md](docs/STATUS.md).
+They do not validate the new GI on Mac. The existing native G-buffer, deferred
+lighting, forward transparency and other renderers are preserved.

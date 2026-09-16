@@ -9,12 +9,14 @@ static HashMap<RID, KilnWorld> kiln_worlds;
 static HashMap<RID, Dictionary> kiln_statistics;
 void KilnWorld::report(RID p_environment, const Dictionary &p_statistics) {
 	MutexLock lock(kiln_world_mutex);
-	kiln_statistics.insert(p_environment, p_statistics);
+	Dictionary combined = kiln_statistics.has(p_environment) ? kiln_statistics[p_environment].duplicate() : Dictionary();
+	combined.merge(p_statistics, true);
+	kiln_statistics.insert(p_environment, combined);
 }
 Dictionary KilnWorld::statistics(RID p_environment) {
 	MutexLock lock(kiln_world_mutex);
 	const Dictionary *data = kiln_statistics.getptr(p_environment);
-	return data ? *data : Dictionary();
+	return data ? data->duplicate() : Dictionary();
 }
 
 void KilnWorld::publish(RID p_environment, const KilnWorld &p_world) {

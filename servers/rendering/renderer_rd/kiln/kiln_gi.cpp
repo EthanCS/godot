@@ -23,7 +23,7 @@ RID KilnGI::texture(Size2i size, RD::DataFormat format) {
 }
 KilnGI::KilnGI() {
 	Vector<String> defines;
-	const char *stages[] = { "PREPARE_RECEIVERS", "TRACE_PRIMARY", "INTEGRATE", "SH_TEMPORAL", "UPDATE_WORLD_CACHE", "SH_FILTER", "SH_DECODE", "BRDF_LUT", "SEQUENCE_LUT", "PUBLISH", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL" };
+	const char *stages[] = { "PREPARE_RECEIVERS", "TRACE_PRIMARY", "INTEGRATE", "SH_TEMPORAL", "UPDATE_WORLD_CACHE", "SH_FILTER", "SH_DECODE", "BRDF_LUT", "SEQUENCE_LUT", "PUBLISH", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT" };
 	for (int i = 0; i < STAGE_COUNT; i++) {
 		defines.push_back(String("\n#define STAGE_") + stages[i] + "\n");
 	}
@@ -33,6 +33,23 @@ KilnGI::KilnGI() {
 	for (int i = 0; i < STAGE_COUNT; i++) {
 		pipelines[i] = RD::get_singleton()->compute_pipeline_create(shader.version_get_shader(version, i));
 	}
+	hardware_available = RD::get_singleton()->has_feature(RD::SUPPORTS_RAY_QUERY);
+	if (hardware_available) {
+		Vector<String> hardware_defines;
+		for (const char *stage : { "TRACE_PRIMARY", "INTEGRATE", "QUERY_VALIDATE" }) {
+			hardware_defines.push_back(String("\n#define KILN_HARDWARE_RAY_QUERY\n#define STAGE_") + stage + "\n");
+		}
+		hardware_shader.initialize(hardware_defines);
+		hardware_version = hardware_shader.version_create();
+		hardware_shader.version_set_compute_code(hardware_version, HashMap<String, String>(), "", "", Vector<String>());
+		for (int i = 0; i < 3; i++) {
+			RID code = hardware_shader.version_get_shader(hardware_version, i);
+			if (code.is_valid()) {
+				hardware_pipelines[i] = RD::get_singleton()->compute_pipeline_create(code);
+			}
+			hardware_available &= hardware_pipelines[i].is_valid();
+		}
+	}
 	RD::SamplerState state;
 	sampler = RD::get_singleton()->sampler_create(state);
 	state.min_filter = state.mag_filter = RD::SAMPLER_FILTER_LINEAR;
@@ -41,15 +58,39 @@ KilnGI::KilnGI() {
 	sequence = texture(Size2i(128, 128), RD::DATA_FORMAT_R32G32B32A32_SFLOAT);
 	hilbert = texture(Size2i(64, 64), RD::DATA_FORMAT_R16_UINT);
 	dispatch(BRDF, Size2i(64, 64), { { 14, RD::UNIFORM_TYPE_IMAGE, brdf } });
-	print_line(vformat("[KILN_GI] native software BVH; ray_query=%s raytracing_pipeline=%s (unused)", RD::get_singleton()->has_feature(RD::SUPPORTS_RAY_QUERY), RD::get_singleton()->has_feature(RD::SUPPORTS_RAYTRACING_PIPELINE)));
+	print_line(vformat("[KILN_GI] hardware ray query=%s; compute software BVH fallback available", hardware_available));
 }
 KilnGI::~KilnGI() {
 	shader.version_free(version);
+	if (hardware_version.is_valid()) {
+		hardware_shader.version_free(hardware_version);
+	}
 	for (RID rid : { sampler, linear_sampler, brdf, sequence, hilbert }) {
 		RD::get_singleton()->free_rid(rid);
 	}
 }
+void KilnGI::View::free_hardware() {
+	RD *rd = RD::get_singleton();
+	if (hardware_tlas.is_valid()) {
+		rd->free_rid(hardware_tlas);
+		hardware_tlas = RID();
+	}
+	for (int i = 0; i < 2; i++) {
+		if (hardware_blas[i].is_valid()) {
+			rd->free_rid(hardware_blas[i]);
+			hardware_blas[i] = RID();
+		}
+		if (hardware_vertices[i].is_valid()) {
+			rd->free_rid(hardware_vertices[i]);
+			hardware_vertices[i] = RID();
+		}
+	}
+	hardware_active = false;
+}
 void KilnGI::View::free_data() {
+	free_hardware();
+	hardware_failed = false;
+	hardware_builds = tlas_builds = 0;
 	for (RID rid : owned) {
 		if (rid.is_valid()) {
 			RD::get_singleton()->free_rid(rid);
@@ -63,10 +104,11 @@ void KilnGI::View::free_data() {
 	capacities.clear();
 	textures.clear();
 	frames = index = stationary_samples = 0;
-	geometry_version = dynamic_version = light_version = 0;
+	geometry_version = dynamic_version = light_version = material_version = 0;
+	static_material_version = dynamic_material_version = 0;
 	ready = false;
 }
-void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z) {
+void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z, RID tlas) {
 	RD *rd = RD::get_singleton();
 	LocalVector<RD::Uniform> uniforms;
 	for (const Binding &b : bindings) {
@@ -79,13 +121,27 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 		u.append_id(b.resource);
 		uniforms.push_back(u);
 	}
-	RID set = UniformSetCacheRD::get_singleton()->get_cache_vec(shader.version_get_shader(version, stage), 0, uniforms);
+	RID code, pipeline;
+	if (tlas.is_valid()) {
+		int variant = stage == TRACE ? 0 : (stage == INTEGRATE ? 1 : 2);
+		RD::Uniform u;
+		u.binding = 27;
+		u.uniform_type = RD::UNIFORM_TYPE_ACCELERATION_STRUCTURE;
+		u.append_id(tlas);
+		uniforms.push_back(u);
+		code = hardware_shader.version_get_shader(hardware_version, variant);
+		pipeline = hardware_pipelines[variant];
+	} else {
+		code = shader.version_get_shader(version, stage);
+		pipeline = pipelines[stage];
+	}
+	RID set = UniformSetCacheRD::get_singleton()->get_cache_vec(code, 0, uniforms);
 	RD::ComputeListID list = rd->compute_list_begin();
-	rd->compute_list_bind_compute_pipeline(list, pipelines[stage]);
+	rd->compute_list_bind_compute_pipeline(list, pipeline);
 	rd->compute_list_bind_uniform_set(list, set, 0);
-	if (stage == FILTER || stage == AO_DEPTH || stage == AO_DENOISE || stage == AO_TEMPORAL) {
-		int push[4] = { stride, 0, 0, 0 };
-		rd->compute_list_set_push_constant(list, push, stage == FILTER ? sizeof(push) : sizeof(int));
+	if (stage == BVH_REFIT || stage == FILTER || stage == AO_DEPTH || stage == AO_DENOISE || stage == AO_TEMPORAL) {
+		int push[4] = { stride, size.x, 0, 0 };
+		rd->compute_list_set_push_constant(list, push, (stage == FILTER || stage == BVH_REFIT) ? sizeof(push) : sizeof(int));
 	}
 	rd->compute_list_dispatch(list, (size.x + 7) / 8, (size.y + 7) / 8, z);
 	rd->compute_list_end();
@@ -102,6 +158,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		buffers->set_custom_data(kiln_scope, data);
 	}
 	Ref<View> state = buffers->get_custom_data(kiln_scope);
+	if (state->resolution_divisor != world.resolution_divisor) {
+		state->free_data();
+		state->resolution_divisor = world.resolution_divisor;
+	}
 	if (state->environment != environment) {
 		state->free_data();
 		state->environment = environment;
@@ -121,9 +181,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	bool initialize = !state->ready;
 	if (initialize) {
 		state->size = buffers->get_internal_size();
-		state->half = (state->size + Size2i(1, 1)) / 2;
+		state->half = (state->size + Size2i(world.resolution_divisor - 1, world.resolution_divisor - 1)) / world.resolution_divisor;
 		state->parameters = own(rd->uniform_buffer_create(704));
-		const char *names[] = { "position", "normal", "confidence", "age", "visibility", "sh", "raw", "visibility_raw", "sh_raw", "sh_filter_first", "sh_filter_work", "sh_filtered", "decoded", "diffuse", "specular", "display_diffuse", "display_specular", "publication_key" };
+		const char *names[] = { "position", "normal", "moments", "confidence", "age", "visibility", "sh", "raw", "visibility_raw", "sh_raw", "sh_filter_first", "sh_filter_work", "sh_filtered", "decoded", "diffuse", "specular", "display_diffuse", "display_specular", "publication_key" };
 		for (String name : names) {
 			RD::DataFormat format = RD::DATA_FORMAT_R16G16B16A16_SFLOAT;
 			if (name == "position" || name == "sh" || name == "sh_raw" || name.begins_with("display_")) {
@@ -132,6 +192,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			if (name == "confidence" || name == "age" || name == "visibility" || name == "visibility_raw") {
 				format = RD::DATA_FORMAT_R16_SFLOAT;
 			}
+			if (name == "moments") {
+				format = RD::DATA_FORMAT_R32G32_SFLOAT;
+			}
 			if (name == "publication_key") {
 				format = RD::DATA_FORMAT_R32G32_UINT;
 			}
@@ -139,7 +202,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			if (name == "diffuse" || name == "specular" || name.begins_with("display_") || name == "publication_key") {
 				size = state->size;
 			}
-			int count = name == "position" || name == "normal" || name == "confidence" || name == "age" || name == "visibility" || name == "sh" || name.begins_with("display_") ? 2 : 1;
+			int count = name == "moments" || name == "position" || name == "normal" || name == "confidence" || name == "age" || name == "visibility" || name == "sh" || name.begins_with("display_") ? 2 : 1;
 			for (int i = 0; i < count; i++) {
 				state->textures[name + itos(i)] = own(texture(size, format));
 			}
@@ -179,7 +242,8 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	bool changed_world = state->geometry_version != world.geometry_version;
 	bool changed_dynamic = state->dynamic_version != world.dynamic_version;
-	bool changed_light = changed_world || changed_dynamic || state->light_version != world.light_version;
+	bool changed_material = state->material_version != world.material_version;
+	bool changed_light = changed_world || changed_dynamic || changed_material || state->light_version != world.light_version;
 	if (changed_world) {
 		upload("nodes", world.world.nodes);
 		upload("triangles", world.world.triangles);
@@ -189,8 +253,106 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		upload("dynamic_nodes", world.dynamic.nodes);
 		upload("dynamic_triangles", world.dynamic.triangles);
 	}
+	// Rebuild bounds on the compute queue before any ray query consumes them.
+	for (bool dynamic : { false, true }) {
+		if (!(dynamic ? changed_dynamic : changed_world)) {
+			continue;
+		}
+		const auto &geometry = dynamic ? world.dynamic : world.world;
+		String prefix = dynamic ? "dynamic_" : "";
+		RID order = upload(prefix + "refit", geometry.refit_order);
+		for (Vector2i level : geometry.refit_levels) {
+			dispatch(BVH_REFIT, Size2i(level.y, 1), { { 0, RD::UNIFORM_TYPE_STORAGE_BUFFER, state->storage[prefix + "nodes"] }, { 1, RD::UNIFORM_TYPE_STORAGE_BUFFER, state->storage[prefix + "triangles"] }, { 2, RD::UNIFORM_TYPE_STORAGE_BUFFER, order } }, level.x);
+		}
+	}
+	bool want_hardware = hardware_available && world.query_backend != 1 && !state->hardware_failed;
+	if (!want_hardware && state->hardware_active) {
+		state->free_hardware();
+	}
+	if (want_hardware && (!state->hardware_active || changed_world || changed_dynamic)) {
+		bool first_build = !state->hardware_active;
+		if (state->hardware_tlas.is_valid()) {
+			rd->free_rid(state->hardware_tlas);
+			state->hardware_tlas = RID();
+		}
+		bool success = true;
+		for (int i = 0; i < 2 && success; i++) {
+			if (!first_build && !(i == 0 ? changed_world : changed_dynamic)) {
+				continue;
+			}
+			if (state->hardware_blas[i].is_valid()) {
+				rd->free_rid(state->hardware_blas[i]);
+				state->hardware_blas[i] = RID();
+			}
+			if (state->hardware_vertices[i].is_valid()) {
+				rd->free_rid(state->hardware_vertices[i]);
+				state->hardware_vertices[i] = RID();
+			}
+			const KilnWorld::Geometry &source = i == 0 ? world.world : world.dynamic;
+			if (source.triangle_count == 0) {
+				continue;
+			}
+			PackedByteArray vertices;
+			vertices.resize(source.triangle_count * 9 * sizeof(float));
+			float *destination = reinterpret_cast<float *>(vertices.ptrw());
+			const float *triangles = reinterpret_cast<const float *>(source.triangles.ptr());
+			for (uint32_t triangle = 0; triangle < source.triangle_count; triangle++) {
+				const float *t = triangles + triangle * 20;
+				for (int vertex = 0; vertex < 3; vertex++) {
+					for (int axis = 0; axis < 3; axis++) {
+						*destination++ = t[axis] + (vertex == 0 ? 0.0f : t[vertex * 4 + axis]);
+					}
+				}
+			}
+			state->hardware_vertices[i] = rd->vertex_buffer_create(vertices.size(), vertices, RD::BUFFER_CREATION_DEVICE_ADDRESS_BIT | RD::BUFFER_CREATION_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT);
+			RD::AccelerationStructureGeometry geometry;
+			geometry.flags = RD::ACCELERATION_STRUCTURE_GEOMETRY_OPAQUE_BIT;
+			geometry.vertex_buffer = state->hardware_vertices[i];
+			geometry.vertex_stride = 3 * sizeof(float);
+			geometry.vertex_count = source.triangle_count * 3;
+			geometry.vertex_format = RD::DATA_FORMAT_R32G32B32_SFLOAT;
+			Vector<RD::AccelerationStructureGeometry> geometries;
+			geometries.push_back(geometry);
+			state->hardware_blas[i] = rd->blas_create(geometries, i == 0 ? RD::ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT : RD::ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT);
+			success = state->hardware_blas[i].is_valid() && rd->blas_build(state->hardware_blas[i]) == OK;
+			if (success) {
+				state->hardware_builds++;
+			}
+		}
+		if (success) {
+			Vector<RD::AccelerationStructureInstance> instances;
+			for (int i = 0; i < 2; i++) {
+				if (!state->hardware_blas[i].is_valid()) {
+					continue;
+				}
+				RD::AccelerationStructureInstance instance;
+				instance.blas = state->hardware_blas[i];
+				instance.id = i;
+				instance.flags = RD::ACCELERATION_STRUCTURE_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT;
+				instances.push_back(instance);
+			}
+			state->hardware_tlas = rd->tlas_create(2, RD::ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT);
+			success = state->hardware_tlas.is_valid() && rd->tlas_build(state->hardware_tlas, instances) == OK;
+			if (success) {
+				state->tlas_builds++;
+			}
+		}
+		state->hardware_active = success;
+		if (!success) {
+			state->free_hardware();
+			state->hardware_failed = true;
+			WARN_PRINT("Kiln hardware acceleration structure creation failed; using compute software BVH.");
+		}
+	}
+	RID query_tlas = state->hardware_active ? state->hardware_tlas : RID();
 	int emitter_count = world.world.emitters.size() + world.dynamic.emitters.size();
-	if (changed_world || changed_dynamic) {
+	if (!changed_world && state->static_material_version != world.static_material_version) {
+		upload("triangles", world.world.triangles);
+	}
+	if (!changed_dynamic && state->dynamic_material_version != world.dynamic_material_version) {
+		upload("dynamic_triangles", world.dynamic.triangles);
+	}
+	if (changed_world || changed_dynamic || changed_material) {
 		PackedByteArray packed;
 		packed.resize(MAX(1, emitter_count) * 16);
 		packed.fill(0);
@@ -212,7 +374,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		}
 		upload("emitters", packed);
 	}
-	if (changed_light) {
+	if (state->light_version != world.light_version || initialize) {
 		upload("local_lights", world.local_lights);
 		upload("light_grid", world.light_grid);
 	}
@@ -274,7 +436,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	v(world.dynamic.node_count, world.dynamic.triangle_count, emitter_count, world.world.power + world.dynamic.power);
 	MaterialStorage::store_camera(state->previous_vp.inverse(), params + at);
 	at += 16;
-	v(signed_normal, 0, 0, 0);
+	v(signed_normal, world.resolution_divisor, 0, 0);
 	ERR_FAIL_COND_V(at != 176, false);
 	rd->buffer_update(state->parameters, 0, sizeof(params), params);
 	auto U = [&]() { return Binding{ 0, RD::UNIFORM_TYPE_UNIFORM_BUFFER, state->parameters }; };
@@ -293,9 +455,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	if (world.enabled) {
 		dispatch(PREPARE, state->half, { U(), S(1, depth), S(2, normal), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), B(21, "receivers"), B(24, "dirty"), B(22, "world_lights"), B(23, "world_owners") });
-		dispatch(TRACE, state->half, { U(), S(1, depth), S(2, normal), B(4, "nodes"), B(5, "triangles"), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(19, sequence), B(20, "hits"), B(21, "receivers") }, 0, MAX(4, world.rays));
-		dispatch(INTEGRATE, state->half, { U(), S(1, depth), S(2, normal), B(4, "nodes"), B(5, "triangles"), I(6, T("raw")), I(7, pos), I(8, norm), I(9, T("sh_raw")), I(10, T("visibility_raw")), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), S(14, T("sh", previous)), S(15, T("visibility", previous)), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(19, sequence), B(20, "hits"), B(21, "receivers"), B(22, "world_lights"), B(23, "world_owners") });
-		dispatch(TEMPORAL, state->half, { U(), S(1, T("sh_raw")), S(2, pos), S(3, norm), S(4, T("sh", previous)), S(5, T("position", previous)), S(6, T("normal", previous)), S(7, T("confidence", previous)), I(8, T("sh", current)), I(9, T("confidence", current)), S(10, T("visibility_raw")), S(11, T("visibility", previous)), I(12, T("visibility", current)), S(13, T("raw")), S(14, T("age", previous)), I(15, T("age", current)) });
+		dispatch(TRACE, state->half, { U(), S(1, depth), S(2, normal), B(4, "nodes"), B(5, "triangles"), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(19, sequence), B(20, "hits"), B(21, "receivers") }, 0, MAX(4, world.rays), query_tlas);
+		dispatch(INTEGRATE, state->half, { U(), S(1, depth), S(2, normal), B(4, "nodes"), B(5, "triangles"), I(6, T("raw")), I(7, pos), I(8, norm), I(9, T("sh_raw")), I(10, T("visibility_raw")), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), S(14, T("sh", previous)), S(15, T("visibility", previous)), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(19, sequence), B(20, "hits"), B(21, "receivers"), B(22, "world_lights"), B(23, "world_owners") }, 0, 1, query_tlas);
+		dispatch(TEMPORAL, state->half, { U(), S(1, T("sh_raw")), S(2, pos), S(3, norm), S(4, T("sh", previous)), S(5, T("position", previous)), S(6, T("normal", previous)), S(7, T("confidence", previous)), I(8, T("sh", current)), I(9, T("confidence", current)), S(10, T("visibility_raw")), S(11, T("visibility", previous)), I(12, T("visibility", current)), S(13, T("raw")), S(14, T("age", previous)), I(15, T("age", current)), S(16, T("moments", previous)), I(17, T("moments", current)) });
 		if (!moving) {
 			dispatch(WORLD_CACHE, state->half, { U(), S(1, pos), S(2, norm), S(3, T("sh", current)), S(4, T("confidence", current)), S(5, T("visibility", current)), S(6, T("raw")), B(22, "world_lights"), B(23, "world_owners") });
 		}
@@ -303,7 +465,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		const char *filter_names[] = { "sh_filter_first", "sh_filter_work", "sh_filtered" };
 		for (int pass = 0; pass < 3; pass++) {
 			RID output = T(filter_names[pass]);
-			dispatch(FILTER, state->half, { U(), S(1, filter_input), S(2, pos), S(3, norm), S(4, T("visibility", current)), S(5, T("confidence", current)), I(6, output), B(7, "dirty") }, 1 << pass);
+			dispatch(FILTER, state->half, { U(), S(1, filter_input), S(2, pos), S(3, norm), S(4, T("visibility", current)), S(5, T("confidence", current)), I(6, output), B(7, "dirty"), S(8, T("moments", current)) }, 1 << pass);
 			filter_input = output;
 		}
 		dispatch(DECODE, state->half, { U(), S(1, T("sh_filtered")), S(2, norm), S(3, T("visibility", current)), I(4, T("decoded")), B(5, "dirty") });
@@ -336,7 +498,39 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		state->capture_request = world.capture_request;
 		if (DirAccess::make_dir_recursive_absolute(world.capture_directory) == OK) {
 			Dictionary metadata;
+			float maximum_bounds_error = 0;
+			for (bool dynamic : { false, true }) {
+				const auto &geometry = dynamic ? world.dynamic : world.world;
+				PackedByteArray gpu = rd->buffer_get_data(state->storage[dynamic ? "dynamic_nodes" : "nodes"], 0, geometry.nodes.size());
+				const float *actual = reinterpret_cast<const float *>(gpu.ptr());
+				const float *expected = reinterpret_cast<const float *>(geometry.nodes.ptr());
+				for (uint32_t n = 0; n < geometry.node_count * 8; n++) {
+					maximum_bounds_error = MAX(maximum_bounds_error, Math::abs(actual[n] - expected[n]));
+				}
+			}
+			metadata["backend"] = state->hardware_active ? "hardware_ray_query" : "compute_software_bvh";
+			metadata["hardware_blas_builds"] = state->hardware_builds;
+			metadata["hardware_tlas_builds"] = state->tlas_builds;
+			if (state->hardware_active) {
+				RID validation = allocate("query_validation", 2048 * 16);
+				dispatch(QUERY_VALIDATE, Size2i(2048, 1), { U(), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), { 28, RD::UNIFORM_TYPE_STORAGE_BUFFER, validation } }, 0, 1, query_tlas);
+				PackedByteArray values = rd->buffer_get_data(validation);
+				const float *r = reinterpret_cast<const float *>(values.ptr());
+				int mismatches = 0, hits = 0;
+				float error = 0;
+				for (int ray = 0; ray < 2048; ray++) {
+					mismatches += int(r[ray * 4]) + int(r[ray * 4 + 2]);
+					error = MAX(error, r[ray * 4 + 1]);
+					hits += int(r[ray * 4 + 3]);
+				}
+				metadata["hardware_query_rays"] = 2048;
+				metadata["hardware_query_hit_rays"] = hits;
+				metadata["hardware_query_mismatches"] = mismatches;
+				metadata["hardware_query_maximum_error"] = error;
+			}
+			metadata["compute_bvh_maximum_error"] = maximum_bounds_error;
 			metadata["width"] = state->size.x;
+			metadata["resolution_divisor"] = world.resolution_divisor;
 			metadata["height"] = state->size.y;
 			metadata["half_width"] = state->half.x;
 			metadata["half_height"] = state->half.y;
@@ -360,12 +554,22 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			}
 		}
 	}
+	Dictionary statistics;
+	statistics["backend"] = state->hardware_active ? "hardware_ray_query" : "compute_software_bvh";
+	statistics["hardware_ray_query_available"] = hardware_available;
+	statistics["hardware_blas_builds"] = state->hardware_builds;
+	statistics["hardware_tlas_builds"] = state->tlas_builds;
+	statistics["hardware_fallback"] = world.query_backend != 1 && !state->hardware_active;
+	KilnWorld::report(environment, statistics);
 	state->previous_vp = vp;
 	state->previous_camera = scene->cam_transform;
 	state->previous_projection = scene->cam_projection;
 	state->geometry_version = world.geometry_version;
 	state->dynamic_version = world.dynamic_version;
 	state->light_version = world.light_version;
+	state->material_version = world.material_version;
+	state->static_material_version = world.static_material_version;
+	state->dynamic_material_version = world.dynamic_material_version;
 	state->frames++;
 	state->index = previous;
 	if (!moving) {

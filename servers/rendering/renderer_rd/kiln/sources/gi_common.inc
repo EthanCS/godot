@@ -25,7 +25,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
-    vec4 engine_state; // x: signed G-buffer normal (1), Forward+ encoded normal (0)
+    vec4 engine_state; // x: signed G-buffer normal (1), Forward+ encoded normal (0); y: receiver divisor
 } p;
 
 const float PI=3.14159265358979323846;

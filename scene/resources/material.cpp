@@ -2122,6 +2122,7 @@ void BaseMaterial3D::_material_set_param(const StringName &p_name, const Variant
 void BaseMaterial3D::set_albedo(const Color &p_albedo) {
 	albedo = p_albedo;
 	_material_set_param(shader_names->albedo, p_albedo);
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 Color BaseMaterial3D::get_albedo() const {
@@ -2149,6 +2150,7 @@ float BaseMaterial3D::get_roughness() const {
 void BaseMaterial3D::set_metallic(float p_metallic) {
 	metallic = p_metallic;
 	_material_set_param(shader_names->metallic, p_metallic);
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 float BaseMaterial3D::get_metallic() const {
@@ -2158,6 +2160,7 @@ float BaseMaterial3D::get_metallic() const {
 void BaseMaterial3D::set_emission(const Color &p_emission) {
 	emission = p_emission;
 	_material_set_param(shader_names->emission, p_emission);
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 Color BaseMaterial3D::get_emission() const {
@@ -2172,6 +2175,7 @@ void BaseMaterial3D::set_emission_energy_multiplier(float p_emission_energy_mult
 	} else {
 		_material_set_param(shader_names->emission_energy, p_emission_energy_multiplier);
 	}
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 float BaseMaterial3D::get_emission_energy_multiplier() const {
@@ -2182,6 +2186,7 @@ void BaseMaterial3D::set_emission_intensity(float p_emission_intensity) {
 	ERR_FAIL_COND_EDMSG(!GLOBAL_GET_CACHED(bool, "rendering/lights_and_shadows/use_physical_light_units"), "Cannot set material emission intensity when Physical Light Units disabled.");
 	emission_intensity = p_emission_intensity;
 	_material_set_param(shader_names->emission_energy, emission_energy_multiplier * emission_intensity);
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 float BaseMaterial3D::get_emission_intensity() const {
@@ -2357,6 +2362,7 @@ void BaseMaterial3D::set_transparency(Transparency p_transparency) {
 	transparency = p_transparency;
 	_queue_shader_change();
 	notify_property_list_changed();
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 BaseMaterial3D::Transparency BaseMaterial3D::get_transparency() const {
@@ -2483,6 +2489,7 @@ void BaseMaterial3D::set_flag(Flags p_flag, bool p_enabled) {
 	}
 
 	_queue_shader_change();
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 bool BaseMaterial3D::get_flag(Flags p_flag) const {
@@ -2498,6 +2505,7 @@ void BaseMaterial3D::set_feature(Feature p_feature, bool p_enabled) {
 
 	features[p_feature] = p_enabled;
 	_queue_shader_change();
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 bool BaseMaterial3D::get_feature(Feature p_feature) const {
@@ -2518,6 +2526,7 @@ void BaseMaterial3D::set_texture(TextureParam p_param, const Ref<Texture2D> &p_t
 
 	notify_property_list_changed();
 	_queue_shader_change();
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 Ref<Texture2D> BaseMaterial3D::get_texture(TextureParam p_param) const {
@@ -3115,6 +3124,7 @@ void BaseMaterial3D::set_emission_operator(EmissionOperator p_op) {
 	}
 	emission_op = p_op;
 	_queue_shader_change();
+	emit_changed(); // Refresh dependent resources such as imported Kiln GI proxies.
 }
 
 BaseMaterial3D::EmissionOperator BaseMaterial3D::get_emission_operator() const {

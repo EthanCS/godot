@@ -100,6 +100,7 @@ CopyEffects::CopyEffects(BitField<RasterEffects> p_raster_effects) {
 		copy_modes.push_back("\n#define MODE_LINEARIZE_DEPTH_COPY\n");
 		copy_modes.push_back("\n#define MODE_OCTMAP_TO_PANORAMA\n");
 		copy_modes.push_back("\n#define MODE_OCTMAP_ARRAY_TO_PANORAMA\n");
+		copy_modes.push_back("\n#define MODE_SIMPLE_COPY\n#define DST_IMAGE_RG16\n");
 
 		copy.shader.initialize(copy_modes);
 		memset(&copy.push_constant, 0, sizeof(CopyPushConstant));
@@ -442,6 +443,11 @@ void CopyEffects::copy_to_rect(RID p_source_rd_texture, RID p_dest_texture, cons
 	RD::Uniform u_dest_texture(RD::UNIFORM_TYPE_IMAGE, 0, p_dest_texture);
 
 	CopyMode mode = p_8_bit_dst ? COPY_MODE_SIMPLY_COPY_8BIT : COPY_MODE_SIMPLY_COPY;
+	// TAA velocity history is RG16F. An RGBA16F storage image declaration is
+	// invalid for that view even when the shader only needs its first channels.
+	if (!p_8_bit_dst && RD::get_singleton()->texture_get_format(p_dest_texture).format == RD::DATA_FORMAT_R16G16_SFLOAT) {
+		mode = COPY_MODE_SIMPLY_COPY_RG16;
+	}
 	RID shader = copy.shader.version_get_shader(copy.shader_version, mode);
 	ERR_FAIL_COND(shader.is_null());
 

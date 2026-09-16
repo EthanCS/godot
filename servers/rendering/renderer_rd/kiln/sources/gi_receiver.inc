@@ -9,7 +9,7 @@ void receiver_context(ivec2 q,ivec2 size,out float depth,out vec3 wp,out vec3 wn
     // a half-grid UV but unprojecting that UV instead of the sampled texel's
     // center moves the ray origin off the surface, increasingly with distance.
     // Even full pixels form a regular grid for both odd and even viewport sizes.
-    ivec2 pixel=q*2;
+    ivec2 pixel=q*int(p.engine_state.y);
     vec2 uv=(vec2(pixel)+.5)/p.size_frame.xy;
     depth=texelFetch(scene_depth,pixel,0).r;
     wp=vec3(0);wn=vec3(0);stored_normal=vec3(0);

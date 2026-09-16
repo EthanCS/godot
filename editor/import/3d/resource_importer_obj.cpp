@@ -29,6 +29,9 @@
 /**************************************************************************/
 
 #include "resource_importer_obj.h"
+#ifdef RD_ENABLED
+#include "scene/resources/3d/kiln_gi_proxy.h"
+#endif
 
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
@@ -628,7 +631,7 @@ String ResourceImporterOBJ::get_resource_type() const {
 }
 
 int ResourceImporterOBJ::get_format_version() const {
-	return 1;
+	return 2; // Persist automatically generated Kiln GI proxies.
 }
 
 int ResourceImporterOBJ::get_preset_count() const {
@@ -660,6 +663,12 @@ bool ResourceImporterOBJ::get_option_visibility(const String &p_path, const Stri
 }
 
 Error ResourceImporterOBJ::import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+	if (r_metadata) {
+		Dictionary metadata;
+		metadata["kiln_gi_proxy_version"] = 1;
+		*r_metadata = metadata;
+	}
+
 	List<Ref<ImporterMesh>> meshes;
 
 	Vector<uint8_t> src_lightmap_cache;
@@ -692,6 +701,9 @@ Error ResourceImporterOBJ::import(ResourceUID::ID p_source_id, const String &p_s
 
 	String save_path = p_save_path + ".mesh";
 
+#ifdef RD_ENABLED
+	KilnGIProxy::attach(meshes.front()->get()->get_mesh());
+#endif
 	err = ResourceSaver::save(meshes.front()->get()->get_mesh(), save_path);
 
 	ERR_FAIL_COND_V_MSG(err != OK, err, "Cannot save Mesh to file '" + save_path + "'.");

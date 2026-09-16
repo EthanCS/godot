@@ -17,11 +17,16 @@ layout(set=0,binding=12,r16f) uniform writeonly image2D output_visibility;
 layout(set=0,binding=13) uniform sampler2D current_radiance_rays;
 layout(set=0,binding=14) uniform sampler2D previous_age;
 layout(set=0,binding=15,r16f) uniform writeonly image2D output_age;
+layout(set=0,binding=16) uniform sampler2D previous_moments;
+layout(set=0,binding=17,rg32f) uniform writeonly image2D output_moments;
 void main(){
     ivec2 q=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.debug.yz);
     if(any(greaterThanEqual(q,size)))return;
     vec4 position=texelFetch(positions,q,0);vec3 normal=texelFetch(normals,q,0).xyz;
     float rays=texelFetch(current_radiance_rays,q,0).a;
+    vec3 dc=vec3(texelFetch(current_sh,q,0).x,texelFetch(current_sh,q+ivec2(size.x,0),0).x,texelFetch(current_sh,q+ivec2(2*size.x,0),0).x);
+    float sample_luminance=max(0.0,luminance(dc));
+    vec2 moments=vec2(sample_luminance,sample_luminance*sample_luminance),old_moments=vec2(0);
     if(rays<0.0){
         for(int c=0;c<3;c++){
             ivec2 index=q+ivec2(c*size.x,0);
@@ -30,6 +35,7 @@ void main(){
         imageStore(output_confidence,q,vec4(-rays));
         imageStore(output_visibility,q,texelFetch(current_visibility,q,0));
         imageStore(output_age,q,vec4(1));
+        imageStore(output_moments,q,vec4(moments,0,0));
         return;
     }
     float weights=0,count_sum=0,age_sum=0,old_visibility=0;vec4 history[3];
@@ -43,6 +49,7 @@ void main(){
         age_sum=texelFetch(previous_age,q,0).r;
         for(int c=0;c<3;c++)history[c]=texelFetch(previous_sh,q+ivec2(c*size.x,0),0);
         old_visibility=texelFetch(previous_visibility,q,0).r;
+        old_moments=texelFetch(previous_moments,q,0).rg;
     }else if(p.quality.y>.5){
         vec2 old_pixel;
         if(history_coordinates(position,old_pixel)){
@@ -56,6 +63,7 @@ void main(){
                 old_visibility+=texelFetch(previous_visibility,tap,0).r*w;
                 count_sum+=texelFetch(previous_confidence,tap,0).r*w;weights+=w;
                 age_sum+=texelFetch(previous_age,tap,0).r*w;
+                old_moments+=texelFetch(previous_moments,tap,0).rg*w;
             }
         }
     }
@@ -71,6 +79,8 @@ void main(){
     // disocclusion burst is still only one frame, never fabricated history.
     float age=valid?min(age_sum/weights+1.0,32.0):1.0;
     float alpha=rays/max(count,1.0);
+    if(valid)moments=mix(old_moments/weights,moments,alpha);
+    imageStore(output_moments,q,vec4(position.w>.5?moments:vec2(0),0,0));
     for(int c=0;c<3;c++){
         ivec2 index=q+ivec2(c*size.x,0);vec4 value=texelFetch(current_sh,index,0);
         // Changing lighting uses a short history above; a noisy instantaneous
@@ -79,7 +89,7 @@ void main(){
         imageStore(output_sh,index,position.w>.5?value:vec4(0));
     }
     float visibility=texelFetch(current_visibility,q,0).r;
-    if(valid)visibility=mix(old_visibility/weights,visibility,rays/count);
+    if(valid)visibility=mix(old_visibility/weights,visibility,alpha);
     imageStore(output_visibility,q,vec4(visibility));
     imageStore(output_confidence,q,vec4(position.w>.5?count:0));
     imageStore(output_age,q,vec4(position.w>.5?age:0));

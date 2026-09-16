@@ -86,7 +86,7 @@ bool trace_hierarchy(vec3 origin,vec3 ray,float maximum,bool any_hit,bool dynami
     return triangle_id>=0;
 }
 #endif
-bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     normal=vec3(0);
 #ifdef GI_VISIBILITY_ONLY
     // The lighting stage issues only visibility segments. Keep the nearest-hit
@@ -107,6 +107,31 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
         if(dot(normal,ray)>0.0)normal=-normal;
     }
     return hit;
+#endif
+}
+#ifdef KILN_HARDWARE_RAY_QUERY
+layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
+bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+    triangle_id=-1;distance=maximum;normal=vec3(0);
+    rayQueryEXT query;
+    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
+    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    while(rayQueryProceedEXT(query)){}
+    if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
+    int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
+    triangle_id=int(rayQueryGetIntersectionPrimitiveIndexEXT(query,true))+(instance==1?int(p.source_bvh_state.y):0);
+    distance=rayQueryGetIntersectionTEXT(query,true);
+    Triangle tri=world_triangle(triangle_id);
+    normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
+    if(dot(normal,ray)>0.0)normal=-normal;
+    return true;
+}
+#endif
+bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    return world_trace_hardware(origin,ray,maximum,any_hit,triangle_id,distance,normal);
+#else
+    return world_trace_software(origin,ray,maximum,any_hit,triangle_id,distance,normal);
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
@@ -147,17 +172,11 @@ vec3 emitter_sample(vec3 position,vec3 normal,vec3 xi,out vec3 direction){
 // sample weight includes list length. Visibility uses the same software BVH.
 layout(set=0,binding=25,std430) readonly buffer LocalLights { vec4 local_lights[]; };
 layout(set=0,binding=26,std430) readonly buffer LightGrid { uint light_grid[]; };
-vec3 local_light_sample(vec3 position,vec3 normal,float xi){
-    vec4 origin=local_lights[0];ivec3 dims=ivec3(local_lights[1].xyz);
-    ivec3 cell=ivec3(floor((position-origin.xyz)/origin.w));
-    if(any(lessThan(cell,ivec3(0)))||any(greaterThanEqual(cell,dims)))return vec3(0);
-    int cell_id=(cell.z*dims.y+cell.y)*dims.x+cell.x;
-    uint count=light_grid[cell_id*2+1];if(count==0u)return vec3(0);
-    uint id=light_grid[light_grid[cell_id*2]+min(uint(xi*float(count)),count-1u)];
+vec3 local_light_unoccluded(uint id,vec3 position,vec3 normal,out vec3 direction,out float distance){
     vec4 pr=local_lights[2u+id*4u],color=local_lights[3u+id*4u],cone=local_lights[4u+id*4u];
-    vec3 delta=pr.xyz-position;float distance=length(delta);
+    vec3 delta=pr.xyz-position;distance=length(delta);direction=delta/max(distance,.0001);
     if(distance>=pr.w||distance<.001)return vec3(0);
-    vec3 direction=delta/distance;float nl=max(0.0,dot(normal,direction));if(nl<=0.0)return vec3(0);
+    float nl=max(0.0,dot(normal,direction));if(nl<=0.0)return vec3(0);
     float window=max(1.0-pow(distance/pr.w,4.0),0.0);
     float attenuation=window*window*pow(max(distance,.0001),-color.w);
     if(cone.w>=-1.0){
@@ -165,8 +184,30 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
         float rim=max(1e-4,(1.0-scos)/(1.0-cone.w));
         attenuation*=1.0-pow(rim,local_lights[5u+id*4u].x);
     }
-    if(attenuation<=0.0||visibility_blocked(position+normal*.025,direction,distance-.03))return vec3(0);
-    return color.rgb*(attenuation*nl*float(count)/PI);
+    return max(vec3(0),color.rgb*(attenuation*nl/PI));
+}
+vec3 local_light_sample(vec3 position,vec3 normal,float xi){
+    vec4 origin=local_lights[0];ivec3 dims=ivec3(local_lights[1].xyz);
+    ivec3 cell=ivec3(floor((position-origin.xyz)/origin.w));
+    if(any(lessThan(cell,ivec3(0)))||any(greaterThanEqual(cell,dims)))return vec3(0);
+    int cell_id=(cell.z*dims.y+cell.y)*dims.x+cell.x;
+    uint count=light_grid[cell_id*2+1],start=light_grid[cell_id*2];
+    // Importance-sample actual incident power, including range and spot cone.
+    // A uniform light index spent most samples on irrelevant lamps in Sponza.
+    // The CDF uses cheap unoccluded weights, then traces ONE visibility ray.
+    float total=0.0,distance;vec3 direction;
+    for(uint i=0u;i<count;i++)total+=luminance(local_light_unoccluded(light_grid[start+i],position,normal,direction,distance));
+    if(total<=1e-10)return vec3(0);
+    float target=xi*total,accum=0.0;
+    for(uint i=0u;i<count;i++){
+        vec3 value=local_light_unoccluded(light_grid[start+i],position,normal,direction,distance);
+        float weight=luminance(value);accum+=weight;
+        if(weight>0.0 && (accum>=target || i+1u==count)){
+            if(visibility_blocked(position+normal*.025,direction,distance-.03))return vec3(0);
+            return value*(total/weight);
+        }
+    }
+    return vec3(0);
 }
 vec3 world_hit_radiance(vec3 origin,vec3 ray,int id,float distance,vec3 normal,vec2 xi,vec3 emitter_xi){
     vec3 hit=origin+ray*distance;Triangle tri=world_triangle(id);

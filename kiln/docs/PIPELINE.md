@@ -16,7 +16,9 @@ flowchart LR
   Y --> C[Opaque color copy for refraction]
   C --> A[Forward transparent and additive draws]
   A --> T[TAA, glow if enabled, tonemap]
-  B[Static and dynamic BVH snapshots] --> K
+  P[Imported simplified proxies and live material data] --> B[Static and dynamic snapshots]
+  B --> Q[Vulkan hardware ray queries or compute software BVH]
+  Q --> K
   I[Sun, shared sky radiance, local-light grid and authored emission] --> K
 ```
 
@@ -56,23 +58,37 @@ unconditional loop over all local lights is introduced. Counts use the same
 `KilnGIWorld` is a native scene node, bound to an Environment. Its parent subtree
 provides geometry and local lights. `kiln_dynamic=true` marks rigid dynamic
 subtrees; `kiln_exclude=true` excludes auxiliary geometry. Mesh arrays are cached
-per mesh identity and surface. Static geometry rebuilds explicitly with
-`rebuild()`; dynamic transforms, visibility, tint and authored emission update
-separately. Material reflectance/emission and explicit history invalidation have
-their own revision counters. Replacing a rigid mesh updates its dynamic BVH;
-in-place mesh-array edits require `rebuild()`, which refreshes both trees.
-Local lights have a separate version and spatial grid. Camera,
-lighting and geometry revisions reject/refresh radiance history without
-rebuilding the 1,224,801-triangle island for each moving lamp.
+per mesh identity and surface. OBJ and scene imports persist a `KilnGIProxy`
+resource in mesh metadata, containing compact geometry, source fingerprints,
+source material references and solid-color materials. Simplification welds
+geometric seams and bounds error. Import postprocessing and single-mesh merging
+complete before final proxy generation. Source material signals update proxy
+appearance even without a GI node. Runtime geometry retains automatic generation.
+Changes to geometry resources, transforms and visibility are detected
+automatically; material and texture edits update the affected transport attributes
+without rebuilding the hierarchy. `rebuild()` explicitly invalidates the caches.
+Low-level GPU-only deformation without resource notification remains unsupported.
+Separate static/dynamic geometry and material revisions prevent an animated
+emitter from uploading the entire static world. Unused resources release their
+cached geometry and signal connections.
 
-The CPU software BVH uses binned SAH, escape indices and 80-byte packed triangles.
-Static and dynamic trees share GPU traversal. Local bounce samples one overlapping
-analytic light with an inverse selection PDF, attenuation/cone shaping and BVH
-visibility. Authored emitter area/power CDFs feed emitter sampling. Direct light,
-indirect transport and genuine material emission remain separate inputs.
+Supported Vulkan devices build separate static/dynamic BLAS and a TLAS and use
+inline hardware ray queries. Committed instance/primitive IDs address the same
+packed transport materials. Geometry changes rebuild the affected subtree;
+material-only edits do not rebuild acceleration structures. This is currently
+packed subtree geometry rather than reusable per-object BLAS instances.
 
-GPU stages: receiver preparation, ray tracing, integration, SH temporal update,
-stationary world cache, three à-trous passes, SH decode, XeGTAO depth/main/denoise/
+The fallback uses CPU binned SAH to determine a threaded topology. A bottom-up
+compute pass builds its bounds, then GPU nearest-hit/visibility kernels query it
+using 80-byte packed triangles. Static and dynamic trees share traversal.
+Explicit diagnostic captures compare 2,048 GPU hardware/software queries.
+Local bounce selects a light
+by incident-power importance sampling with inverse-PDF weighting and BVH visibility.
+Emitter area/power CDFs provide explicit next-event samples. Material emission,
+direct light and indirect transport remain separate.
+
+GPU stages: receiver preparation, ray tracing, integration, SH temporal/moment update,
+stationary world cache, three variance-guided à-trous passes, SH decode, XeGTAO depth/main/denoise/
 temporal, then full-resolution diffuse/specular publication. A static pixel uses
 1 ray/frame toward 256 samples. Without TAA, a finite converged receiver is cached;
 with TAA jitter, compatible receivers are reprojected into a rolling estimate
@@ -89,12 +105,15 @@ resources belong to the renderer. Output readbacks occur only on explicit
 `set_quality(rays, samples)` exposes 1–8 stationary rays/frame and 16–1024
 convergence samples, resets history and reallocates ray storage when needed.
 `set_enabled`, `set_ao_enabled`, `reset_history`, `get_statistics`, and
-`set_profiling` support controls and checks. Hardware ray capability is queried
-from the active RD; software BVH remains the actual backend. The M5 Metal device
-reported both ray query and ray tracing pipeline unsupported in this build.
+`set_profiling` support controls and checks. `set_query_backend(0)` selects
+automatically, `1` forces software and `2` prefers hardware with fallback.
+Hardware ray capability is queried from the active RD and statistics report
+the actual backend. Windows Vulkan hardware ray queries are implemented and
+tested. The earlier M5 Metal device reported both capabilities unsupported;
+this change does not implement a Metal hardware backend.
 
-A later hardware backend can replace BVH traversal behind the same world/light
-snapshot contract. Stochastic direct lighting can consume the same cluster/light
+Both query backends consume the same world/light snapshot contract.
+Stochastic direct lighting can consume the same cluster/light
 input, but is not implemented here. No MegaLights or ReSTIR claim is made.
 
 ## Explicit limits
@@ -108,13 +127,16 @@ The native GI geometry capture currently supports rigid MeshInstance3D geometry
 and uniform authored albedo/emission. Shader materials explicitly declare
 `kiln_uniform_transport=true` with `tint_linear`, `authored_emission` and
 `metalness` constants. This is an opt-in contract that the shader author must
-honor; it does not certify arbitrary shader code. Solid, untextured BaseMaterial3D
-materials are also accepted. Other materials are diagnosed once and omitted from
+honor; it does not certify arbitrary shader code. Solid BaseMaterial3D materials are accepted with linear-space averaged albedo
+and emission textures. Other materials are diagnosed once and omitted from
 GI capture instead of becoming gray opaque occluders. Raster rendering is
-independent of this GI admission. Shader defaults are cached until `rebuild()`. It does not yet reproduce arbitrary shader
-vertex displacement, per-texel alpha holes or texture-dependent BVH reflectance.
-The imported island is untextured, opaque geometry with scalar leaf response.
+independent of this GI admission. Shader defaults invalidate on resource changes or `rebuild()`. Arbitrary shader
+vertex displacement and per-texel alpha holes remain unsupported. Texture detail
+is averaged for proxy transport, not sampled per ray. Sponza is the active GI
+benchmark; the earlier island remains a historical project.
 Skinned, blend-shape and MultiMesh geometry are diagnosed and omitted from GI.
 Arbitrary shader material transport is outside the uniform contract. SDFGI/VoxelGI/lightmap
 mixing, native SSAO/SSIL, SSR and volumetric fog are rejected in deferred. Forward transparent surfaces
 receive direct lighting and refraction; they do not sample the opaque pixel's GI.
+
+See [GI-PROXY.md](GI-PROXY.md) for implementation details and current platform verification.

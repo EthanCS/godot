@@ -3,8 +3,8 @@
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'servers/rendering/renderer_rd/kiln/sources'
-STAGES = ['prepare_receivers', 'trace_primary', 'integrate', 'sh_temporal', 'update_world_cache', 'sh_filter', 'sh_decode', 'brdf_lut', 'sequence_lut', 'publish', 'xegtao_depth', 'xegtao_main', 'xegtao_denoise', 'xegtao_temporal']
-parts = ['#[compute]\n#version 450\n#VERSION_DEFINES\n']
+STAGES = ['prepare_receivers', 'trace_primary', 'integrate', 'sh_temporal', 'update_world_cache', 'sh_filter', 'sh_decode', 'brdf_lut', 'sequence_lut', 'publish', 'xegtao_depth', 'xegtao_main', 'xegtao_denoise', 'xegtao_temporal', 'bvh_refit', 'query_validate']
+parts = ['#[compute]\n#version 460\n#VERSION_DEFINES\n#ifdef KILN_HARDWARE_RAY_QUERY\n#extension GL_EXT_ray_query : require\n#endif\n']
 for stage in STAGES:
     text = (SOURCE / (stage + '.comp')).read_text().replace('#version 450', '')
     for inc in SOURCE.glob('*.inc'):

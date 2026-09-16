@@ -17,6 +17,9 @@ struct KilnWorld {
 	struct Geometry {
 		PackedByteArray nodes;
 		PackedByteArray triangles;
+		PackedInt32Array source_order;
+		PackedByteArray refit_order;
+		Vector<Vector2i> refit_levels;
 		Vector<Vector4> emitters;
 		AABB bounds;
 		uint32_t node_count = 0;
@@ -27,6 +30,7 @@ struct KilnWorld {
 	Geometry dynamic;
 	uint64_t geometry_version = 0;
 	uint64_t material_version = 0;
+	uint64_t static_material_version = 0, dynamic_material_version = 0;
 	uint64_t dynamic_version = 0;
 	uint64_t light_version = 0;
 	Vector3 sun_direction = Vector3(0, 1, 0);
@@ -44,6 +48,8 @@ struct KilnWorld {
 	int ao_quality = 3;
 	int rays = 1;
 	int samples = 256;
+	int resolution_divisor = 2;
+	int query_backend = 0; // 0 auto, 1 compute software, 2 prefer hardware.
 
 	static void report(RID p_environment, const Dictionary &p_statistics);
 	static Dictionary statistics(RID p_environment);

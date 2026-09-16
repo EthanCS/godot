@@ -584,6 +584,9 @@ Error RenderingDeviceDriverVulkan::_initialize_device_extensions() {
 	_register_requested_device_extension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false);
 	_register_requested_device_extension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, false);
 	_register_requested_device_extension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false);
+#if VULKAN_RAYTRACING_ENABLED
+	_register_requested_device_extension(VK_KHR_RAY_QUERY_EXTENSION_NAME, false);
+#endif
 	_register_requested_device_extension(VK_NV_RAY_TRACING_VALIDATION_EXTENSION_NAME, false);
 	_register_requested_device_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, false);
 
@@ -914,6 +917,7 @@ Error RenderingDeviceDriverVulkan::_check_device_capabilities() {
 		VkPhysicalDeviceVulkanMemoryModelFeatures memory_model_features = {};
 		VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {};
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR raytracing_pipeline_features = {};
+		VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features = {};
 		VkPhysicalDeviceSynchronization2FeaturesKHR sync_2_features = {};
 		VkPhysicalDeviceRayTracingValidationFeaturesNV raytracing_validation_features = {};
 
@@ -986,6 +990,12 @@ Error RenderingDeviceDriverVulkan::_check_device_capabilities() {
 			acceleration_structure_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
 			acceleration_structure_features.pNext = next_features;
 			next_features = &acceleration_structure_features;
+		}
+
+		if (enabled_device_extension_names.has(VK_KHR_RAY_QUERY_EXTENSION_NAME)) {
+			ray_query_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+			ray_query_features.pNext = next_features;
+			next_features = &ray_query_features;
 		}
 
 		if (enabled_device_extension_names.has(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)) {
@@ -1089,6 +1099,8 @@ Error RenderingDeviceDriverVulkan::_check_device_capabilities() {
 		if (enabled_device_extension_names.has(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)) {
 			acceleration_structure_capabilities.acceleration_structure_support = acceleration_structure_features.accelerationStructure;
 		}
+
+		ray_query_support = enabled_device_extension_names.has(VK_KHR_RAY_QUERY_EXTENSION_NAME) && ray_query_features.rayQuery && acceleration_structure_capabilities.acceleration_structure_support;
 
 		if (enabled_device_extension_names.has(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)) {
 			raytracing_capabilities.raytracing_pipeline_support = raytracing_pipeline_features.rayTracingPipeline;
@@ -1423,6 +1435,14 @@ Error RenderingDeviceDriverVulkan::_initialize_device(const LocalVector<VkDevice
 		acceleration_structure_features.pNext = create_info_next;
 		acceleration_structure_features.accelerationStructure = acceleration_structure_capabilities.acceleration_structure_support;
 		create_info_next = &acceleration_structure_features;
+	}
+
+	VkPhysicalDeviceRayQueryFeaturesKHR enabled_ray_query_features = {};
+	if (ray_query_support) {
+		enabled_ray_query_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+		enabled_ray_query_features.pNext = create_info_next;
+		enabled_ray_query_features.rayQuery = VK_TRUE;
+		create_info_next = &enabled_ray_query_features;
 	}
 
 	VkPhysicalDeviceRayTracingPipelineFeaturesKHR raytracing_pipeline_features = {};
@@ -4247,6 +4267,7 @@ RDD::ShaderID RenderingDeviceDriverVulkan::shader_create_from_container(const Re
 		}
 	}
 
+	bool has_acceleration_structure = false;
 	// Set bindings.
 	Vector<Vector<VkDescriptorSetLayoutBinding>> vk_set_bindings;
 	vk_set_bindings.resize(shader_refl.uniform_sets.size());
@@ -4315,6 +4336,7 @@ RDD::ShaderID RenderingDeviceDriverVulkan::shader_create_from_container(const Re
 					layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 				} break;
 				case UNIFORM_TYPE_ACCELERATION_STRUCTURE: {
+					has_acceleration_structure = true;
 					layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 				} break;
 				default: {
@@ -4332,7 +4354,9 @@ RDD::ShaderID RenderingDeviceDriverVulkan::shader_create_from_container(const Re
 	Vector<uint8_t> decompressed_code;
 	VkShaderModule vk_module;
 	PackedByteArray decoded_spirv;
-	const bool use_respv = (RESPV_ENABLED == 1) && !shader_container_format.get_debug_info_enabled();
+	// re-spirv does not implement OpTypeRayQueryKHR yet. Preserve the valid
+	// glslang SPIR-V for inline-query shaders; ordinary shaders keep optimization.
+	const bool use_respv = (RESPV_ENABLED == 1) && !shader_container_format.get_debug_info_enabled() && !(has_acceleration_structure && shader_refl.pipeline_type != PIPELINE_TYPE_RAYTRACING);
 	const bool store_respv = use_respv && !shader_refl.specialization_constants.is_empty();
 	const int64_t stage_count = shader_refl.stages_vector.size();
 	shader_info.vk_stages_create_info.reserve(stage_count);

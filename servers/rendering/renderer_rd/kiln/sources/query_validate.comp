@@ -1,0 +1,21 @@
+#version 450
+// @GI_COMMON@
+// @BVH@
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=28,std430) writeonly buffer Validation { vec4 results[]; };
+void main(){
+    uint index=gl_GlobalInvocationID.x;
+    if(index>=2048u||gl_GlobalInvocationID.y!=0u)return;
+    vec3 u=fract(vec3(index+1u)*vec3(.754877666,.569840296,.438579021));
+    vec3 origin=p.voxel_min.xyz+p.voxel_size.xyz*u;
+    vec3 direction=safe_normalize(fract(u.yzx*17.0+vec3(.1,.3,.7))*2.0-1.0);
+    int soft_id,hard_id;float soft_distance,hard_distance;vec3 n;
+    bool soft=world_trace_software(origin,direction,1000.0,false,soft_id,soft_distance,n);
+    bool hard=world_trace_hardware(origin,direction,1000.0,false,hard_id,hard_distance,n);
+    bool soft_blocked=world_trace_software(origin,direction,2.0,true,soft_id,soft_distance,n);
+    float saved_distance=hard_distance;
+    float reference_distance;
+    world_trace_software(origin,direction,1000.0,false,soft_id,reference_distance,n);
+    bool hard_blocked=world_trace_hardware(origin,direction,2.0,true,hard_id,hard_distance,n);
+    results[index]=vec4(soft==hard?0.0:1.0,soft&&hard?abs(reference_distance-saved_distance):0.0,soft_blocked==hard_blocked?0.0:1.0,soft?1.0:0.0);
+}

@@ -1425,7 +1425,7 @@ void fragment_shader(in SceneData scene_data) {
 	backlight = vec3(stored_material.a);
 	alpha_highp = 1.0;
 	if (draw_call.uv_offset == 9u) { frag_color = vec4(texelFetch(kiln_motion, pixel, 0).rg * 30.0 + 0.5, 0.5, 1); return; }
-	if (draw_call.uv_offset == 12u) { frag_color = vec4(vec3(texelFetch(kiln_history, pixel / 2, 0).r / 256.0), 1); return; }
+	if (draw_call.uv_offset == 12u) { frag_color = vec4(vec3(texelFetch(kiln_history, clamp(ivec2(vec2(pixel) * vec2(textureSize(kiln_history, 0)) / vec2(textureSize(kiln_depth, 0))), ivec2(0), textureSize(kiln_history, 0) - 1), 0).r / 256.0), 1); return; }
 	if (draw_call.uv_offset > 0u && draw_call.uv_offset <= 6u) {
 		vec3 value = albedo_highp;
 		if (draw_call.uv_offset == 2u) value = normal_interp * 0.5 + 0.5;
@@ -3180,7 +3180,10 @@ void fragment_shader(in SceneData scene_data) {
 	}
 #endif
 
-#if defined(KILN_SURFACE) && !defined(MODE_KILN_RESOLVE)
+#if !defined(MODE_KILN_RESOLVE)
+	// Native GI is also valid for ordinary opaque StandardMaterial3D surfaces.
+	// The per-pass flag is only set for a KilnGIWorld's opaque buffers; existing
+	// Forward+ scenes and the transparent pass keep their upstream behavior.
 	if ((implementation_data.ss_effects_flags & 16u) != 0u) {
 		vec4 gi_diffuse = texelFetch(sampler2D(kiln_forward_diffuse, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0);
 		vec4 gi_specular = texelFetch(sampler2D(kiln_forward_specular, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0);

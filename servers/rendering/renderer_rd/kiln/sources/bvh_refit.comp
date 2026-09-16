@@ -1,0 +1,33 @@
+#version 450
+// Compute-built software BVH bounds. SAH topology is prepared once on the CPU;
+// each level is a separate dispatch, with RD storage hazards providing device
+// visibility. No spinlocks or cross-workgroup forward-progress assumptions.
+layout(local_size_x=8,local_size_y=8) in;
+struct Node { vec4 lo; vec4 hi; };
+struct Triangle { vec4 p0; vec4 e1; vec4 e2; vec4 albedo; vec4 emission; };
+layout(set=0,binding=0,std430) buffer Nodes { Node nodes[]; };
+layout(set=0,binding=1,std430) readonly buffer Triangles { Triangle triangles[]; };
+layout(set=0,binding=2,std430) readonly buffer Order { uint order[]; };
+layout(push_constant,std430) uniform Refit { int offset; int count; int pad0; int pad1; } p;
+void main() {
+    uint lane=gl_GlobalInvocationID.x;
+    if(gl_GlobalInvocationID.y!=0u || lane>=uint(p.count))return;
+    uint id=order[uint(p.offset)+lane];
+    Node n=nodes[id];
+    vec3 lo=vec3(3.402823e38),hi=-lo;
+    if(n.hi.w<0.0){
+        int end=int(n.lo.w)-int(n.hi.w)-1;
+        for(int i=int(n.lo.w);i<end;i++){
+            Triangle t=triangles[i];
+            vec3 a=t.p0.xyz,b=a+t.e1.xyz,c=a+t.e2.xyz;
+            lo=min(lo,min(a,min(b,c)));hi=max(hi,max(a,max(b,c)));
+        }
+        lo-=vec3(.001);hi+=vec3(.001);
+    }else{
+        Node a=nodes[id+1u];
+        uint right=a.hi.w<0.0?id+2u:uint(a.hi.w);
+        Node b=nodes[right];
+        lo=min(a.lo.xyz,b.lo.xyz);hi=max(a.hi.xyz,b.hi.xyz);
+    }
+    nodes[id].lo=vec4(lo,n.lo.w);nodes[id].hi=vec4(hi,n.hi.w);
+}

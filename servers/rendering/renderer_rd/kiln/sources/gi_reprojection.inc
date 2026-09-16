@@ -9,8 +9,8 @@ bool compatible_history(vec4 current,vec3 normal,vec4 old,vec3 old_normal){
 bool history_coordinates(vec4 position,out vec2 pixel){
     vec4 clip=p.previous_view_projection*vec4(position.xyz,1);
     vec2 uv=clip.xy/max(clip.w,1e-7)*.5+.5;
-    // Integrate samples full texel centers 2*q+.5, including odd dimensions.
-    pixel=(uv*p.size_frame.xy-.5)*.5;
+    // Receiver texel centers divisor*q+.5, including odd dimensions.
+    pixel=(uv*p.size_frame.xy-.5)/p.engine_state.y;
     return p.size_frame.w>.5 && position.w>.5 && clip.w>0.0
         && all(greaterThanEqual(uv,vec2(0))) && all(lessThan(uv,vec2(1)));
 }

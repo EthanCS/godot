@@ -1,8 +1,22 @@
 # Phase 1 development status
 
-Implementation and validation record, 2026-09-16. Functional checks and performance results are reported separately. See [PERFORMANCE.md](PERFORMANCE.md) for the complete A/B measurements.
+Implementation and validation record, updated 2026-09-17. Functional checks and performance results are reported separately. See [GI-PROXY.md](GI-PROXY.md) for current Sponza results and [PERFORMANCE.md](PERFORMANCE.md) for the historical island A/B measurements.
 
-## Current delivery scope
+## Current GI work
+
+The user has resumed GI development and selected **Sponza**, replacing the island
+as the GI acceptance scene. Persistent import-time proxies, automatic material
+updates, Vulkan hardware queries with compute BVH fallback, sun/sky TOD and
+variance-guided filtering are implemented. Windows editor/export builds and
+RTX 5070 Ti GPU checks pass; Metal hardware queries remain unimplemented. See
+[GI-PROXY.md](GI-PROXY.md) for separately recorded implementation, builds, numerical
+and real-GPU visual checks, and unsupported features. New Mac performance is not
+validated by the earlier non-GI work below.
+
+## Previous non-GI delivery scope
+
+Everything below records the earlier Mac checkpoint, not the current Windows
+implementation or its validation status.
 
 Per the user's 2026-09-16 scope update, this checkpoint accepts the non-GI renderer
 and standalone demo first. GI defaults off, remains opt-in with G / `--gi`, and is

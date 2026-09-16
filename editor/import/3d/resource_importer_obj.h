@@ -50,6 +50,8 @@ public:
 	virtual String get_save_extension() const override;
 	virtual String get_resource_type() const override;
 	virtual int get_format_version() const override;
+	virtual bool are_import_settings_valid(const String &p_path, const Dictionary &p_meta) const override { return int(p_meta.get("kiln_gi_proxy_version", 0)) == 1; }
+	virtual String get_import_settings_string() const override { return "kiln_gi_proxy_v2"; }
 
 	virtual int get_preset_count() const override;
 	virtual String get_preset_name(int p_idx) const override;

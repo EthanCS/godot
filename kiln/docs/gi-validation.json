@@ -1,0 +1,205 @@
+{
+  "recorded_at": "2026-09-16T23:43:06.725842+08:00",
+  "base_git_head": "a384f306709f62b6948e07a7a2a4f886654b5eef",
+  "working_tree_changes": true,
+  "host": {
+    "os": "Windows x64",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "driver": "32.0.16.1088",
+    "vulkan": "1.4.341",
+    "macos_verified": false
+  },
+  "compiled": {
+    "editor": {
+      "path": "bin/godot.windows.editor.x86_64.mono.exe",
+      "sha256": "383dda345414a092fa2fcb2a386ed46b14839d9c510b8fd8853bec47673256a4"
+    },
+    "template_release": {
+      "path": "bin/godot.windows.template_release.x86_64.mono.exe",
+      "sha256": "41cc591bc63328c0f2ad09c3d384d97fa58e67c95e5c4a096623fe153be598e1"
+    },
+    "GodotSharp_Debug_Release_and_SDK": true
+  },
+  "gpu_validation": {
+    "sponza": {
+      "passed": true,
+      "checks": 60,
+      "width": 1280,
+      "height": 720,
+      "divisor": 4,
+      "stationary_rgb_std": 0.0016207918084718122,
+      "motion_settled32_mae": 0.002714676379811184,
+      "evidence": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-balanced"
+    },
+    "bvh_vs_bruteforce": {
+      "failures": 0,
+      "maximum_error": 0.0,
+      "passed": true,
+      "rays": 512
+    },
+    "dynamic": {
+      "passed": true,
+      "checks": 29,
+      "evidence": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-final-dynamic"
+    },
+    "temporal": {
+      "passed": true,
+      "checks": 9,
+      "measurements": {
+        "off32_mean_ratio": 0.0002925766179473665,
+        "off32_max": 0.00784313725490196,
+        "settled32_mean_error": 0.0005560811546840959,
+        "offscreen_red": 0.11471057683229446,
+        "offscreen_dark": 3.7232837257761275e-07,
+        "stationary_mean_rgb_std": 7.372383528945449e-05,
+        "settled_confidence_median": 256.0,
+        "reset_confidence_max": 1.0
+      },
+      "evidence": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-final-temporal"
+    },
+    "proxy_lifecycle": {
+      "passed": true,
+      "evidence": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-proxy-lifecycle-balanced"
+    },
+    "admission": {
+      "passed": true,
+      "log": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-proxy-admission-verified.log"
+    },
+    "exported_runtime": {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-release\\Sponza.exe",
+      "sha256": "4d9cdcc918215f71a200f42c58feb697eb08ad204010c5f6ccaa4bd550528f9b",
+      "capture": {
+        "compute_bvh_maximum_error": 1.9073486328125e-06,
+        "dynamic_version": 1,
+        "frame": 159,
+        "geometry_version": 1,
+        "half_height": 176,
+        "half_width": 251,
+        "height": 703,
+        "light_version": 3,
+        "moving": false,
+        "resolution_divisor": 4,
+        "stationary_samples": 254,
+        "width": 1001
+      },
+      "evidence": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-exported-check",
+      "performance_claim": false
+    },
+    "visually_inspected": [
+      "Sponza day",
+      "Sponza isolated emission",
+      "Sponza isolated local lights",
+      "Sponza moving camera/TOD",
+      "Forward+ equivalent GI",
+      "exported odd-size runtime"
+    ],
+    "forward_deferred_mae_below_hud": 0.0007287160234464156
+  },
+  "benchmarks": {
+    "protocol": "Serial windowed runs, VSync disabled, 60 warmup then 360 frame intervals; identical deterministic 1/60 simulation steps; no readbacks. Single short runs, not a sustained or macOS target pass.",
+    "runs": [
+      {
+        "renderer": "forward_plus",
+        "animated": true,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "divisor": 4,
+        "samples": 360,
+        "mean_ms": 12.576605555555556,
+        "p95_ms": 15.3307,
+        "raw": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-balanced-benchmark-forward_plus-dynamic\\benchmark.json"
+      },
+      {
+        "renderer": "forward_plus",
+        "animated": false,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "divisor": 4,
+        "samples": 360,
+        "mean_ms": 7.500424999999999,
+        "p95_ms": 8.8972,
+        "raw": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-balanced-benchmark-forward_plus-still\\benchmark.json"
+      },
+      {
+        "renderer": "kiln_deferred",
+        "animated": true,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "divisor": 4,
+        "samples": 360,
+        "mean_ms": 12.731355555555556,
+        "p95_ms": 15.47315,
+        "raw": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-balanced-benchmark-kiln_deferred-dynamic\\benchmark.json"
+      },
+      {
+        "renderer": "kiln_deferred",
+        "animated": false,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "divisor": 4,
+        "samples": 360,
+        "mean_ms": 7.399358333333334,
+        "p95_ms": 8.8595,
+        "raw": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-balanced-benchmark-kiln_deferred-still\\benchmark.json"
+      },
+      {
+        "renderer": "kiln_deferred",
+        "animated": true,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "divisor": 2,
+        "samples": 360,
+        "mean_ms": 39.52402222222223,
+        "p95_ms": 47.19935,
+        "raw": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-sponza-current-quality-benchmark\\benchmark.json"
+      }
+    ]
+  },
+  "source_sha256": {
+    "kiln/sponza/proxy_lifecycle.gd": "78b69a9dba59c5bb3d9ccd000a8d9cbbc386e142ff458695972f33184642afe1",
+    "kiln/sponza/sponza.gd": "ca96b275107bd0667be775a342c91efb986388f388fff0d6360bacde1383a6d0",
+    "scene/3d/kiln_gi_proxy.cpp": "2474871a77ab51d4a24955fa08fc952ac8f597ba3ddcf073023db6dac01f30bc",
+    "scene/3d/kiln_gi_world.cpp": "f2f61ee6c6d851c5037d11c8437b5f1bef9a79c99c3732f3adf10e8d34e64621",
+    "scene/3d/kiln_gi_world.h": "d287209a1ca7b661a2ea6854cb3880439ac8122cf8e491100404b708f32d8c0e",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.cpp": "50908ebc8b295c274c24b541b48d1513bb23dbc0d352f14d9ac233c1584b5f5e",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.h": "b39ee7927e3b8e656161df80f28c86bb0dc5d4403ef49052cab397216b5b1e72",
+    "servers/rendering/renderer_rd/kiln/kiln_world.cpp": "fc84bde0d3835706b5440b21d625e0ffd3e82a2af30384569eab68ec21cc4f85",
+    "servers/rendering/renderer_rd/kiln/kiln_world.h": "23e41dff7bf25fd2db28d8138fed512104e80da47a5cd6f9565fe3d1e1903e1d",
+    "servers/rendering/renderer_rd/kiln/sources/brdf_lut.comp": "ee41a0464ed06244af28fc6918658bbecfc6efc0720c33172d616a8138514a8c",
+    "servers/rendering/renderer_rd/kiln/sources/bvh.inc": "432f1dde11151cee85a472338cdb5c3b4bd8028dc8e7f6dcaf3e236479b2c0d0",
+    "servers/rendering/renderer_rd/kiln/sources/bvh_refit.comp": "ed581eaa50a655589e0312cb6c91a070f5ef3d7b2326df801a284a545d3d86f0",
+    "servers/rendering/renderer_rd/kiln/sources/capture_geometry.comp": "3b96bcdf918137dba28a87d3e95f19139f590d6d9c1bfd4355d5012cb561f59c",
+    "servers/rendering/renderer_rd/kiln/sources/gi_common.inc": "1c3c88ceb2107ece6aeeaae60187966bc626b5bcaa1d0790a2d69288d9e96364",
+    "servers/rendering/renderer_rd/kiln/sources/gi_dirty.inc": "32439414aa636cd32d1c7e6f184d6187981ed28f69972bf16378e01c2cb62dcb",
+    "servers/rendering/renderer_rd/kiln/sources/gi_receiver.inc": "9dc4f7ab6868136c465ce673f976bacf288c5ca30abd9d230db5f10420865d99",
+    "servers/rendering/renderer_rd/kiln/sources/gi_receiver_data.inc": "08794b080dcd4708419d5845a4f8c67ab34a8a08e6fd38125e83ea3289408c30",
+    "servers/rendering/renderer_rd/kiln/sources/gi_reprojection.inc": "196dd973f5dc1b4539d1bf0b328deb080389a40b649e9b5f21964cceac62ec8d",
+    "servers/rendering/renderer_rd/kiln/sources/gi_sequence.inc": "c5e5e01ac0d7e0b4961c0a008882f0c65a88e76cd75360a2d5c43aa0f45deeea",
+    "servers/rendering/renderer_rd/kiln/sources/gi_world_cache.inc": "58ca09ae50ac87247a06f6b19ffc3344155d95f0d46e92dcf0cf6881fa5b5ff5",
+    "servers/rendering/renderer_rd/kiln/sources/integrate.comp": "a6ba7eff54becb1ef432cbf703243f62acc112a997ceaffbf8f37769c535a407",
+    "servers/rendering/renderer_rd/kiln/sources/prepare_receivers.comp": "e0b0ce4a93624f47e9edc723f143378b57e50b89156a48fc39e1af5bf0d4b334",
+    "servers/rendering/renderer_rd/kiln/sources/publish.comp": "aebdab3ed3922eb89171775e18c83fc76fd1d2462a519f850525fa636c74ba61",
+    "servers/rendering/renderer_rd/kiln/sources/sequence_lut.comp": "6582bcc997a843c63d86d1a4e498eab3a80a1fa80929a12767171a2a756430b0",
+    "servers/rendering/renderer_rd/kiln/sources/sh_decode.comp": "162f02db101dea624060e8e3c8b72d514b76864e71a4fa97811e5374a7e06906",
+    "servers/rendering/renderer_rd/kiln/sources/sh_filter.comp": "62d72eab49ceaf98145ea8d07a7e56801f71fb687ba23e081020eeb166d2460d",
+    "servers/rendering/renderer_rd/kiln/sources/sh_temporal.comp": "f1fea88f1d54d00612ea2374c0e67b4dea355d2752e82493ba895f5c9bc6c5c0",
+    "servers/rendering/renderer_rd/kiln/sources/trace_primary.comp": "626e17b9c5769c432e4648c993796e84716b05aa2faff8979fdfb4a47179aaea",
+    "servers/rendering/renderer_rd/kiln/sources/update_world_cache.comp": "637684024a940b0645c3446f5eba6f4dc57b866a7a6ac516588c2396d75df8f0",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_denoise.comp": "98454b0d53d91f7c33432a45d7a24f877ca87f4b74d5a6caa7c209567286fe46",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_depth.comp": "1917a6f4eda20ad451ee70cb814c17c084d865b078178da67059907f06b2bbef",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_main.comp": "b1a5b898912858abbfb6a17f0e31fc601358bc9e20f92c5042e9cf969a761b99",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_temporal.comp": "06dd709dbd95343fae76ab7f50bd3c3268f55f0d31a5eeff1fbaa13c172c15be",
+    "servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl": "d821b56f1d6a2cc8d18e31bc52962065fc045c1d11b4ebe5e66f9bd4096e8688",
+    "servers/rendering/renderer_rd/shaders/kiln_gi.glsl": "2275d02e2407ec643bc3600f72e829a036b57c7334c24d33e20513d0d74552e7"
+  }
+}

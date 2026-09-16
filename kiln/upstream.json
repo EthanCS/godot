@@ -4,5 +4,5 @@
   "commit": "ed1daf0bf001b61586d9930840f2f1394092c079",
   "fork": "https://github.com/EthanCS/godot",
   "branch": "main",
-  "status": "non-GI renderer delivery compiled and GPU-verified on macOS arm64 Metal; GI opt-in and further GI work deferred at user request; see docs/STATUS.md"
+  "status": "Persistent import-time GI proxies with automatic material updates; Vulkan hardware ray queries with compute software BVH fallback; diffuse TOD GI and temporal filtering. Sponza Windows GPU validation is recorded in docs/GI-PROXY.md. Metal hardware queries and new macOS performance remain unverified."
 }

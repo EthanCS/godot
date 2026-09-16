@@ -1,0 +1,18 @@
+config_version=5
+
+[application]
+config/name="Kiln GI • Sponza"
+run/main_scene="res://sponza.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+renderer/rendering_method="kiln_deferred"
+renderer/rendering_method.mobile="kiln_deferred"
+anti_aliasing/quality/use_taa=true
+lights_and_shadows/positional_shadow/atlas_size=2048
+lights_and_shadows/directional_shadow/size=4096
+

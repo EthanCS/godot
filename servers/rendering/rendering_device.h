@@ -1378,7 +1378,7 @@ public:
 		Transform3D transform;
 		uint32_t id = 0;
 		uint8_t mask = 0xFF;
-		HitShaderBindingTableRange hit_sbt_range = 0;
+		HitShaderBindingTableRange hit_sbt_range = 0; // Zero is allowed for ray-query-only instances.
 		BitField<AccelerationStructureInstanceFlagBits> flags = {};
 		RID blas;
 	};

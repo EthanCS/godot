@@ -29,6 +29,9 @@
 /**************************************************************************/
 
 #include "mesh.h"
+#if defined(RD_ENABLED) && !defined(_3D_DISABLED)
+#include "scene/resources/3d/kiln_gi_proxy.h"
+#endif
 
 #include "core/math/convex_hull.h"
 #include "core/object/class_db.h"
@@ -1951,6 +1954,14 @@ void ArrayMesh::surface_set_material(int p_idx, const Ref<Material> &p_material)
 	}
 	surfaces.write[p_idx].material = p_material;
 	RenderingServer::get_singleton()->mesh_surface_set_material(mesh, p_idx, p_material.is_null() ? RID() : p_material->get_rid());
+#if defined(RD_ENABLED) && !defined(_3D_DISABLED)
+	if (has_meta("kiln_gi_proxy")) {
+		Ref<KilnGIProxy> proxy = get_meta("kiln_gi_proxy");
+		if (proxy.is_valid()) {
+			proxy->replace_source_material(p_idx, p_material);
+		}
+	}
+#endif
 
 	emit_changed();
 }

@@ -4,6 +4,7 @@
 #include "kiln_gi_world.h"
 #ifdef RD_ENABLED
 #include "core/math/math_funcs.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/templates/hashfuncs.h"
 #include "scene/3d/light_3d.h"
@@ -26,7 +27,24 @@ Dictionary KilnGIWorld::get_statistics() const {
 	result["local_lights"] = snapshot.local_light_count;
 	result["rays_per_frame"] = snapshot.rays;
 	result["convergence_samples"] = snapshot.samples;
-	result["backend"] = "software_bvh";
+	result["backend"] = result.get("backend", "pending");
+	result["requested_backend"] = snapshot.query_backend;
+	result["resolution_divisor"] = snapshot.resolution_divisor;
+	result["proxy_builds"] = proxy_builds;
+	result["imported_proxy_surfaces"] = imported_proxy_hits;
+	result["runtime_proxy_builds"] = runtime_proxy_builds;
+	result["material_updates"] = material_updates;
+	result["proxy_ratio"] = proxy_ratio;
+	result["proxy_error"] = proxy_error;
+	uint64_t source_count = 0, proxy_count = 0;
+	for (const auto &mesh : mesh_cache) {
+		for (const auto &surface : mesh.value) {
+			source_count += surface.value.source_triangles;
+			proxy_count += surface.value.indices.size() / 3;
+		}
+	}
+	result["source_triangles_unique"] = source_count;
+	result["proxy_triangles_unique"] = proxy_count;
 	Array profile;
 	auto areas = RenderingServer::get_singleton()->get_frame_profile();
 	bool gpu_available = false;
@@ -49,6 +67,9 @@ void KilnGIWorld::set_profiling(bool p_enabled) {
 	RenderingServer::get_singleton()->set_frame_profiling_enabled(p_enabled);
 }
 void KilnGIWorld::set_sky(Vector3 p_horizon, Vector3 p_zenith, bool p_procedural) {
+	if (snapshot.sky_horizon == p_horizon && snapshot.sky_zenith == p_zenith && snapshot.procedural_sky == p_procedural) {
+		return;
+	}
 	snapshot.sky_horizon = p_horizon;
 	snapshot.sky_zenith = p_zenith;
 	snapshot.procedural_sky = p_procedural;
@@ -62,7 +83,17 @@ void KilnGIWorld::set_quality(int p_rays, int p_samples) {
 		snapshot.history_version++;
 	}
 }
+void KilnGIWorld::set_query_backend(int p_backend) {
+	ERR_FAIL_COND_MSG(p_backend < 0 || p_backend > 2, "GI query backend must be 0 (automatic), 1 (software) or 2 (prefer hardware with fallback).");
+	if (snapshot.query_backend != p_backend) {
+		snapshot.query_backend = p_backend;
+		snapshot.history_version++;
+	}
+}
 void KilnGIWorld::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_query_backend", "backend"), &KilnGIWorld::set_query_backend);
+	ClassDB::bind_method(D_METHOD("set_resolution_divisor", "divisor"), &KilnGIWorld::set_resolution_divisor);
+	ClassDB::bind_method(D_METHOD("set_proxy_quality", "ratio", "error"), &KilnGIWorld::set_proxy_quality);
 	ClassDB::bind_method(D_METHOD("set_quality", "rays", "samples"), &KilnGIWorld::set_quality);
 	ClassDB::bind_method(D_METHOD("validate_bvh", "rays"), &KilnGIWorld::validate_bvh, DEFVAL(64));
 	ClassDB::bind_method(D_METHOD("set_profiling", "enabled"), &KilnGIWorld::set_profiling);
@@ -100,7 +131,7 @@ void KilnGIWorld::set_lighting(Vector3 p_direction, Vector3 p_color, float p_sun
 	snapshot.sky_energy = p_sky_energy;
 	snapshot.time_of_day = p_time_of_day;
 }
-void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash) {
+void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash, bool p_geometry) {
 	if (p_node == this || bool(p_node->get_meta(SNAME("kiln_exclude"), false))) {
 		return;
 	}
@@ -119,6 +150,7 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 	}
 	if (instance && dynamic == p_dynamic_pass && instance->is_visible_in_tree() && instance->get_mesh().is_valid()) {
 		Ref<Mesh> mesh = instance->get_mesh();
+		watch(mesh);
 		Transform3D transform = instance->get_global_transform();
 		Basis normal_transform = transform.basis.inverse().transposed();
 		r_hash = hash_murmur3_one_64(instance->get_instance_id(), r_hash);
@@ -133,88 +165,40 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				mesh_cache.insert(key, HashMap<int, MeshData>());
 			}
 			if (!mesh_cache[key].has(surface)) {
-				Array arrays = mesh->surface_get_arrays(surface);
-				MeshData data;
-				data.positions = arrays[Mesh::ARRAY_VERTEX];
-				data.normals = arrays[Mesh::ARRAY_NORMAL];
-				data.indices = arrays[Mesh::ARRAY_INDEX];
-				mesh_cache[key].insert(surface, data);
+				mesh_cache[key].insert(surface, make_proxy(mesh, surface));
 			}
-			const MeshData &data = mesh_cache[key][surface];
-			Vector3 color(1, 1, 1), emission;
-			float metal = 0;
+			const MeshData &proxy = mesh_cache[key][surface];
 			Ref<Material> material = instance->get_active_material(surface);
-			Ref<ShaderMaterial> shader_material = material;
-			bool supported = material.is_null();
-			if (shader_material.is_valid()) {
-				// Explicit material contract: constants describe the complete BVH
-				// reflectance/emission. Arbitrary shaders must never become gray occluders.
-				Ref<Shader> shader = shader_material->get_shader();
-				if (shader.is_null()) {
-					continue;
-				}
-				if (!shader_defaults.has(shader->get_instance_id())) {
-					Dictionary defaults;
-					for (const char *name : { "kiln_uniform_transport", "tint_linear", "authored_emission", "metalness" }) {
-						defaults[name] = RenderingServer::get_singleton()->shader_get_parameter_default(shader->get_rid(), name);
-					}
-					shader_defaults.insert(shader->get_instance_id(), defaults);
-				}
-				auto parameter = [&](const StringName &name) {
-					Variant value = shader_material->get_shader_parameter(name);
-					return value.get_type() == Variant::NIL ? shader_defaults[shader->get_instance_id()][name] : value;
-				};
-				supported = bool(parameter(SNAME("kiln_uniform_transport")));
-				Variant authored = parameter(SNAME("tint_linear"));
-				Variant e = parameter(SNAME("authored_emission"));
-				supported &= authored.get_type() == Variant::VECTOR3 && e.get_type() == Variant::VECTOR3;
-				if (supported) {
-					color = authored;
-					emission = e;
-					metal = float(parameter(SNAME("metalness")));
-				}
-			} else {
-				Ref<BaseMaterial3D> base = material;
-				if (base.is_valid()) {
-					supported = base->get_transparency() == BaseMaterial3D::TRANSPARENCY_DISABLED && !base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR);
-					for (int tex = 0; tex < BaseMaterial3D::TEXTURE_MAX; tex++) {
-						supported &= base->get_texture(BaseMaterial3D::TextureParam(tex)).is_null();
-					}
-					Color c = base->get_albedo().srgb_to_linear();
-					color = Vector3(c.r, c.g, c.b);
-					metal = base->get_metallic();
-					if (base->get_feature(BaseMaterial3D::FEATURE_EMISSION)) {
-						Color e = base->get_emission().srgb_to_linear() * base->get_emission_energy_multiplier();
-						emission = Vector3(e.r, e.g, e.b);
-					}
-				}
-			}
-			if (!supported) {
-				if (!unsupported_materials.has(material->get_instance_id())) {
-					unsupported_materials.insert(material->get_instance_id());
-					WARN_PRINT(vformat("Kiln GI omitted material '%s': transport requires a solid uniform BaseMaterial3D or the explicit kiln_uniform_transport shader contract. Textures, alpha holes and arbitrary shader transport are unsupported.", material->get_path()));
-				}
+			Transport response = transport(material);
+			r_hash = hash_murmur3_one_64(proxy.revision, r_hash);
+			r_hash = hash_murmur3_one_32(response.supported, r_hash);
+			if (!response.supported) {
 				continue;
 			}
-			color = color.clamp(Vector3(), Vector3(1, 1, 1)) * (1.0f - CLAMP(metal, 0.0f, 1.0f));
+			Vector3 color = response.albedo, emission = response.emission;
+			Ref<BaseMaterial3D> base = material;
+			if (base.is_valid() && base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR)) {
+				color *= proxy.vertex_color;
+			}
 			r_material_hash = hash_murmur3_one_32(Variant(color).hash(), r_material_hash);
 			r_material_hash = hash_murmur3_one_32(Variant(emission).hash(), r_material_hash);
-			r_hash = hash_murmur3_one_32(Variant(color).hash(), r_hash);
-			r_hash = hash_murmur3_one_32(Variant(emission).hash(), r_hash);
-			int count = data.indices.is_empty() ? data.positions.size() : data.indices.size();
+			if (!p_geometry) {
+				continue;
+			}
+			int count = proxy.indices.is_empty() ? proxy.positions.size() : proxy.indices.size();
 			for (int i = 0; i + 2 < count; i += 3) {
-				int a = data.indices.is_empty() ? i : data.indices[i];
-				int b = data.indices.is_empty() ? i + 1 : data.indices[i + 1];
-				int c = data.indices.is_empty() ? i + 2 : data.indices[i + 2];
+				int a = proxy.indices.is_empty() ? i : proxy.indices[i];
+				int b = proxy.indices.is_empty() ? i + 1 : proxy.indices[i + 1];
+				int c = proxy.indices.is_empty() ? i + 2 : proxy.indices[i + 2];
 				Triangle tri;
-				tri.a = transform.xform(data.positions[a]);
-				tri.b = transform.xform(data.positions[b]);
-				tri.c = transform.xform(data.positions[c]);
+				tri.a = transform.xform(proxy.positions[a]);
+				tri.b = transform.xform(proxy.positions[b]);
+				tri.c = transform.xform(proxy.positions[c]);
 				Vector3 face = (tri.b - tri.a).cross(tri.c - tri.a);
 				if (face.length_squared() < 1e-12) {
 					continue;
 				}
-				tri.normal = data.normals.size() == data.positions.size() ? normal_transform.xform(data.normals[a] + data.normals[b] + data.normals[c]).normalized() : -face.normalized();
+				tri.normal = proxy.normals.size() == proxy.positions.size() ? normal_transform.xform(proxy.normals[a] + proxy.normals[b] + proxy.normals[c]).normalized() : -face.normalized();
 				tri.albedo = color;
 				tri.emission = emission;
 				r_triangles.push_back(tri);
@@ -222,7 +206,7 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 		}
 	}
 	for (int i = 0; i < p_node->get_child_count(); i++) {
-		collect(p_node->get_child(i), dynamic, p_dynamic_pass, r_triangles, r_hash, r_material_hash);
+		collect(p_node->get_child(i), dynamic, p_dynamic_pass, r_triangles, r_hash, r_material_hash, p_geometry);
 	}
 }
 
@@ -230,10 +214,13 @@ RendererRD::KilnWorld::Geometry KilnGIWorld::build(Vector<Triangle> triangles) {
 	RendererRD::KilnWorld::Geometry result;
 	struct Node {
 		Vector3 lo, hi;
-		int first, count, escape;
+		int first, count, escape, depth;
 	};
 	Vector<Node> nodes;
 	Triangle *ordered = triangles.ptrw();
+	for (int i = 0; i < triangles.size(); i++) {
+		ordered[i].source = i;
+	}
 	std::function<void(int, int, int)> split = [&](int first, int count, int depth) {
 		Vector3 lo(INFINITY, INFINITY, INFINITY), hi(-INFINITY, -INFINITY, -INFINITY), clo = lo, chi = hi;
 		for (int i = first; i < first + count; i++) {
@@ -244,7 +231,7 @@ RendererRD::KilnWorld::Geometry KilnGIWorld::build(Vector<Triangle> triangles) {
 			chi = chi.max(t.center());
 		}
 		int index = nodes.size();
-		nodes.push_back({ lo - Vector3(0.001, 0.001, 0.001), hi + Vector3(0.001, 0.001, 0.001), first, count, index + 1 });
+		nodes.push_back({ lo - Vector3(0.001, 0.001, 0.001), hi + Vector3(0.001, 0.001, 0.001), first, count, index + 1, depth });
 		if (count <= 8 || depth >= 30) {
 			return;
 		}
@@ -318,14 +305,57 @@ RendererRD::KilnWorld::Geometry KilnGIWorld::build(Vector<Triangle> triangles) {
 	}
 	result.triangle_count = triangles.size();
 	result.node_count = nodes.size();
-	result.triangles.resize(MAX(1, triangles.size()) * 80);
-	result.triangles.fill(0);
+	result.source_order.resize(triangles.size());
+	for (int i = 0; i < triangles.size(); i++) {
+		result.source_order.set(i, triangles[i].source);
+	}
+	// Pack once in traversal order. Later color/emission edits reuse this order
+	// and the exact hierarchy, without touching the geometry revision.
+	PackedInt32Array order = result.source_order;
+	for (int i = 0; i < triangles.size(); i++) {
+		result.source_order.set(i, i);
+	}
+	pack_triangles(result, triangles);
+	result.source_order = order;
 	result.nodes.resize(MAX(1, nodes.size()) * 32);
 	result.nodes.fill(0);
 	auto pack = [](float *p, Vector3 v, float w) { p[0] = v.x; p[1] = v.y; p[2] = v.z; p[3] = w; };
+	float *out;
+	out = reinterpret_cast<float *>(result.nodes.ptrw());
+	for (int i = 0; i < nodes.size(); i++) {
+		const Node &n = nodes[i];
+		pack(out + i * 8, n.lo, n.count ? n.first : -1);
+		pack(out + i * 8 + 4, n.hi, n.count ? -n.count - 1 : n.escape);
+	}
+	result.refit_order.resize(MAX(1, nodes.size()) * 4);
+	uint32_t *refit = reinterpret_cast<uint32_t *>(result.refit_order.ptrw());
+	int offset = 0;
+	for (int depth = 30; depth >= 1; depth--) {
+		int start = offset;
+		for (int i = 0; i < nodes.size(); i++) {
+			if (nodes[i].depth == depth) {
+				refit[offset++] = i;
+			}
+		}
+		if (offset > start) {
+			result.refit_levels.push_back(Vector2i(start, offset - start));
+		}
+	}
+	if (!nodes.is_empty()) {
+		result.bounds = AABB(nodes[0].lo, nodes[0].hi - nodes[0].lo);
+	}
+	return result;
+}
+void KilnGIWorld::pack_triangles(RendererRD::KilnWorld::Geometry &result, const Vector<Triangle> &triangles) {
+	ERR_FAIL_COND(result.source_order.size() != triangles.size());
+	result.emitters.clear();
+	result.power = 0;
+	result.triangles.resize(MAX(1, triangles.size()) * 80);
+	result.triangles.fill(0);
+	auto pack = [](float *p, Vector3 v, float w) { p[0] = v.x; p[1] = v.y; p[2] = v.z; p[3] = w; };
 	float *out = reinterpret_cast<float *>(result.triangles.ptrw());
 	for (int i = 0; i < triangles.size(); i++) {
-		const Triangle &t = triangles[i];
+		const Triangle &t = triangles[result.source_order[i]];
 		pack(out + i * 20, t.a, t.normal.x);
 		pack(out + i * 20 + 4, t.b - t.a, t.normal.y);
 		pack(out + i * 20 + 8, t.c - t.a, t.normal.z);
@@ -339,16 +369,6 @@ RendererRD::KilnWorld::Geometry KilnGIWorld::build(Vector<Triangle> triangles) {
 			result.emitters.push_back(Vector4(i, result.power, area, weight));
 		}
 	}
-	out = reinterpret_cast<float *>(result.nodes.ptrw());
-	for (int i = 0; i < nodes.size(); i++) {
-		const Node &n = nodes[i];
-		pack(out + i * 8, n.lo, n.count ? n.first : -1);
-		pack(out + i * 8 + 4, n.hi, n.count ? -n.count - 1 : n.escape);
-	}
-	if (!nodes.is_empty()) {
-		result.bounds = AABB(nodes[0].lo, nodes[0].hi - nodes[0].lo);
-	}
-	return result;
 }
 Dictionary KilnGIWorld::validate_bvh(int p_rays) const {
 	ERR_FAIL_COND_V(p_rays < 1 || p_rays > 1024, Dictionary());
@@ -466,8 +486,12 @@ void KilnGIWorld::update_lights() {
 	local_light_hash = hash;
 	snapshot.light_version++;
 	snapshot.local_light_count = lights.size() / 4;
-	Vector3 origin = snapshot.world.bounds.position - Vector3(2, 2, 2);
-	Vector3 extent = snapshot.world.bounds.size + Vector3(4, 4, 4);
+	AABB bounds = snapshot.world.triangle_count ? snapshot.world.bounds : snapshot.dynamic.bounds;
+	if (snapshot.dynamic.triangle_count) {
+		bounds.merge_with(snapshot.dynamic.bounds);
+	}
+	Vector3 origin = bounds.position - Vector3(2, 2, 2);
+	Vector3 extent = bounds.size + Vector3(4, 4, 4);
 	float cell_size = MAX(8.0f, extent[extent.max_axis_index()] / 48.0f);
 	Vector3i dims = Vector3i((extent / cell_size).ceil());
 	int cell_count = dims.x * dims.y * dims.z;
@@ -505,10 +529,10 @@ void KilnGIWorld::update_lights() {
 	all.push_back(Vector4(dims.x, dims.y, dims.z, snapshot.local_light_count));
 	all.append_array(lights);
 	snapshot.local_lights.resize(all.size() * 16);
-	float *data = reinterpret_cast<float *>(snapshot.local_lights.ptrw());
+	float *packed_lights = reinterpret_cast<float *>(snapshot.local_lights.ptrw());
 	for (int i = 0; i < all.size(); i++) {
 		for (int j = 0; j < 4; j++) {
-			data[i * 4 + j] = all[i][j];
+			packed_lights[i * 4 + j] = all[i][j];
 		}
 	}
 }
@@ -523,31 +547,56 @@ void KilnGIWorld::_notification(int p_what) {
 	if (p_what != NOTIFICATION_INTERNAL_PROCESS || environment.is_null() || !get_parent()) {
 		return;
 	}
-	bool force_dynamic_rebuild = rebuild_pending;
-	if (rebuild_pending) {
+	used_resources.clear();
+	bool changed_bounds = false;
+	for (bool dynamic_pass : { false, true }) {
 		Vector<Triangle> triangles;
 		uint32_t hash = 0, material_hash = 0;
-		collect(get_parent(), false, false, triangles, hash, material_hash);
-		if (static_material_hash != material_hash) {
-			snapshot.material_version++;
-			static_material_hash = material_hash;
+		collect(get_parent(), false, dynamic_pass, triangles, hash, material_hash, false);
+		uint32_t &previous_hash = dynamic_pass ? dynamic_hash : static_hash;
+		uint32_t &previous_material = dynamic_pass ? dynamic_material_hash : static_material_hash;
+		uint64_t &version = dynamic_pass ? snapshot.dynamic_version : snapshot.geometry_version;
+		auto &geometry = dynamic_pass ? snapshot.dynamic : snapshot.world;
+		bool geometry_changed = rebuild_pending || version == 0 || hash != previous_hash;
+		if (geometry_changed || material_hash != previous_material) {
+			uint32_t unused_hash = 0, unused_material = 0;
+			collect(get_parent(), false, dynamic_pass, triangles, unused_hash, unused_material, true);
+			if (geometry_changed) {
+				geometry = build(triangles);
+				version++;
+				changed_bounds = true;
+			} else {
+				pack_triangles(geometry, triangles);
+			}
+			if (material_hash != previous_material) {
+				snapshot.material_version++;
+				(dynamic_pass ? snapshot.dynamic_material_version : snapshot.static_material_version)++;
+			}
+			previous_material = material_hash;
+			previous_hash = hash;
 		}
-		snapshot.world = build(triangles);
-		snapshot.geometry_version++;
-		rebuild_pending = false;
-		print_line(vformat("[KILN_WORLD] static triangles=%d nodes=%d", snapshot.world.triangle_count, snapshot.world.node_count));
 	}
-	Vector<Triangle> dynamic;
-	uint32_t hash = 0, material_hash = 0;
-	collect(get_parent(), false, true, dynamic, hash, material_hash);
-	if (material_hash != dynamic_material_hash) {
-		snapshot.material_version++;
-		dynamic_material_hash = material_hash;
+	if (rebuild_pending) {
+		print_line(vformat("[KILN_WORLD] proxy triangles=%d nodes=%d", snapshot.world.triangle_count, snapshot.world.node_count));
 	}
-	if (force_dynamic_rebuild || snapshot.dynamic_version == 0 || hash != dynamic_hash) {
-		snapshot.dynamic = build(dynamic);
-		snapshot.dynamic_version++;
-		dynamic_hash = hash;
+	rebuild_pending = false;
+	Vector<ObjectID> unused;
+	for (const auto &entry : watched_resources) {
+		if (!used_resources.has(entry.key)) {
+			unused.push_back(entry.key);
+		}
+	}
+	for (ObjectID id : unused) {
+		watched_resources[id]->disconnect_changed(callable_mp(this, &KilnGIWorld::resource_changed).bind(id));
+		watched_resources.erase(id);
+		mesh_cache.erase(uint64_t(id));
+		texture_cache.erase(id);
+		material_cache.erase(id);
+		shader_defaults.erase(id);
+	}
+	if (changed_bounds) {
+		// Light cells must also follow the geometry's bounds when no light moved.
+		snapshot.local_lights.clear();
 	}
 	update_lights();
 	RendererRD::KilnWorld::publish(environment->get_rid(), snapshot);

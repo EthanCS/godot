@@ -279,6 +279,7 @@
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/3d/joint_limitation_3d.h"
 #include "scene/resources/3d/joint_limitation_cone_3d.h"
+#include "scene/resources/3d/kiln_gi_proxy.h"
 #include "scene/resources/3d/mesh_library.h"
 #include "scene/resources/3d/navigation_mesh_source_geometry_data_3d.h"
 #include "scene/resources/3d/primitive_meshes.h"
@@ -661,6 +662,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(LightmapGI);
 #ifdef RD_ENABLED
 	GDREGISTER_CLASS(KilnGIWorld);
+	GDREGISTER_CLASS(KilnGIProxy);
 #endif
 	GDREGISTER_CLASS(LightmapGIData);
 	GDREGISTER_CLASS(LightmapProbe);
