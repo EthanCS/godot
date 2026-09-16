@@ -79,6 +79,8 @@ resources belong to the renderer. Output readbacks occur only on explicit
 
 `set_lighting` supplies linear sun color, sun/sky energy, direction and TOD.
 `set_sky` selects the shared procedural sky or original reference sky model.
+`set_quality(rays, samples)` exposes 1–8 stationary rays/frame and 16–1024
+convergence samples, resets history and reallocates ray storage when needed.
 `set_enabled`, `set_ao_enabled`, `reset_history`, `get_statistics`, and
 `set_profiling` support controls and checks. Hardware ray capability is queried
 from the active RD; software BVH remains the actual backend. The M5 Metal device
@@ -96,9 +98,15 @@ nonstandard depth/stencil and toon modes are diagnosed and omitted, not silently
 sent through Forward+ opaque rendering. Existing renderers retain their behavior.
 
 The native GI geometry capture currently supports rigid MeshInstance3D geometry
-and uniform authored albedo/emission. It does not yet reproduce arbitrary shader
+and uniform authored albedo/emission. Shader materials explicitly declare
+`kiln_uniform_transport=true` with `tint_linear`, `authored_emission` and
+`metalness` constants. This is an opt-in contract that the shader author must
+honor; it does not certify arbitrary shader code. Solid, untextured BaseMaterial3D
+materials are also accepted. Other materials are diagnosed once and omitted from
+GI capture instead of becoming gray opaque occluders. Raster rendering is
+independent of this GI admission. Shader defaults are cached until `rebuild()`. It does not yet reproduce arbitrary shader
 vertex displacement, per-texel alpha holes or texture-dependent BVH reflectance.
 The imported island is untextured, opaque geometry with scalar leaf response.
 Skinned/multimesh GI, arbitrary shader material transport, SDFGI/VoxelGI/lightmap
-mixing and SSR require further admission/validation. Forward transparent surfaces
+mixing, native SSAO/SSIL, SSR and volumetric fog are rejected in deferred. Forward transparent surfaces
 receive direct lighting and refraction; they do not sample the opaque pixel's GI.

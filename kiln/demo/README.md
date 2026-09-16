@@ -28,6 +28,8 @@ shadow lights, native Kiln GI, XeGTAO and TAA. Fixed exposure, no bloom.
 | Tab | Free camera; hold right mouse to look; WASD/QE to move |
 | Home | Reset automatic camera |
 | [ / ] | Shift TOD by five simulation seconds |
+| , / . | Slow (¼×) / fast (4×) TOD; press again for 1× |
+| − / = | Decrease / increase local light range |
 | R | Reload the scene |
 | Esc | Quit |
 
@@ -49,11 +51,13 @@ python3 kiln/tools/check_dynamic.py /tmp/kiln-check
 bin/godot.macos.editor.arm64 --path kiln/demo res://tests/material_contract.tscn
 # Serial, three-repeat A/B matrix. No captures during measurements.
 python3 kiln/tools/benchmark.py --output /tmp/kiln-benchmark
+# Matched all-dynamic 30-second timelines, GI off/on, AO/TAA enabled, three repeats.
+python3 kiln/tools/benchmark.py --dynamic --duration=35 --warmup=5 --output /tmp/kiln-dynamic-benchmark
 ```
 
 `--no-gi`, `--no-ao`, `--no-aa`, `--dense`, `--lights=N`, `--shadows=N`,
 `--preset=0..3`, `--size=1001x703`, `--warmup=5`, `--profile` and `--no-hud`
-are supported. `--lifecycle` repeatedly resizes and switches cameras.
+`--tod-speed=4` and `--light-range=10` are supported. `--lifecycle` repeatedly resizes and switches cameras.
 `--capture-at`, `--capture-interval` and `--buffer-at` control diagnostic readbacks.
 Debug IDs: 0 lit, 1 albedo, 2 normal, 3 roughness, 4 emission, 5 material,
 6 depth, 7 indirect, 8 AO, 9 motion, 10 direct, 11 cluster count, 12 history.
@@ -65,6 +69,12 @@ For a local self-contained macOS package:
 python3 kiln/tools/export_macos.py --output /tmp/kiln-export
 /tmp/kiln-export/KilnIsland.app/Contents/MacOS/KilnIsland -- --duration=15
 ```
+
+Additional checks use `res://tests/temporal.tscn` (then
+`python3 kiln/tools/check_temporal.py /tmp/kiln-temporal`),
+`res://tests/shadow_contact.tscn`, `res://tests/admission.tscn`, and
+`--script res://tests/reload.gd`. `--headless --script res://tests/camera_path.gd`
+checks only camera geometry clearance, not rendered output.
 
 The local export is unsigned. Public redistribution of the imported source assets
 and recovered shader material has not been cleared; local export is not a release.

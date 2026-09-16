@@ -56,6 +56,7 @@ public:
 		bool ready = false, tracing = false;
 		int ao_frames = 0, ao_quality = -1;
 		RID parameters;
+		RID environment;
 		RID t(const String &p_name, int p_index = 0) { return textures[p_name + itos(p_index)]; }
 		void configure(RenderSceneBuffersRD *p_buffers) override {
 			free_data();

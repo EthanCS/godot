@@ -21,6 +21,8 @@ Dictionary KilnGIWorld::get_statistics() const {
 	result["dynamic_version"] = snapshot.dynamic_version;
 	result["light_version"] = snapshot.light_version;
 	result["local_lights"] = snapshot.local_light_count;
+	result["rays_per_frame"] = snapshot.rays;
+	result["convergence_samples"] = snapshot.samples;
 	result["backend"] = "software_bvh";
 	Array profile;
 	auto areas = RenderingServer::get_singleton()->get_frame_profile();
@@ -49,7 +51,17 @@ void KilnGIWorld::set_sky(Vector3 p_horizon, Vector3 p_zenith, bool p_procedural
 	snapshot.procedural_sky = p_procedural;
 	snapshot.light_version++;
 }
+void KilnGIWorld::set_quality(int p_rays, int p_samples) {
+	ERR_FAIL_COND_MSG(p_rays < 1 || p_rays > 8 || p_samples < 16 || p_samples > 1024, "Kiln GI supports 1-8 rays per frame and 16-1024 convergence samples.");
+	if (snapshot.rays != p_rays || snapshot.samples != p_samples) {
+		snapshot.rays = p_rays;
+		snapshot.samples = p_samples;
+		snapshot.history_version++;
+	}
+}
 void KilnGIWorld::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_quality", "rays", "samples"), &KilnGIWorld::set_quality);
+	ClassDB::bind_method(D_METHOD("validate_bvh", "rays"), &KilnGIWorld::validate_bvh, DEFVAL(64));
 	ClassDB::bind_method(D_METHOD("set_profiling", "enabled"), &KilnGIWorld::set_profiling);
 	ClassDB::bind_method(D_METHOD("reset_history"), &KilnGIWorld::reset_history);
 	ClassDB::bind_method(D_METHOD("set_sky", "horizon", "zenith", "procedural"), &KilnGIWorld::set_sky);
@@ -115,23 +127,59 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 			}
 			const MeshData &data = mesh_cache[key][surface];
 			Vector3 color(0.6, 0.6, 0.6), emission;
+			float metal = 0;
 			Ref<Material> material = instance->get_active_material(surface);
 			Ref<ShaderMaterial> shader_material = material;
+			bool supported = material.is_null();
 			if (shader_material.is_valid()) {
-				Variant authored = shader_material->get_shader_parameter(SNAME("tint_linear"));
-				if (authored.get_type() == Variant::VECTOR3) {
-					color = authored;
+				// Explicit material contract: constants describe the complete BVH
+				// reflectance/emission. Arbitrary shaders must never become gray occluders.
+				Ref<Shader> shader = shader_material->get_shader();
+				if (shader.is_null()) {
+					continue;
 				}
-				Variant e = shader_material->get_shader_parameter(SNAME("authored_emission"));
-				if (e.get_type() == Variant::VECTOR3) {
+				if (!shader_defaults.has(shader->get_instance_id())) {
+					Dictionary defaults;
+					for (const char *name : { "kiln_uniform_transport", "tint_linear", "authored_emission", "metalness" }) {
+						defaults[name] = RenderingServer::get_singleton()->shader_get_parameter_default(shader->get_rid(), name);
+					}
+					shader_defaults.insert(shader->get_instance_id(), defaults);
+				}
+				auto parameter = [&](const StringName &name) {
+					Variant value = shader_material->get_shader_parameter(name);
+					return value.get_type() == Variant::NIL ? shader_defaults[shader->get_instance_id()][name] : value;
+				};
+				supported = bool(parameter(SNAME("kiln_uniform_transport")));
+				Variant authored = parameter(SNAME("tint_linear"));
+				Variant e = parameter(SNAME("authored_emission"));
+				supported &= authored.get_type() == Variant::VECTOR3 && e.get_type() == Variant::VECTOR3;
+				if (supported) {
+					color = authored;
 					emission = e;
+					metal = float(parameter(SNAME("metalness")));
 				}
 			} else {
 				Ref<BaseMaterial3D> base = material;
 				if (base.is_valid()) {
+					supported = base->get_transparency() == BaseMaterial3D::TRANSPARENCY_DISABLED && !base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR);
+					for (int tex = 0; tex < BaseMaterial3D::TEXTURE_MAX; tex++) {
+						supported &= base->get_texture(BaseMaterial3D::TextureParam(tex)).is_null();
+					}
 					Color c = base->get_albedo().srgb_to_linear();
 					color = Vector3(c.r, c.g, c.b);
+					metal = base->get_metallic();
+					if (base->get_feature(BaseMaterial3D::FEATURE_EMISSION)) {
+						Color e = base->get_emission().srgb_to_linear() * base->get_emission_energy_multiplier();
+						emission = Vector3(e.r, e.g, e.b);
+					}
 				}
+			}
+			if (!supported) {
+				if (!unsupported_materials.has(material->get_instance_id())) {
+					unsupported_materials.insert(material->get_instance_id());
+					WARN_PRINT(vformat("Kiln GI omitted material '%s': transport requires a solid uniform BaseMaterial3D or the explicit kiln_uniform_transport shader contract. Textures, alpha holes and arbitrary shader transport are unsupported.", material->get_path()));
+				}
+				continue;
 			}
 			r_hash = hash_murmur3_one_32(Variant(color).hash(), r_hash);
 			r_hash = hash_murmur3_one_32(Variant(emission).hash(), r_hash);
@@ -149,7 +197,6 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 					continue;
 				}
 				tri.normal = data.normals.size() == data.positions.size() ? normal_transform.xform(data.normals[a] + data.normals[b] + data.normals[c]).normalized() : -face.normalized();
-				float metal = shader_material.is_valid() ? float(shader_material->get_shader_parameter(SNAME("metalness"))) : 0.0f;
 				tri.albedo = color.clamp(Vector3(), Vector3(1, 1, 1)) * (1.0f - CLAMP(metal, 0.0f, 1.0f));
 				tri.emission = emission;
 				r_triangles.push_back(tri);
@@ -283,6 +330,84 @@ RendererRD::KilnWorld::Geometry KilnGIWorld::build(Vector<Triangle> triangles) {
 	if (!nodes.is_empty()) {
 		result.bounds = AABB(nodes[0].lo, nodes[0].hi - nodes[0].lo);
 	}
+	return result;
+}
+Dictionary KilnGIWorld::validate_bvh(int p_rays) const {
+	ERR_FAIL_COND_V(p_rays < 1 || p_rays > 1024, Dictionary());
+	int failures = 0, tested = 0;
+	float maximum_error = 0;
+	uint32_t seed = 214;
+	auto random = [&]() { seed = seed * 1664525u + 1013904223u; return float(seed >> 8) / 16777216.0f; };
+	for (const auto *geometry : { &snapshot.world, &snapshot.dynamic }) {
+		if (geometry->triangle_count == 0) {
+			continue;
+		}
+		const float *triangles = reinterpret_cast<const float *>(geometry->triangles.ptr());
+		const float *nodes = reinterpret_cast<const float *>(geometry->nodes.ptr());
+		auto vec = [](const float *p) { return Vector3(p[0], p[1], p[2]); };
+		for (int ray = 0; ray < p_rays; ray++) {
+			Vector3 origin = geometry->bounds.get_center() + (Vector3(random(), random(), random()) * 2 - Vector3(1, 1, 1)) * geometry->bounds.size;
+			Vector3 target = geometry->bounds.position + Vector3(random(), random(), random()) * geometry->bounds.size;
+			Vector3 direction = (target - origin).normalized();
+			auto intersect = [&](int index, float maximum) {
+				const float *t = triangles + index * 20;
+				Vector3 e1 = vec(t + 4), e2 = vec(t + 8), h = direction.cross(e2);
+				float det = e1.dot(h);
+				if (Math::abs(det) < 1e-9f) {
+					return maximum;
+				}
+				Vector3 s = origin - vec(t);
+				float u = s.dot(h) / det;
+				if (u < 0 || u > 1) {
+					return maximum;
+				}
+				Vector3 q = s.cross(e1);
+				float v = direction.dot(q) / det;
+				if (v < 0 || u + v > 1) {
+					return maximum;
+				}
+				float distance = e2.dot(q) / det;
+				return distance > 0.006f && distance < maximum ? distance : maximum;
+			};
+			float brute = 100000, accelerated = brute;
+			for (uint32_t i = 0; i < geometry->triangle_count; i++) {
+				brute = intersect(i, brute);
+			}
+			uint32_t index = 0;
+			while (index < geometry->node_count) {
+				const float *n = nodes + index * 8;
+				float near = 0, far = accelerated;
+				for (int axis = 0; axis < 3; axis++) {
+					float inverse = 1.0f / (direction[axis] + (direction[axis] < 0 ? -1e-8f : 1e-8f));
+					float a = (n[axis] - origin[axis]) * inverse, b = (n[axis + 4] - origin[axis]) * inverse;
+					near = MAX(near, MIN(a, b));
+					far = MIN(far, MAX(a, b));
+				}
+				bool leaf = n[7] < 0;
+				if (near > far) {
+					index = leaf ? index + 1 : uint32_t(n[7]);
+					continue;
+				}
+				if (leaf) {
+					for (int i = int(n[3]); i < int(n[3]) - int(n[7]) - 1; i++) {
+						accelerated = intersect(i, accelerated);
+					}
+				}
+				index++;
+			}
+			float error = Math::abs(brute - accelerated);
+			maximum_error = MAX(maximum_error, error);
+			if (error > 0.002f) {
+				failures++;
+			}
+			tested++;
+		}
+	}
+	Dictionary result;
+	result["rays"] = tested;
+	result["failures"] = failures;
+	result["maximum_error"] = maximum_error;
+	result["passed"] = tested > 0 && failures == 0;
 	return result;
 }
 void KilnGIWorld::collect_lights(Node *node, Vector<Vector4> &lights, uint32_t &hash) {

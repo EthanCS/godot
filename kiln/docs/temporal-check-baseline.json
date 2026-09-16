@@ -1,0 +1,18 @@
+{
+  "measurements": {
+    "off32_mean_ratio": 0.0,
+    "off32_max": 0.0,
+    "settled32_mean_error": 6.709422657952072e-05,
+    "offscreen_red": 0.11520475149154663,
+    "offscreen_dark": 0.0
+  },
+  "checks": {
+    "off32_mean_ratio": true,
+    "off32_max": true,
+    "settled32_mean_error": true,
+    "offscreen_geometry_contributes": true,
+    "offscreen_removed_clears": true,
+    "finite_sh": true
+  },
+  "passed": true
+}

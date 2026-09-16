@@ -179,6 +179,7 @@ private:
 
 	uint32_t max_lights;
 	uint32_t light_overflow_count = 0;
+	uint32_t uploaded_shadow_count = 0;
 	uint32_t omni_light_count = 0;
 	uint32_t spot_light_count = 0;
 	uint32_t area_light_count = 0;
@@ -829,6 +830,7 @@ public:
 	/* LIGHT DATA */
 
 	void free_light_data();
+	uint32_t get_uploaded_shadow_count() const { return uploaded_shadow_count; }
 	uint32_t get_uploaded_omni_count() const { return omni_light_count; }
 	uint32_t get_uploaded_spot_count() const { return spot_light_count; }
 	uint32_t get_light_overflow_count() const { return light_overflow_count; }

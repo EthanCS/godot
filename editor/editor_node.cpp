@@ -6067,7 +6067,9 @@ String EditorNode::_get_system_info() const {
 	}
 
 	// Prettify
-	if (rendering_method == "forward_plus") {
+	if (rendering_method == "kiln_deferred") {
+		rendering_method = "Kiln Deferred";
+	} else if (rendering_method == "forward_plus") {
 		rendering_method = "Forward+";
 	} else if (rendering_method == "mobile") {
 		rendering_method = "Mobile";
@@ -7799,6 +7801,9 @@ void EditorNode::_renderer_selected(int p_index) {
 }
 
 String EditorNode::_to_rendering_method_display_name(const String &p_rendering_method) const {
+	if (p_rendering_method == "kiln_deferred") {
+		return TTR("Kiln Deferred");
+	}
 	if (p_rendering_method == "forward_plus") {
 		return TTR("Forward+");
 	}

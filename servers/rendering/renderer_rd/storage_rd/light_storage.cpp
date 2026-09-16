@@ -721,6 +721,7 @@ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const Paged
 	r_positional_light_count = 0;
 
 	light_overflow_count = 0;
+	uploaded_shadow_count = 0;
 	omni_light_count = 0;
 	spot_light_count = 0;
 	area_light_count = 0;
@@ -1163,6 +1164,9 @@ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const Paged
 			// fill in the shadow information
 
 			light_data.shadow_opacity = light->param[RSE::LIGHT_PARAM_SHADOW_OPACITY] * shadow_opacity_fade;
+			if (light_data.shadow_opacity > 0.001) {
+				uploaded_shadow_count++;
+			}
 
 			float shadow_texel_size = light_instance_get_shadow_texel_size(light_instance->self, p_shadow_atlas);
 			light_data.shadow_normal_bias = light->param[RSE::LIGHT_PARAM_SHADOW_NORMAL_BIAS] * shadow_texel_size * 10.0;

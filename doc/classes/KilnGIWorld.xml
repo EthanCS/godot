@@ -4,6 +4,8 @@
 	<description>Captures rigid MeshInstance3D geometry and local lights from the parent subtree for the Kiln renderer. Set kiln_dynamic metadata on moving geometry and kiln_exclude on auxiliary geometry. Static geometry changes require rebuild(). Native GI transport currently uses uniform authored material reflectance and emission. This experimental API is specific to the Kiln engine fork.</description>
 	<tutorials />
 	<methods>
+		<method name="set_quality"><return type="void" /><param index="0" name="rays" type="int" /><param index="1" name="samples" type="int" /><description>Sets 1-8 stationary rays per frame and 16-1024 convergence samples. Lighting changes use at least four rays per frame. Quality changes reset history.</description></method>
+		<method name="validate_bvh" qualifiers="const"><return type="Dictionary" /><param index="0" name="rays" type="int" default="64" /><description>Compares packed-BVH nearest intersections against brute-force triangles using deterministic rays. Diagnostic only; expensive on large worlds.</description></method>
 		<method name="get_statistics" qualifiers="const"><return type="Dictionary" /><description>Returns geometry/light versions, uploaded light counts, overflow diagnostics and optional frame profile data. Unavailable GPU times are null.</description></method>
 		<method name="rebuild"><return type="void" /><description>Requests a static geometry rebuild and clears mesh-array caches.</description></method>
 		<method name="request_capture"><return type="void" /><param index="0" name="directory" type="String" /><description>Requests raw diagnostic texture readback to a directory. Synchronous GPU readbacks must not be used during benchmark measurements.</description></method>

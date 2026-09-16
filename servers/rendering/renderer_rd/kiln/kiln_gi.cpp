@@ -102,6 +102,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		buffers->set_custom_data(kiln_scope, data);
 	}
 	Ref<View> state = buffers->get_custom_data(kiln_scope);
+	if (state->environment != environment) {
+		state->free_data();
+		state->environment = environment;
+	}
 	auto own = [&](RID rid) { state->owned.push_back(rid); return rid; };
 	auto allocate = [&](String name, uint32_t bytes) {
 		if (!state->storage.has(name) || state->capacities[name] < bytes) {
@@ -162,6 +166,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		state->textures["ao_edges0"] = own(texture(state->size, RD::DATA_FORMAT_R8G8B8A8_UNORM));
 		state->ready = true;
 	}
+	allocate("hits", state->half.x * state->half.y * MAX(4, world.rays) * 8);
 	if (state->history_version != world.history_version) {
 		state->frames = 0;
 		state->stationary_samples = 0;

@@ -45,18 +45,24 @@ var pending_size := Vector2i.ZERO
 var warmup := 3.0
 var sample_times: Array[float] = []
 var profile_samples: Array = []
+var runtime_statistics: Dictionary = {}
 var profiling := false
 var benchmark := false
+var benchmark_dynamic := false
 var measurement_started := -1.0
 var last_profile := -1
 var lifecycle := false
 var lifecycle_step := 0
+var tod_speed := 1.0
 
 func _ready() -> void:
 	shadows = int(config.shadow_lights)
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--profile": profiling = true
 		if arg == "--benchmark": benchmark = true
+		if arg == "--benchmark-dynamic":
+			benchmark = true
+			benchmark_dynamic = true
 		if arg == "--lifecycle": lifecycle = true
 		if arg == "--reference": reference = true
 		if arg == "--no-hud": hide_hud = true
@@ -79,6 +85,8 @@ func _ready() -> void:
 		if arg == "--no-gi": gi_enabled = false
 		if arg == "--no-aa": get_viewport().use_taa = false
 		if arg == "--dense": dense = true
+		if arg.begins_with("--tod-speed="): tod_speed = float(arg.get_slice("=", 1))
+		if arg.begins_with("--light-range="): config.light_range = maxf(0.5, float(arg.get_slice("=", 1)))
 		if arg.begins_with("--debug="): ProjectSettings.set_setting("rendering/kiln/debug_view", int(arg.get_slice("=", 1)))
 	if reference:
 		config.lights = 0
@@ -150,6 +158,7 @@ func _ready() -> void:
 		occluders.append(mesh)
 	gi = KilnGIWorld.new()
 	gi.environment = environment
+	gi.set_quality(int(config.gi_rays_per_frame), int(config.gi_convergence_samples))
 	gi.enabled = gi_enabled
 	gi.set_ao_enabled(ao_enabled)
 	add_child(gi)
@@ -202,8 +211,14 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	delta = float(now - last_usec) / 1000000.0
 	elapsed += delta
-	if elapsed > warmup and (not benchmark or not gi_enabled or frames >= 280):
-		if measurement_started < 0.0: measurement_started = elapsed
+	if elapsed > warmup and (not benchmark or frames >= (280 if gi_enabled else 120)):
+		if measurement_started < 0.0:
+			measurement_started = elapsed
+			if benchmark_dynamic:
+				camera_time = 0.0
+				light_time = 0.0
+				emission_time = 0.0
+				tod_time = 0.0
 		frame_times.append((now - last_usec) / 1000.0)
 		sample_times.append(elapsed)
 	last_usec = now
@@ -222,11 +237,11 @@ func _process(delta: float) -> void:
 		light_time = replay_time
 		emission_time = replay_time
 		tod_time = replay_time
-	elif not paused:
+	elif not paused and (not benchmark_dynamic or measurement_started >= 0.0):
 		if camera_motion: camera_time += delta
 		if light_motion: light_time += delta
 		if emission_motion: emission_time += delta
-		if tod_motion: tod_time += delta
+		if tod_motion: tod_time += delta * tod_speed
 	_update_camera()
 	var day := fposmod(0.175 + tod_time / float(config.tod_period), 1.0)
 	var angle := day * TAU
@@ -263,7 +278,8 @@ func _process(delta: float) -> void:
 	for i in occluders.size():
 		occluders[i].position = Vector3(-9.0 + i * 6.0, 5.5, 7.0 + sin(emission_time * 0.7 + i) * 3.0)
 		occluders[i].rotation.y = emission_time * 0.25 + i
-	hud.text = "%s • %.1f ms\n%d local lights • %d shadow maps • TOD %.2f\nKiln GI: software BVH\nSpace pause | C camera | T TOD | L lights | E emission\n1–4 count | S shadows | D dense | P isolation | A TAA | F view | Tab free | Home reset" % [RenderingServer.get_current_rendering_method(), delta * 1000.0, lights.size(), mini(shadows, lights.size()), day]
+	if frames % 15 == 0: runtime_statistics = gi.get_statistics()
+	hud.text = "%s • %.1f ms\n%d local lights • %d active local shadows • TOD %.2f\nKiln GI: software BVH\nSpace pause | C camera | T TOD | L lights | E emission\n1–4 count | S shadows | D dense | P isolation | A TAA | F view | Tab free | Home reset" % [RenderingServer.get_current_rendering_method(), delta * 1000.0, lights.size(), int(runtime_statistics.get("uploaded_local_shadows", 0)), day]
 	if capture_dir != "" and elapsed >= capture_at:
 		capture_at += capture_interval
 		_capture()
@@ -323,6 +339,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			camera_time = 0.0
 		KEY_B: environment.glow_enabled = not environment.glow_enabled
 		KEY_R: get_tree().reload_current_scene()
+		KEY_COMMA: tod_speed = 0.25 if tod_speed == 1.0 else 1.0
+		KEY_PERIOD: tod_speed = 4.0 if tod_speed == 1.0 else 1.0
+		KEY_MINUS, KEY_EQUAL:
+			config.light_range = clampf(float(config.light_range) * (0.8 if event.keycode == KEY_MINUS else 1.25), 0.5, 100.0)
+			for light in lights:
+				if light is SpotLight3D: light.spot_range = float(config.light_range) * 1.5
+				else: light.omni_range = float(config.light_range)
 		KEY_BRACKETLEFT: tod_time -= 5.0
 		KEY_BRACKETRIGHT: tod_time += 5.0
 		KEY_SPACE: paused = not paused

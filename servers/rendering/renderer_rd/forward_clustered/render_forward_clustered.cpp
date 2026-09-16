@@ -1818,6 +1818,10 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 	}
 	bool is_reflection_probe = p_render_data->reflection_probe.is_valid();
 	if (kiln_deferred) {
+		if (p_render_data->environment.is_valid()) {
+			ERR_FAIL_COND_MSG(environment_get_sdfgi_enabled(p_render_data->environment) || environment_get_ssr_enabled(p_render_data->environment) || environment_get_ssao_enabled(p_render_data->environment) || environment_get_ssil_enabled(p_render_data->environment) || environment_get_volumetric_fog_enabled(p_render_data->environment), "Kiln deferred does not support native SDFGI, SSAO, SSIL, SSR or volumetric fog; disable them and use Kiln GI/AO.");
+		}
+		ERR_FAIL_COND_MSG((p_render_data->voxel_gi_instances && p_render_data->voxel_gi_instances->size() > 0) || (p_render_data->lightmaps && p_render_data->lightmaps->size() > 0), "Kiln deferred does not support VoxelGI or lightmap mixing.");
 		ERR_FAIL_COND_MSG(is_reflection_probe || p_render_data->scene_data->view_count != 1, "Kiln deferred does not yet support reflection probe capture or multiview.");
 		ERR_FAIL_COND_MSG(rb->get_msaa_3d() != RSE::VIEWPORT_MSAA_DISABLED, "Kiln deferred requires MSAA disabled; use TAA or no AA.");
 	}
@@ -2308,6 +2312,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 	if (kiln_world.geometry_version > 0) {
 		Dictionary statistics;
+		statistics["uploaded_local_shadows"] = light_storage->get_uploaded_shadow_count();
 		statistics["uploaded_omni"] = light_storage->get_uploaded_omni_count();
 		statistics["uploaded_spot"] = light_storage->get_uploaded_spot_count();
 		statistics["light_overflow"] = light_storage->get_light_overflow_count();

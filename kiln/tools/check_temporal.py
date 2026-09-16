@@ -23,4 +23,5 @@ values['offscreen_red']=float(light[0]);values['offscreen_dark']=float(np.linalg
 checks['offscreen_geometry_contributes']=light[0]>dark[0]+.001
 checks['offscreen_removed_clears']=np.linalg.norm(dark)<.0001
 checks['finite_sh']=np.isfinite(np.fromfile(p/'buffers/sh.bin','<f4')).all().item()
+checks={k:bool(v) for k,v in checks.items()}
 r={'measurements':values,'checks':checks,'passed':all(checks.values())};(p/'checks.json').write_text(json.dumps(r,indent=2));print(json.dumps(r,indent=2));sys.exit(0 if r['passed'] else 1)

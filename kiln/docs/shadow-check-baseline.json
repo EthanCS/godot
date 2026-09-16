@@ -1,0 +1,13 @@
+{
+	"back": {
+		"lit_mean": 0.462077051401138,
+		"ratio": 0.0,
+		"samples": 81
+	},
+	"passed": true,
+	"side": {
+		"lit_mean": 0.623960375785828,
+		"ratio": 0.0,
+		"samples": 81
+	}
+}

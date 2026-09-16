@@ -179,5 +179,7 @@
         0
       ]
     ]
-  ]
+  ],
+  "gi_rays_per_frame": 1,
+  "gi_convergence_samples": 256
 }
