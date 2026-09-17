@@ -14,7 +14,11 @@ parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--driver', choices=['vulkan', 'metal', 'd3d12'], default='vulkan')
 parser.add_argument('--size', default='1280x720')
 parser.add_argument('--software', action='store_true')
+parser.add_argument('--metal-specular', choices=['native', 'translated'])
+parser.add_argument('--metal-specular-validate', action='store_true')
 args = parser.parse_args()
+assert args.metal_specular is None or args.driver == 'metal'
+assert not args.metal_specular_validate or args.metal_specular == 'native'
 args.engine = args.engine.resolve()
 args.output = args.output.resolve()
 args.output.mkdir(parents=True, exist_ok=True)
@@ -33,6 +37,10 @@ def run(name, command, marker=None):
 
 run('import', base + ['--headless', '--editor', '--import'])
 backend = ['--software'] if args.software else []
+if args.metal_specular:
+    backend.append('--metal-' + args.metal_specular + '-specular')
+if args.metal_specular_validate:
+    backend.append('--metal-specular-validate')
 run('geometry_import', base + ['--script', 'res://tests/import_geometry.gd', '--', '--output=' + str(args.output / 'geometry_import')], '[IMPORT_GEOMETRY] passed')
 run('comparison', base + ['--', *backend, '--surfel-suite', '--size=' + args.size, '--output=' + str(args.output / 'comparison')], '[SPONZA_SURFEL_SUITE] completed')
 run('comparison_analysis', [sys.executable, str(ROOT / 'kiln/tools/check_surfel.py'), str(args.output / 'comparison')])
@@ -43,6 +51,13 @@ run('specular_analysis', [sys.executable, str(ROOT / 'kiln/tools/check_specular.
 run('lifecycle', base + ['res://scene_geometry_lifecycle.tscn', '--', '--output=' + str(args.output / 'lifecycle')], '[SCENE_GEOMETRY_LIFECYCLE] passed')
 run('tod', base + ['--', *backend, '--tod-suite', '--size=' + args.size, '--output=' + str(args.output / 'tod')], '[SPONZA_TOD] completed')
 run('tod_analysis', [sys.executable, str(ROOT / 'kiln/tools/check_tod.py'), str(args.output / 'tod')])
+if args.metal_specular:
+    for path in (p for suite in ['comparison', 'suite', 'specular', 'tod'] for p in (args.output / suite).rglob('metadata.json')):
+        capture = json.loads(path.read_text())
+        native = args.metal_specular == 'native' and capture['backend'] == 'hardware_ray_query'
+        assert capture['specular_implementation'] == ('handwritten_msl' if native else 'translated_glsl'), path
+if args.metal_specular_validate:
+    run('metal_specular_parity', [sys.executable, str(ROOT / 'kiln/tools/check_metal_specular.py'), str(args.output)])
 runtime_engine = args.engine
 if args.engine.name.endswith('.console.exe'):
     runtime_engine = args.engine.with_name(args.engine.name.removesuffix('.console.exe') + '.exe')
@@ -54,6 +69,8 @@ record = {
     'runtime_engine_sha256': hashlib.sha256(runtime_engine.read_bytes()).hexdigest(),
     'driver': args.driver,
     'force_software': args.software,
+    'metal_specular': args.metal_specular,
+    'metal_specular_validate': args.metal_specular_validate,
     'gi_algorithm': 'Surfel GI (SurfelPlus adaptation)',
     'comparison': json.loads((args.output / 'comparison/checks.json').read_text()),
     'geometry_import': json.loads((args.output / 'geometry_import/checks.json').read_text()),

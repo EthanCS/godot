@@ -739,6 +739,8 @@ public:
 
 #pragma mark - Synchronization
 
+	virtual void build_acceleration_structure(MTL::AccelerationStructure *p_structure, MTL::AccelerationStructureDescriptor *p_descriptor, MTL::Buffer *p_scratch) = 0;
+
 	virtual void pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_stages,
 			BitField<RDD::PipelineStageBits> p_dst_stages,
 			VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
@@ -975,6 +977,7 @@ public:
 	Vector<uint8_t> arg_buffer_data; // Stored for dynamic uniform sets.
 	ResourceUsageMap usage_to_resources; // Used by Metal 3 for resource tracking.
 	Vector<RDD::BoundUniform> uniforms;
+	LocalVector<RDD::ID> acceleration_structures;
 };
 
 #pragma mark - Pipeline Types

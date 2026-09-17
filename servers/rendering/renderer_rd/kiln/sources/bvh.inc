@@ -131,11 +131,12 @@ bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
 }
 #ifdef KILN_HARDWARE_RAY_QUERY
 layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
-bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     triangle_id=-1;distance=maximum;normal=vec3(0);
     rayQueryEXT query;
-    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
-    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -143,7 +144,7 @@ bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
     distance=rayQueryGetIntersectionTEXT(query,true);
     Triangle tri=world_triangle(triangle_id);
     normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
-    if(dot(normal,ray)>0.0)normal=-normal;
+    if(dot(normal,direction)>0.0)normal=-normal;
     return true;
 }
 #endif
@@ -155,8 +156,18 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
     int id;float distance;vec3 normal;
     return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);

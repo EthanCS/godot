@@ -79,6 +79,9 @@ func _ready() -> void:
 		if arg == "--dry-floor": floor_roughness = 0.85
 		if arg.begins_with("--roughness="): floor_roughness = clampf(float(arg.get_slice("=", 1)), 0.02, 1.0)
 		if arg == "--specular-suite": specular_suite = true
+		if arg == "--metal-specular-validate": ProjectSettings.set_setting("rendering/kiln/metal_specular_validation", true)
+		if arg == "--metal-native-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", true)
+		if arg == "--metal-translated-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", false)
 		if arg == "--no-specular": ProjectSettings.set_setting("rendering/kiln/surfel_specular", false)
 		if arg == "--full-specular-rate": ProjectSettings.set_setting("rendering/kiln/specular_checkerboard", false)
 		if arg.begins_with("--specular-rays="): ProjectSettings.set_setting("rendering/kiln/specular_rays", int(arg.get_slice("=", 1)))
@@ -103,6 +106,9 @@ func _ready() -> void:
 			var size := arg.get_slice("=", 1).split("x")
 			get_window().size = Vector2i(int(size[0]), int(size[1]))
 	get_viewport().use_taa = not no_taa
+	if benchmark:
+		# Occluded macOS windows can stop rendering while process ticks continue.
+		get_window().set_flag(Window.FLAG_ALWAYS_ON_TOP, true)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	if output != "": DirAccess.make_dir_recursive_absolute(output)
 	var mesh: Mesh = load("res://assets/sponza.obj")
@@ -413,6 +419,13 @@ func settle(count := 96) -> void:
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 
+func resize_acceptance(size: Vector2i) -> void:
+	get_window().size = size
+	# Retina window dimensions can round to even backing pixels. Keep the
+	# actual render target odd-sized so border workgroups are still exercised.
+	get_window().content_scale_size = size
+	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+
 func shot(label: String) -> void:
 	var directory := output.path_join(label)
 	gi.request_capture(directory)
@@ -495,10 +508,10 @@ func _run_surfel_suite() -> void:
 		await settle(8)
 		await shot("debug_%d" % mode)
 	var original_size := get_window().size
-	get_window().size = Vector2i(961, 541)
+	resize_acceptance(Vector2i(961, 541))
 	await settle(64)
 	await shot("odd_resize")
-	get_window().size = original_size
+	resize_acceptance(original_size)
 	await settle(128)
 	await shot("resize_restored")
 	print("[SPONZA_SURFEL_SUITE] completed")
@@ -580,10 +593,10 @@ func _run_surfel_debug_suite() -> void:
 	await shot("cold_age")
 	_set_debug_view(22)
 	var original_size := get_window().size
-	get_window().size = Vector2i(961, 541)
+	resize_acceptance(Vector2i(961, 541))
 	await settle(64)
 	await shot("debug_odd_resize")
-	get_window().size = original_size
+	resize_acceptance(original_size)
 	_set_debug_view(15)
 	gi.set_enabled(false)
 	await settle(2)
@@ -666,7 +679,7 @@ func _run_specular_suite() -> void:
 	await settle(32)
 	await shot("reflection_off_32")
 	_set_tod(0.25)
-	get_window().size = Vector2i(961, 541)
+	resize_acceptance(Vector2i(961, 541))
 	await settle(96)
 	await shot("reflection_odd_resize")
 	gi.set_enabled(false)

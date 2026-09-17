@@ -322,6 +322,7 @@ private:
 	void _render_bind_uniform_sets();
 	void _bind_uniforms_argument_buffers(MDUniformSet *p_set, MDShader *p_shader, uint32_t p_set_index, uint32_t p_dynamic_offsets);
 	void _bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_shader, DirectEncoder p_enc, uint32_t p_set_index, uint32_t p_dynamic_offsets);
+	void _use_acceleration_structures(MDUniformSet *p_set, DirectEncoder p_enc);
 
 #pragma mark - Compute
 
@@ -341,6 +342,8 @@ protected:
 	void end_render_encoding() override { render.end_encoding(); }
 
 public:
+	void build_acceleration_structure(MTL::AccelerationStructure *p_structure, MTL::AccelerationStructureDescriptor *p_descriptor, MTL::Buffer *p_scratch) override;
+
 	struct RenderState : public RenderStateBase {
 		MDRenderPass *pass = nullptr;
 		MDFrameBuffer *frameBuffer = nullptr;

@@ -5,6 +5,7 @@
 #include "kiln_world.h"
 
 #include "servers/rendering/renderer_rd/shaders/kiln_gi.glsl.gen.h"
+#include "servers/rendering/renderer_rd/shaders/kiln_specular_native.glsl.gen.h"
 #include "servers/rendering/renderer_rd/storage_rd/render_scene_buffers_rd.h"
 #include "servers/rendering/renderer_rd/storage_rd/render_scene_data_rd.h"
 
@@ -33,6 +34,9 @@ class KilnGI {
 		QUERY_VALIDATE = STAGE_COUNT };
 	KilnGiShaderRD shader, hardware_shader;
 	RID hardware_version, hardware_pipelines[4];
+	KilnSpecularNativeShaderRD native_specular_shader;
+	RID native_specular_version;
+	RID specular_pipelines[3][8];
 	bool hardware_available = false;
 	RID version, pipelines[STAGE_COUNT], sampler, linear_sampler, sequence, hilbert, empty_surface;
 	struct Binding {
@@ -41,7 +45,7 @@ class KilnGI {
 		RID resource;
 		bool linear = false;
 	};
-	void dispatch(Stage p_stage, Size2i p_size, std::initializer_list<Binding> p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID());
+	void dispatch(Stage p_stage, Size2i p_size, std::initializer_list<Binding> p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID(), bool p_force_translated = false);
 	RID texture(Size2i p_size, RD::DataFormat p_format);
 
 public:

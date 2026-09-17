@@ -101,6 +101,7 @@ void CompilerMSL::add_msl_resource_binding(const MSLResourceBinding &binding)
 		case SPIRType::Half:
 		case SPIRType::Float:
 		case SPIRType::Double:
+		case SPIRType::AccelerationStructure:
 			ADD_ARG_IDX_TO_BINDING_NUM_LOOKUP(buffer);
 			break;
 		case SPIRType::Image:
@@ -1862,6 +1863,9 @@ void CompilerMSL::preprocess_op_codes()
 	OpCodePreprocessor preproc(*this);
 	traverse_all_reachable_opcodes(get<SPIRFunction>(ir.default_entry_point), preproc);
 
+	native_opaque_ray_queries = msl_options.use_native_opaque_ray_queries &&
+	                           preproc.has_ray_query && preproc.opaque_queries_eligible;
+	opaque_queries_need_triangle_data = preproc.opaque_queries_need_triangle_data;
 	suppress_missing_prototypes = preproc.suppress_missing_prototypes;
 
 	if (preproc.uses_atomics)
@@ -6017,6 +6021,57 @@ void CompilerMSL::emit_custom_templates()
 // otherwise they will cause problems when linked together in a single Metallib.
 void CompilerMSL::emit_custom_functions()
 {
+	if (native_opaque_ray_queries)
+	{
+		statement("using spvOpaqueIntersector = intersector<instancing", opaque_queries_need_triangle_data ? ", triangle_data" : "", ">;");
+		statement("using spvOpaqueResult = intersection_result<instancing", opaque_queries_need_triangle_data ? ", triangle_data" : "", ">;");
+		statement(R"(// Opaque triangle queries cannot yield candidates. Preserve lazy traversal
+// and pre-proceed committed state while using Metal's hardware intersector.
+struct spvOpaqueRayQuery
+{
+    ray world_ray;
+    acceleration_structure<instancing> scene;
+    uint mask;
+    uint flags;
+    bool pending;
+    spvOpaqueResult hit;
+    void reset(ray r, acceleration_structure<instancing> s, uint m, uint f) thread
+    {
+        world_ray = r;
+        scene = s;
+        mask = m;
+        flags = f;
+        pending = true;
+        hit.type = intersection_type::none;
+    }
+    bool next() thread
+    {
+        if (pending)
+        {
+            spvOpaqueIntersector tracer;
+            tracer.assume_geometry_type(geometry_type::triangle);
+            tracer.force_opacity(forced_opacity::opaque);
+            tracer.accept_any_intersection((flags & 4u) != 0u);
+            hit = tracer.intersect(world_ray, scene, mask);
+            pending = false;
+        }
+        return false;
+    }
+    intersection_type get_committed_intersection_type() const thread { return hit.type; }
+    float get_committed_distance() const thread { return hit.distance; }
+    uint get_committed_instance_id() const thread { return hit.instance_id; }
+    uint get_committed_user_instance_id() const thread { return hit.user_instance_id; }
+    uint get_committed_geometry_id() const thread { return hit.geometry_id; }
+    uint get_committed_primitive_id() const thread { return hit.primitive_id; }
+)");
+		if (opaque_queries_need_triangle_data)
+		{
+			statement("    float2 get_committed_triangle_barycentric_coord() const thread { return hit.triangle_barycentric_coord; }");
+			statement("    bool is_committed_triangle_front_facing() const thread { return hit.triangle_front_facing; }");
+		}
+		statement("};");
+	}
+
 	// Use when outputting overloaded functions to cover different address spaces.
 	static const char *texture_addr_spaces[] = { "device", "constant", "thread" };
 	static uint32_t texture_addr_space_count = sizeof(texture_addr_spaces) / sizeof(char*);
@@ -10330,11 +10385,13 @@ void CompilerMSL::emit_instruction(const Instruction &instruction)
 	{
 		flush_variable_declaration(ops[0]);
 		register_write(ops[0]);
-		add_spv_func_and_recompile(SPVFuncImplRayQueryIntersectionParams);
+		if (!native_opaque_ray_queries)
+			add_spv_func_and_recompile(SPVFuncImplRayQueryIntersectionParams);
 
 		statement(to_expression(ops[0]), ".reset(", "ray(", to_expression(ops[4]), ", ", to_expression(ops[6]), ", ",
 		          to_expression(ops[5]), ", ", to_expression(ops[7]), "), ", to_expression(ops[1]), ", ", to_expression(ops[3]),
-		          ", spvMakeIntersectionParams(", to_expression(ops[2]), "));");
+		          native_opaque_ray_queries ? ", " : ", spvMakeIntersectionParams(", to_expression(ops[2]),
+		          native_opaque_ray_queries ? ");" : "));");
 		break;
 	}
 	case OpRayQueryProceedKHR:
@@ -16713,6 +16770,8 @@ string CompilerMSL::type_to_glsl(const SPIRType &type, uint32_t id, bool member)
 			SPIRV_CROSS_THROW("Acceleration Structure Type is supported in MSL 2.3 and above.");
 		break;
 	case SPIRType::RayQuery:
+		if (native_opaque_ray_queries)
+			return "spvOpaqueRayQuery";
 		return "raytracing::intersection_query<raytracing::instancing, raytracing::triangle_data>";
 	case SPIRType::MeshGridProperties:
 		return "mesh_grid_properties";
@@ -18523,6 +18582,60 @@ void CompilerMSL::add_spv_func_and_recompile(SPVFuncImpl spv_func)
 
 bool CompilerMSL::OpCodePreprocessor::handle(Op opcode, const uint32_t *args, uint32_t length)
 {
+	if (opcode == OpRayQueryGetIntersectionBarycentricsKHR || opcode == OpRayQueryGetIntersectionFrontFaceKHR)
+		opaque_queries_need_triangle_data = true;
+	// Conservative proof of the only supported flags: Opaque, optionally
+	// TerminateOnFirstHit. An unknown expression or candidate-state operation
+	// keeps every query in this shader on the general implementation.
+	auto opaque_flags = [&](uint32_t id) {
+		const auto *constant = self.maybe_get<SPIRConstant>(id);
+		if (constant && !constant->specialization)
+			return constant->scalar() == RayFlagsOpaqueKHRMask ||
+			       constant->scalar() == (RayFlagsOpaqueKHRMask | RayFlagsTerminateOnFirstHitKHRMask);
+		return opaque_query_flags.count(id) != 0;
+	};
+	switch (opcode)
+	{
+	case OpSelect:
+		if (opaque_flags(args[3]) && opaque_flags(args[4]))
+			opaque_query_flags.insert(args[1]);
+		break;
+	case OpRayQueryInitializeKHR:
+		has_ray_query = true;
+		opaque_queries_eligible &= opaque_flags(args[2]);
+		break;
+	case OpRayQueryGetIntersectionTypeKHR:
+	case OpRayQueryGetIntersectionTKHR:
+	case OpRayQueryGetIntersectionInstanceIdKHR:
+	case OpRayQueryGetIntersectionInstanceCustomIndexKHR:
+	case OpRayQueryGetIntersectionGeometryIndexKHR:
+	case OpRayQueryGetIntersectionPrimitiveIndexKHR:
+	case OpRayQueryGetIntersectionBarycentricsKHR:
+	case OpRayQueryGetIntersectionFrontFaceKHR:
+	{
+		const auto *committed = self.maybe_get<SPIRConstant>(args[3]);
+		opaque_queries_eligible &= committed && !committed->specialization && committed->scalar() == 1;
+		break;
+	}
+	case OpRayQueryTerminateKHR:
+	case OpRayQueryGenerateIntersectionKHR:
+	case OpRayQueryConfirmIntersectionKHR:
+	case OpRayQueryGetRayTMinKHR:
+	case OpRayQueryGetRayFlagsKHR:
+	case OpRayQueryGetWorldRayOriginKHR:
+	case OpRayQueryGetWorldRayDirectionKHR:
+	case OpRayQueryGetIntersectionCandidateAABBOpaqueKHR:
+	case OpRayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetKHR:
+	case OpRayQueryGetIntersectionObjectRayDirectionKHR:
+	case OpRayQueryGetIntersectionObjectRayOriginKHR:
+	case OpRayQueryGetIntersectionObjectToWorldKHR:
+	case OpRayQueryGetIntersectionWorldToObjectKHR:
+		opaque_queries_eligible = false;
+		break;
+	default:
+		break;
+	}
+
 	// Since MSL exists in a single execution scope, function prototype declarations are not
 	// needed, and clutter the output. If secondary functions are output (either as a SPIR-V
 	// function implementation or as indicated by the presence of OpFunctionCall), then set
@@ -19771,6 +19884,15 @@ void CompilerMSL::analyze_argument_buffers()
 					case SPIRType::Sampler:
 						add_argument_buffer_padding_sampler_type(buffer_type, member_index, next_arg_buff_index, rez_bind);
 						break;
+					case SPIRType::AccelerationStructure:
+					{
+						uint32_t type_id = ir.increase_bound_by(1);
+						auto &padding_type = set<SPIRType>(type_id, OpTypeAccelerationStructureKHR);
+						padding_type.basetype = SPIRType::AccelerationStructure;
+						padding_type.storage = StorageClassUniformConstant;
+						add_argument_buffer_padding_type(type_id, buffer_type, member_index, next_arg_buff_index, rez_bind.count);
+						break;
+					}
 					case SPIRType::SampledImage:
 						if (next_arg_buff_index == rez_bind.msl_sampler)
 							add_argument_buffer_padding_sampler_type(buffer_type, member_index, next_arg_buff_index, rez_bind);

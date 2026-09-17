@@ -3,6 +3,12 @@
 Current rendering work uses a standard G-buffer and Surfel GI on original scene
 meshes, with diffuse multibounce and world-space glossy reflection rays. See [SURFEL-GI.md](SURFEL-GI.md) for separately recorded
 implementation, builds, GPU validation and unsupported features.
+Native Metal hardware ray queries and their Apple M5 validation are recorded in
+[METAL-RAY-QUERY.md](METAL-RAY-QUERY.md); the older software-only Mac results below
+remain historical. The subsequent [Metal optimization report](METAL-GI-OPTIMIZATION.md)
+records native intersector lowering, reflection work reduction and paired M5 measurements.
+The [Xcode capture follow-up](METAL-GI-XCODE-FOLLOWUP.md) records later reflection
+SIMD scheduling, observed instruction savings and variable whole-frame results.
 The current [GI optimization report](GI-OPTIMIZATION-2026-09-17.md) supersedes
 the slow pre-optimization performance baseline and records the tested scope.
 

@@ -30,8 +30,12 @@ Milestones:
 
 The 1080p/60 FPS target applies to the default load on explicitly documented
 hardware; it is an optimization target, not a measured result. Vulkan hardware
-ray queries are implemented with a compute software-BVH fallback. Metal hardware
-ray tracing and MegaLights/ReSTIR remain later work.
+ray queries and native Metal hardware ray queries are implemented with a compute
+software-BVH fallback. See [Metal support and validation](docs/METAL-RAY-QUERY.md).
+See also [Metal performance measurements](docs/METAL-GI-OPTIMIZATION.md).
+The [Xcode capture follow-up](docs/METAL-GI-XCODE-FOLLOWUP.md) records subsequent
+reflection scheduling changes, GPU counters and the limits of measured gains.
+MegaLights/ReSTIR remain later work.
 
 ## Current status
 
@@ -41,7 +45,7 @@ opaque/cutout material raster pass writes albedo/metallic, shading normal/roughn
 emission, material response, geometric normal/instance metadata and motion.
 Native fullscreen clustered lighting resolves those attributes.
 
-GI uses original scene triangles, persistent surfels, Vulkan hardware ray queries
+GI uses original scene triangles, persistent surfels, Vulkan/Metal hardware ray queries
 or a compute BVH fallback, MSME integration and diffuse multibounce. Independent
 GGX reflection rays evaluate sun/local light, emission, sky and the diffuse surfel
 cache at world-space hits. Reflection histories track roughness, normals, depth

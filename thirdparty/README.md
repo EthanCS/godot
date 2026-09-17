@@ -1051,6 +1051,18 @@ Files extracted from upstream source:
 Versions of this SDK do not have to match the `vulkan` section, as this SDK is required
 to generate Metal source from Vulkan SPIR-V.
 
+Local Kiln changes:
+
+- `spirv_msl.cpp` recognizes acceleration-structure bindings when padding Metal
+  argument buffers and emits correctly typed padding members for them.
+- The opt-in `use_native_opaque_ray_queries` MSL option lowers proven opaque
+  triangle queries to native `intersector` calls. Only constant Opaque /
+  Opaque+TerminateOnFirstHit flags (including selects between them) and committed
+  result reads qualify. Candidate operations, other flags and unsupported getters
+  retain general intersection queries. Traversal remains lazy and triangle-data
+  payloads are requested only when read. The Metal driver enables this under its
+  triangle-only acceleration-structure contract.
+
 
 ## spirv-headers
 

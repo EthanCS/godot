@@ -17,28 +17,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;

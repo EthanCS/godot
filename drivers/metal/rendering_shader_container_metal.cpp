@@ -30,6 +30,8 @@
 
 #include "rendering_shader_container_metal.h"
 
+#include "kiln_specular_native.metal.gen.h"
+
 #include "core/io/file_access.h"
 #include "core/io/marshalls.h"
 #include "core/os/os.h"
@@ -266,6 +268,10 @@ MetalDeviceProfile::MinimumRequirements RenderingShaderContainerMetal::inspect_s
 			if (opcode == spv::OpImageTexelPointer) {
 				atomic_image_ids.insert(words[3]);
 			}
+			if (opcode == spv::OpCapability && words[1] == spv::CapabilityRayQueryKHR) {
+				reqs.msl_version = MAX(reqs.msl_version, MSL_VERSION_24);
+				reqs.gpu = MAX(reqs.gpu, MetalDeviceProfile::GPU::Apple9);
+			}
 			words += word_count;
 		}
 
@@ -396,6 +402,9 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 	}
 	msl_options.force_active_argument_buffer_resources = true;
 	msl_options.pad_argument_buffer_resources = true;
+	// Metal BLAS creation currently accepts triangle geometry only. The compiler
+	// separately proves opaque flags and supported committed-result operations.
+	msl_options.use_native_opaque_ray_queries = true;
 	msl_options.texture_buffer_native = true; // Enable texture buffer support.
 	msl_options.use_framebuffer_fetch_subpasses = false;
 	msl_options.pad_fragment_output_components = true;
@@ -557,6 +566,12 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 						found->get_indexes(UniformData::IndexType::ARG).buffer = next_arg_index(binding_stride);
 						rb.basetype = SPIRType::BaseType::Void;
 					} break;
+					case RDC::UNIFORM_TYPE_ACCELERATION_STRUCTURE: {
+						found->data_type = MTL::DataTypeInstanceAccelerationStructure;
+						found->get_indexes(UniformData::IndexType::SLOT).buffer = next_index(Buffer, binding_stride);
+						found->get_indexes(UniformData::IndexType::ARG).buffer = next_arg_index(binding_stride);
+						rb.basetype = SPIRType::BaseType::AccelerationStructure;
+					} break;
 					case RDC::UNIFORM_TYPE_INPUT_ATTACHMENT: {
 						found->data_type = MTL::DataTypeTexture;
 						found->get_indexes(UniformData::IndexType::SLOT).texture = next_index(Texture, binding_stride);
@@ -654,64 +669,82 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 		StageData &stage_data = mtl_shaders.write[i];
 		const ReflectShaderStage &v = p_spirv[i];
 		RDC::ShaderStage stage = v.shader_stage;
-		Span<uint32_t> spirv = v.spirv();
-		Parser parser(spirv.ptr(), spirv.size());
-		try {
-			parser.parse();
-		} catch (CompilerError &e) {
-			ERR_FAIL_V_MSG(false, "Failed to parse IR at stage " + String(RDC::SHADER_STAGE_NAMES[stage]) + ": " + e.what());
-		}
-
-		CompilerMSL compiler(std::move(parser.get_parsed_ir()));
-		compiler.set_msl_options(msl_options);
-		compiler.set_common_options(options);
-
-		spv::ExecutionModel execution_model = map_stage(stage);
-		for (uint32_t jj = 0; jj < spirv_bindings.size(); jj++) {
-			MSLResourceBinding &rb = spirv_bindings.ptr()[jj].first;
-			rb.stage = execution_model;
-			compiler.add_msl_resource_binding(rb);
-		}
-
-		if (push_constant_resource_binding.desc_set == ResourceBindingPushConstantDescriptorSet) {
-			push_constant_resource_binding.stage = execution_model;
-			compiler.add_msl_resource_binding(push_constant_resource_binding);
-		}
-
-		std::unordered_set<VariableID> active = compiler.get_active_interface_variables();
-		ShaderResources resources = compiler.get_shader_resources();
-
 		std::string source;
-		try {
-			source = compiler.compile();
-		} catch (CompilerError &e) {
-			ERR_FAIL_V_MSG(false, "Failed to compile stage " + String(RDC::SHADER_STAGE_NAMES[stage]) + ": " + e.what());
-		}
-
-		ERR_FAIL_COND_V_MSG(compiler.get_entry_points_and_stages().size() != 1, false, "Expected a single entry point and stage.");
-
-		SmallVector<EntryPoint> entry_pts_stages = compiler.get_entry_points_and_stages();
-		EntryPoint &entry_point_stage = entry_pts_stages.front();
-		SPIREntryPoint &entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
-
-		for (auto ext : compiler.get_declared_extensions()) {
-			if (ext == "SPV_KHR_non_semantic_info" || ext == "SPV_KHR_printf") {
-				mtl_reflection_data.set_needs_debug_logging(true);
-				break;
-			}
-		}
-
-		if (!resources.stage_inputs.empty()) {
-			for (Resource const &res : resources.stage_inputs) {
-				uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
-				if (binding != (uint32_t)-1) {
-					stage_data.vertex_input_binding_mask |= 1 << binding;
+		if (String(shader_name.ptr()) == "KilnSpecularNativeShaderRD:0") {
+			// SPIR-V supplies only RD descriptor/dispatch metadata. No shader
+			// instructions are translated: compile the handwritten MSL verbatim.
+			ERR_FAIL_COND_V(p_spirv.size() != 1 || stage != RDC::SHADER_STAGE_COMPUTE || reflection_data.set_count != 1 || reflection_data.push_constant_size != 0, false);
+			ERR_FAIL_COND_V(reflection_data.compute_local_size[0] != 16 || reflection_data.compute_local_size[1] != 2 || reflection_data.compute_local_size[2] != 2, false);
+			String declarations = vformat("#define KILN_ARGUMENT_BUFFERS %d\n", msl_options.argument_buffers ? 1 : 0);
+			for (uint32_t binding_index = 0; binding_index < spirv_bindings.size(); binding_index++) {
+				const MSLResourceBinding &binding = spirv_bindings[binding_index].first;
+				declarations += vformat("#define KILN_BUFFER_%d %d\n#define KILN_TEXTURE_%d %d\n#define KILN_SAMPLER_%d %d\n", binding.binding, binding.msl_buffer, binding.binding, binding.msl_texture, binding.binding, binding.msl_sampler);
+				if (binding.binding == 0) {
+					declarations += vformat("#define KILN_PARAMETER_BYTES %d\n", reflection_binding_set_uniforms_data[binding_index].length);
 				}
 			}
-		}
+			source = declarations.utf8().get_data();
+			source += kiln_native_specular_msl;
+			stage_data.supports_fast_math = true;
+		} else {
+			Span<uint32_t> spirv = v.spirv();
+			Parser parser(spirv.ptr(), spirv.size());
+			try {
+				parser.parse();
+			} catch (CompilerError &e) {
+				ERR_FAIL_V_MSG(false, "Failed to parse IR at stage " + String(RDC::SHADER_STAGE_NAMES[stage]) + ": " + e.what());
+			}
 
-		stage_data.is_position_invariant = compiler.is_position_invariant();
-		stage_data.supports_fast_math = !entry_point.flags.get(spv::ExecutionModeSignedZeroInfNanPreserve);
+			CompilerMSL compiler(std::move(parser.get_parsed_ir()));
+			compiler.set_msl_options(msl_options);
+			compiler.set_common_options(options);
+
+			spv::ExecutionModel execution_model = map_stage(stage);
+			for (uint32_t jj = 0; jj < spirv_bindings.size(); jj++) {
+				MSLResourceBinding &rb = spirv_bindings.ptr()[jj].first;
+				rb.stage = execution_model;
+				compiler.add_msl_resource_binding(rb);
+			}
+
+			if (push_constant_resource_binding.desc_set == ResourceBindingPushConstantDescriptorSet) {
+				push_constant_resource_binding.stage = execution_model;
+				compiler.add_msl_resource_binding(push_constant_resource_binding);
+			}
+
+			std::unordered_set<VariableID> active = compiler.get_active_interface_variables();
+			ShaderResources resources = compiler.get_shader_resources();
+
+			try {
+				source = compiler.compile();
+			} catch (CompilerError &e) {
+				ERR_FAIL_V_MSG(false, "Failed to compile stage " + String(RDC::SHADER_STAGE_NAMES[stage]) + ": " + e.what());
+			}
+
+			ERR_FAIL_COND_V_MSG(compiler.get_entry_points_and_stages().size() != 1, false, "Expected a single entry point and stage.");
+
+			SmallVector<EntryPoint> entry_pts_stages = compiler.get_entry_points_and_stages();
+			EntryPoint &entry_point_stage = entry_pts_stages.front();
+			SPIREntryPoint &entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
+
+			for (auto ext : compiler.get_declared_extensions()) {
+				if (ext == "SPV_KHR_non_semantic_info" || ext == "SPV_KHR_printf") {
+					mtl_reflection_data.set_needs_debug_logging(true);
+					break;
+				}
+			}
+
+			if (!resources.stage_inputs.empty()) {
+				for (Resource const &res : resources.stage_inputs) {
+					uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
+					if (binding != (uint32_t)-1) {
+						stage_data.vertex_input_binding_mask |= 1 << binding;
+					}
+				}
+			}
+
+			stage_data.is_position_invariant = compiler.is_position_invariant();
+			stage_data.supports_fast_math = !entry_point.flags.get(spv::ExecutionModeSignedZeroInfNanPreserve);
+		}
 		stage_data.hash = SHA256Digest(source.c_str(), source.length());
 		stage_data.source_size = source.length();
 		::Vector<uint8_t> binary_data;

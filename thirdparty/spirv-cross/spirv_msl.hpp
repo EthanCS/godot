@@ -386,6 +386,11 @@ public:
 		// Requires MSL 2.1, use the native support for texel buffers.
 		bool texture_buffer_native = false;
 
+		// Driver contract: acceleration structures contain only triangles. Lower
+		// opaque queries with supported committed-result reads to native intersectors.
+		// Other queries keep the general intersection_query implementation.
+		bool use_native_opaque_ray_queries = false;
+
 		// Forces all resources which are part of an argument buffer to be considered active.
 		// This ensures ABI compatibility between shaders where some resources might be unused,
 		// and would otherwise declare a different IAB.
@@ -1075,6 +1080,8 @@ protected:
 	std::string to_swizzle_expression(uint32_t id);
 	std::string to_buffer_size_expression(uint32_t id);
 	bool is_sample_rate() const;
+	bool native_opaque_ray_queries = false;
+	bool opaque_queries_need_triangle_data = false;
 	bool is_intersection_query() const;
 	bool is_direct_input_builtin(BuiltIn builtin);
 	std::string builtin_qualifier(BuiltIn builtin);
@@ -1390,6 +1397,10 @@ protected:
 		CompilerMSL &self;
 		std::unordered_map<uint32_t, uint32_t> image_pointers_emulated; // Emulate texture2D atomic operations
 		bool suppress_missing_prototypes = false;
+		bool opaque_queries_eligible = true;
+		bool has_ray_query = false;
+		bool opaque_queries_need_triangle_data = false;
+		std::unordered_set<uint32_t> opaque_query_flags;
 		bool uses_atomics = false;
 		bool uses_image_write = false;
 		bool uses_buffer_write = false;

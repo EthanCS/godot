@@ -17,12 +17,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--engine', type=Path, required=True)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--size', default='1920x1080')
+parser.add_argument('--driver', choices=['vulkan', 'metal', 'd3d12'], default='vulkan')
+parser.add_argument('--metal-specular', choices=['native', 'translated'], help='Select the reflection implementation for a controlled Metal A/B')
 parser.add_argument('--embedded', action='store_true', help='Executable has an embedded Sponza PCK')
 parser.add_argument('--full-specular-rate', action='store_true')
 parser.add_argument('--frames', type=int, default=480)
 parser.add_argument('--long-frames', type=int, default=3600, help='Extended moving regression; 0 to skip')
 parser.add_argument('--warmup', type=int, default=180)
 args = parser.parse_args()
+assert args.metal_specular is None or args.driver == 'metal'
 assert args.frames > args.warmup >= 60
 args.output.mkdir(parents=True, exist_ok=True)
 engine = args.engine.resolve()
@@ -47,8 +50,10 @@ for name, method, extra in cases:
     output = args.output / name
     project = [] if args.embedded else ['--path', str(ROOT / 'kiln/sponza')]
     quality = ['--full-specular-rate'] if args.full_specular_rate else []
+    if args.metal_specular:
+        quality.append('--metal-' + args.metal_specular + '-specular')
     command = [str(engine), *project,
-               '--rendering-driver', 'vulkan', '--rendering-method', method,
+               '--rendering-driver', args.driver, '--rendering-method', method,
                '--', '--benchmark', '--hardware', '--rays=2', '--specular-rays=2',
                '--size=' + args.size, '--frames=' + str(frame_count),
                '--output=' + str(output.resolve()), *extra, *quality]
@@ -58,6 +63,10 @@ for name, method, extra in cases:
     assert not any(s in log for s in ['ERROR:', 'Validation Error', 'VUID-']), name
     data = json.loads((output / 'benchmark.json').read_text())
     assert data['statistics']['backend'] == 'hardware_ray_query', name
+    assert data['statistics']['profile_frame'] >= frame_count - 4, (name, 'rendering paused or window occluded')
+    if args.metal_specular:
+        expected = 'handwritten_msl' if args.metal_specular == 'native' else 'translated_glsl'
+        assert data['statistics']['specular_implementation'] == expected, name
     assert data['taa'] and data['width'] == int(args.size.split('x')[0])
     frames = np.array(data['frame_ms'][args.warmup - 60:], dtype=float)
     assert len(frames) == frame_count - args.warmup, (name, len(frames))
@@ -69,5 +78,6 @@ for name, method, extra in cases:
     print(name, json.dumps(result), flush=True)
 runtime = engine.with_name(engine.name.replace('.console.exe', '.exe'))
 record = {'engine': str(runtime), 'engine_sha256': hashlib.sha256(runtime.read_bytes()).hexdigest(),
+          'driver': args.driver, 'metal_specular': args.metal_specular,
           'size': args.size, 'warmup_frames': args.warmup, 'results': results}
 (args.output / 'results.json').write_text(json.dumps(record, indent=2))

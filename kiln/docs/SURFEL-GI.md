@@ -37,7 +37,7 @@ compositor overlay.
    paired geometry agrees, reconstructed with the same filter. Sharp/wet
    receivers and discontinuities retain full-rate rays. Disable
    `rendering/kiln/specular_checkerboard` for full-rate reference sampling.
-5. Original rigid scene meshes feed Vulkan hardware ray queries or compute BVH
+5. Original rigid scene meshes feed Vulkan/Metal hardware ray queries or compute BVH
    fallback. Opaque BaseMaterial3D albedo textures are sampled at barycentric UV1
    coordinates from 512x512 RGBA8 sRGB array layers, with hardware decoding and
    bilinear filtering, repeat/clamp, UV scale and offset. Material/texture changes update
@@ -55,6 +55,9 @@ compositor overlay.
 The reflection budget is `rendering/kiln/specular_rays` (1–8, default 2), independent
 of diffuse surfel quality. `rendering/kiln/surfel_specular` controls reflection;
 `rendering/kiln/surfel_multibounce` controls diffuse-cache feedback.
+
+Metal backend implementation, platform gates and separate build/GPU validation
+are recorded in [METAL-RAY-QUERY.md](METAL-RAY-QUERY.md).
 
 ## Reference and differences
 
@@ -151,7 +154,8 @@ The earlier 10.1 FPS baseline above remains historical evidence.
   there is no claim that all unseen surfaces retain converged multibounce history.
 - Skinned/blend-shape/MultiMesh ray geometry and GPU-only deformation. Rigid
   MeshInstance3D transforms and material overrides are supported.
-- Metal hardware queries; Linux/macOS/D3D12 GPU verification; other vendors;
+- Linux/D3D12 GPU verification; Metal configurations outside the scope recorded
+  in [METAL-RAY-QUERY.md](METAL-RAY-QUERY.md); other vendors;
   XR/MSAA, reflection-probe capture, SDFGI/VoxelGI/lightmap mixing. Deferred's
   existing explicit feature rejections remain documented in PIPELINE.md.
 - Performance targets and all platform passes not explicitly listed above.

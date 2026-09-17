@@ -7,7 +7,13 @@ layout(set = 0, binding = 1) uniform sampler2D depth;
 layout(set = 0, binding = 2) uniform sampler2D normals;
 layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D specular_base;
 layout(set = 0, binding = 7, rgba16f) uniform writeonly image2D specular_fresnel;
-layout(local_size_x = 8, local_size_y = 8) in;
+// Each 32-lane SIMD group covers one checkerboard parity, with adjacent lanes
+// tracing independent samples of the same receiver. Rough-reflection omissions
+// can then retire a whole SIMD group instead of leaving both groups half idle.
+layout(local_size_x = 16, local_size_y = 2, local_size_z = 2) in;
+layout(constant_id = 0) const uint REFLECTION_RAY_COUNT = 2u;
+shared vec4 sample_base[64];
+shared vec4 sample_fresnel[64];
 
 // Isotropic GGX visible-normal sampling, following Heitz, JCGT 7(4), 2018.
 // https://jcgt.org/published/0007/04/01/ -- independently implemented here.
@@ -57,8 +63,10 @@ vec3 reflected_radiance(vec3 origin, vec3 direction, inout uint seed, out float 
 	// There is no second emitter estimator at the receiver to double count it.
 	return t.emission.rgb + clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
 }
-void main() {
-	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+void trace_pixel(ivec2 pixel, uint lane, out vec4 output_base, out vec4 output_fresnel) {
+	ivec2 size = ivec2(p.size_frame.xy);
+	output_base = vec4(0);
+	output_fresnel = vec4(0);
 	if (any(greaterThanEqual(pixel, size))) {
 		return;
 	}
@@ -79,8 +87,7 @@ void main() {
 			float nr = receiver_roughness(normals, neighbor);
 			if (nd > 1e-7 && nr >= 0.45 && abs(nr - roughness) <= 0.025 && dot(n, nn) >= 0.99 &&
 					abs(dot(neighbor_position - position, n)) <= 0.02) {
-				imageStore(specular_base, pixel, vec4(0, 0, 0, -1));
-				imageStore(specular_fresnel, pixel, vec4(0));
+				output_base = vec4(0, 0, 0, -1);
 				return;
 			}
 		}
@@ -96,9 +103,12 @@ void main() {
 		mat3 basis = mat3(tangent, cross(n, tangent), n);
 		vec3 local_view = transpose(basis) * v;
 		float alpha = max(0.002, roughness * roughness);
-		uint seed = surfel_hash(uint(pixel.x + pixel.y * size.x) ^ uint(p.size_frame.z) * 1664525u);
-		uint count = uint(clamp(p.debug.w, 1.0, 8.0));
-		for (uint i = 0u; i < count; i++) {
+		uint base_seed = surfel_hash(uint(pixel.x + pixel.y * size.x) ^ uint(p.size_frame.z) * 1664525u);
+		uint count = REFLECTION_RAY_COUNT;
+		for (uint i = lane; i < count; i += 2u) {
+			// Preserve the first stream; subsequent rays use independent streams
+			// so hit-light sampling in one ray cannot serialize the next ray.
+			uint seed = i == 0u ? base_seed : surfel_hash(base_seed ^ (i * 0x9e3779b9u));
 			vec3 h = basis * visible_microfacet(vec3(local_view.xy, max(0.0001, local_view.z)), alpha, random_pair(seed));
 			vec3 direction = reflect(-v, h);
 			float nl = dot(n, direction), nv = max(dot(n, v), 0.0001);
@@ -118,6 +128,28 @@ void main() {
 		fresnel /= float(count);
 		mean_distance /= float(count);
 	}
-	imageStore(specular_base, pixel, vec4(base, mean_distance));
-	imageStore(specular_fresnel, pixel, vec4(fresnel, 0));
+	output_base = vec4(base, mean_distance);
+	output_fresnel = vec4(fresnel, 0);
+}
+void main() {
+	uint index = gl_LocalInvocationIndex;
+	uint receiver = (index & 31u) >> 1u;
+	uint y = receiver >> 3u;
+	uint x = (receiver & 7u) * 2u + ((y + (index >> 5u)) & 1u);
+	ivec2 pixel = ivec2(gl_WorkGroupID.xy) * ivec2(16, 2) + ivec2(x, y);
+	uint lane = index & 1u;
+	vec4 a, b;
+	trace_pixel(pixel, lane, a, b);
+	sample_base[index] = a;
+	sample_fresnel[index] = b;
+	barrier();
+	if (lane == 0u && all(lessThan(pixel, ivec2(p.size_frame.xy)))) {
+		// The missing-sample marker is shared by both lanes, not accumulated.
+		if (a.a >= 0.0) {
+			a += sample_base[index + 1u];
+			b += sample_fresnel[index + 1u];
+		}
+		imageStore(specular_base, pixel, a);
+		imageStore(specular_fresnel, pixel, b);
+	}
 }

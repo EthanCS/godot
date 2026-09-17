@@ -463,6 +463,22 @@ public:
 
 	// ----- ACCELERATION STRUCTURE -----
 
+	struct AccelerationStructureInfo {
+		NS::SharedPtr<MTL::AccelerationStructure> structure;
+		NS::SharedPtr<MTL::AccelerationStructureDescriptor> descriptor;
+		// The TLAS indirectly reads these resources. Declare them resident at bind
+		// time, after the draw graph has encoded the TLAS build.
+		LocalVector<NS::SharedPtr<MTL::AccelerationStructure>> instances;
+		uint32_t scratch_size = 0;
+	};
+
+	struct AccelerationStructureInstanceData {
+		MTL::AccelerationStructureUserIDInstanceDescriptor descriptor;
+		AccelerationStructureInfo *blas = nullptr;
+	};
+
+	AccelerationStructureID _acceleration_structure_create(MTL::AccelerationStructureDescriptor *p_descriptor);
+
 	virtual AccelerationStructureID blas_create(VectorView<AccelerationStructureGeometry> p_geometries, BitField<AccelerationStructureFlagBits> p_flags) override final;
 	virtual AccelerationStructureID tlas_create(uint32_t p_max_instance_count, BitField<AccelerationStructureFlagBits> p_flags) override final;
 	virtual void acceleration_structure_instance_write(uint8_t *r_driver_instance, const AccelerationStructureInstance &p_instance) override final;

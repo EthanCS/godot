@@ -1,0 +1,1099 @@
+{
+  "date": "2026-09-17",
+  "head": "de95ff0f2bfc6b68bdf4298b9fb4564393427bca",
+  "hardware": "Apple M5 / 10 GPU cores",
+  "os": "macOS 26.6.2",
+  "toolchain": "Xcode 27.0 (27A266a), macOS 27 SDK",
+  "raw_artifact_directory": "/tmp/kiln-xcode-opt-20260917",
+  "implementation": [
+    "checkerboard parity SIMD grouping in translated reflections",
+    "dedicated hardware visibility query",
+    "stage-correct surfel buffer access declarations",
+    "visibility-query parity diagnostic"
+  ],
+  "removed_trial": "coverage-only gather early exit: no stable performance benefit",
+  "quality_parameters_changed": false,
+  "fixed_overall_speedup_established": false,
+  "source_sha256": {
+    "servers/rendering/renderer_rd/kiln/sources/surfel_data.inc": "cc33b42f95df1c015cb94eabf4c66cdcf16cece24bdb22696c9cad26d0a38d61",
+    "servers/rendering/renderer_rd/kiln/sources/bvh.inc": "c350ca35e661171fdfba92bd095dde604298b081cce60a0bf80a2357b5a92974",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_specular.comp": "c8a7ade7bf8bc11e021696b1d5d2143e6ccdabdc4f5c8674f8cc83eda29133ae",
+    "servers/rendering/renderer_rd/kiln/sources/query_validate.comp": "544ae35bfd8845aaa3edd870dfe36662dfdcd2a5081e11c6b8bba12941ae249d",
+    "servers/rendering/renderer_rd/shaders/kiln_gi.glsl": "d0771ff5cd0ade9386b9c89a57773ffb9f5735306f699a8703c6593ded169c6b",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.cpp": "0a629f06cea759402a7729ea85643078494a2fb0ad27ba7fa12ab214cd556c85",
+    "thirdparty/spirv-cross/spirv_msl.cpp": "ca1f9c95df0951f1221b4eb0e5ae1e60389587ca2a8db3932711591f4dcb12d8"
+  },
+  "binary_sha256": {
+    "original_editor": "4b12daa1316af987a01bdfcac20d8af258b47ebe8a651305b3db6d0b4714a0e3",
+    "same_toolchain_control_editor": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+    "optimized_editor": "045b0382e816d6f4dfd7c9e03ce2aa40168d15dcaabaa597def8b9c228bd50a0",
+    "optimized_release": "d7895e9d04b3065bde019603e788b7e3082fa4ef65ac4f9ed99f9e6f1824c632"
+  },
+  "xcode": {
+    "before_trace": "/tmp/kiln-xcode-frame-20260917/surfelgi-m5-720p-max.gputrace",
+    "after_trace": "/tmp/kiln-xcode-opt-20260917/surfelgi-optimized-m5-720p.gputrace",
+    "profiling_mode": "Full / Overlapping / Maximum",
+    "before_effective_gpu_ms": 36.08,
+    "after_effective_gpu_ms": 19.3,
+    "before_sampled_cores": 3,
+    "after_sampled_cores": 7,
+    "total_cores": 10,
+    "production_fps_comparison": false,
+    "stages": {
+      "generate": {
+        "before": {
+          "Kernel ALU Instructions": 1202246480.0,
+          "RT Intersect Ray Threads": 15.0,
+          "Bytes Read From Device Memory": 8104256.0,
+          "Bytes Written To Device Memory": 140544.0,
+          "Kernel Occupancy": 29.24,
+          "RT Unit Active": 1.05,
+          "Instruction Throughput Limiter": 46.49,
+          "Last Level Cache Limiter": 4.6,
+          "Texture L1 Bytes Read": 14658368.0,
+          "Register Pressure Influence": 0.0
+        },
+        "after": {
+          "Kernel ALU Instructions": 1204236240.0,
+          "RT Intersect Ray Threads": 16.0,
+          "Bytes Read From Device Memory": 8106368.0,
+          "Bytes Written To Device Memory": 140800.0,
+          "Kernel Occupancy": 28.22,
+          "RT Unit Active": 1.11,
+          "Instruction Throughput Limiter": 46.14,
+          "Last Level Cache Limiter": 4.57,
+          "Texture L1 Bytes Read": 14661376.0,
+          "Register Pressure Influence": 0.0
+        }
+      },
+      "ao": {
+        "before": {
+          "Kernel ALU Instructions": 2040028768.0,
+          "RT Intersect Ray Threads": 0.0,
+          "Bytes Read From Device Memory": 6158272.0,
+          "Bytes Written To Device Memory": 1795840.0,
+          "Kernel Occupancy": 65.58,
+          "RT Unit Active": 0.0,
+          "Instruction Throughput Limiter": 82.8,
+          "Last Level Cache Limiter": 35.25,
+          "Texture L1 Bytes Read": 857942592.0,
+          "Register Pressure Influence": 0.0
+        },
+        "after": {
+          "Kernel ALU Instructions": 2041794832.0,
+          "RT Intersect Ray Threads": 0.0,
+          "Bytes Read From Device Memory": 6160896.0,
+          "Bytes Written To Device Memory": 1797312.0,
+          "Kernel Occupancy": 65.8,
+          "RT Unit Active": 0.0,
+          "Instruction Throughput Limiter": 82.68,
+          "Last Level Cache Limiter": 33.22,
+          "Texture L1 Bytes Read": 858157632.0,
+          "Register Pressure Influence": 0.0
+        }
+      },
+      "diffuse_trace": {
+        "before": {
+          "Kernel ALU Instructions": 848265504.0,
+          "RT Intersect Ray Threads": 92761.0,
+          "Bytes Read From Device Memory": 100588096.0,
+          "Bytes Written To Device Memory": 7403072.0,
+          "Kernel Occupancy": 29.44,
+          "RT Unit Active": 84.11,
+          "Instruction Throughput Limiter": 30.78,
+          "Last Level Cache Limiter": 25.96,
+          "Texture L1 Bytes Read": 5122944.0,
+          "Register Pressure Influence": 0.0
+        },
+        "after": {
+          "Kernel ALU Instructions": 846653584.0,
+          "RT Intersect Ray Threads": 92163.0,
+          "Bytes Read From Device Memory": 99457856.0,
+          "Bytes Written To Device Memory": 7082816.0,
+          "Kernel Occupancy": 28.57,
+          "RT Unit Active": 81.6,
+          "Instruction Throughput Limiter": 29.72,
+          "Last Level Cache Limiter": 25.72,
+          "Texture L1 Bytes Read": 5116992.0,
+          "Register Pressure Influence": 0.0
+        }
+      },
+      "evaluate": {
+        "before": {
+          "Kernel ALU Instructions": 1180775936.0,
+          "RT Intersect Ray Threads": 0.0,
+          "Bytes Read From Device Memory": 8278528.0,
+          "Bytes Written To Device Memory": 3448576.0,
+          "Kernel Occupancy": 74.86,
+          "RT Unit Active": 0.0,
+          "Instruction Throughput Limiter": 63.6,
+          "Last Level Cache Limiter": 6.78,
+          "Texture L1 Bytes Read": 14664256.0,
+          "Register Pressure Influence": 0.0
+        },
+        "after": {
+          "Kernel ALU Instructions": 1182668320.0,
+          "RT Intersect Ray Threads": 0.0,
+          "Bytes Read From Device Memory": 8317056.0,
+          "Bytes Written To Device Memory": 3414464.0,
+          "Kernel Occupancy": 74.86,
+          "RT Unit Active": 0.0,
+          "Instruction Throughput Limiter": 61.42,
+          "Last Level Cache Limiter": 6.76,
+          "Texture L1 Bytes Read": 14665536.0,
+          "Register Pressure Influence": 0.0
+        }
+      },
+      "specular_trace": {
+        "before": {
+          "Kernel ALU Instructions": 7991257920.0,
+          "RT Intersect Ray Threads": 1329394.0,
+          "Bytes Read From Device Memory": 555159744.0,
+          "Bytes Written To Device Memory": 67174464.0,
+          "Kernel Occupancy": 41.37,
+          "RT Unit Active": 98.72,
+          "Instruction Throughput Limiter": 45.84,
+          "Last Level Cache Limiter": 37.68,
+          "Texture L1 Bytes Read": 215290368.0,
+          "Register Pressure Influence": 0.0
+        },
+        "after": {
+          "Kernel ALU Instructions": 6473778352.0,
+          "RT Intersect Ray Threads": 1329191.0,
+          "Bytes Read From Device Memory": 587140736.0,
+          "Bytes Written To Device Memory": 87529984.0,
+          "Kernel Occupancy": 52.99,
+          "RT Unit Active": 98.57,
+          "Instruction Throughput Limiter": 42.34,
+          "Last Level Cache Limiter": 46.44,
+          "Texture L1 Bytes Read": 179094144.0,
+          "Register Pressure Influence": 0.0
+        }
+      },
+      "specular_filter": {
+        "before": {
+          "Kernel ALU Instructions": 1916908976.0,
+          "RT Intersect Ray Threads": 0.0,
+          "Bytes Read From Device Memory": 39744448.0,
+          "Bytes Written To Device Memory": 21168832.0,
+          "Kernel Occupancy": 48.9,
+          "RT Unit Active": 0.0,
+          "Instruction Throughput Limiter": 48.83,
+          "Last Level Cache Limiter": 63.73,
+          "Texture L1 Bytes Read": 1315836544.0,
+          "Register Pressure Influence": 0.22
+        },
+        "after": {
+          "Kernel ALU Instructions": 1917815824.0,
+          "RT Intersect Ray Threads": 0.0,
+          "Bytes Read From Device Memory": 39573888.0,
+          "Bytes Written To Device Memory": 21129984.0,
+          "Kernel Occupancy": 48.74,
+          "RT Unit Active": 0.0,
+          "Instruction Throughput Limiter": 47.49,
+          "Last Level Cache Limiter": 64.63,
+          "Texture L1 Bytes Read": 1275717120.0,
+          "Register Pressure Influence": 1.54
+        }
+      }
+    }
+  },
+  "benchmarks": {
+    "control-a": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+      "sha256": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 20.364947222222224,
+          "fps": 49.10398191009306,
+          "median_ms": 20.3005,
+          "p95_ms": 21.817,
+          "max_ms": 23.043,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-a/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 12.939805555555555,
+          "fps": 77.28091397560928,
+          "median_ms": 12.559999999999999,
+          "p95_ms": 15.009,
+          "max_ms": 16.731,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-a/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "control-b": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+      "sha256": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 23.21013888888889,
+          "fps": 43.084619389275524,
+          "median_ms": 23.1585,
+          "p95_ms": 25.249,
+          "max_ms": 29.232,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-b/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 12.794294444444445,
+          "fps": 78.15983947705857,
+          "median_ms": 12.487,
+          "p95_ms": 14.96,
+          "max_ms": 17.493,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-b/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "control-c": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+      "sha256": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 21.028630555555555,
+          "fps": 47.55421411575515,
+          "median_ms": 20.886000000000003,
+          "p95_ms": 23.574,
+          "max_ms": 25.808,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-c/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 12.812375,
+          "fps": 78.04954194675071,
+          "median_ms": 12.413499999999999,
+          "p95_ms": 14.759,
+          "max_ms": 16.601,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-c/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "control-d": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+      "sha256": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 22.359702777777777,
+          "fps": 44.723313629814946,
+          "median_ms": 22.016,
+          "p95_ms": 24.62,
+          "max_ms": 27.021,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/control-d/static",
+            "--still"
+          ]
+        }
+      }
+    },
+    "coverage-a": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/coverage-editor",
+      "sha256": "1af3b4c428cbcfc5f8a1f6e0f2d5b96bf1cbf7fa109e851f99caa9d43218ce4c",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 21.62978888888889,
+          "fps": 46.23253630153066,
+          "median_ms": 21.225,
+          "p95_ms": 23.952,
+          "max_ms": 25.087,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/coverage-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/coverage-a/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 13.951091666666667,
+          "fps": 71.67897852677001,
+          "median_ms": 13.757,
+          "p95_ms": 16.299,
+          "max_ms": 19.007,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/coverage-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/coverage-a/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "readonly-a": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/readonly-editor",
+      "sha256": "dfcd26e3790eab7baa65440d62181f46aeb1c3acc070fa557958020e61ffbd52",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 21.378936111111113,
+          "fps": 46.775012320668175,
+          "median_ms": 21.052,
+          "p95_ms": 24.27,
+          "max_ms": 25.262,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/readonly-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/readonly-a/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 12.651258333333333,
+          "fps": 79.04352070380351,
+          "median_ms": 12.288,
+          "p95_ms": 14.573,
+          "max_ms": 16.631,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/readonly-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/readonly-a/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "visibility-a": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/visibility-editor",
+      "sha256": "6d87381820fb2359f3e775eea9f8fd64ba7c3ef0ec67384acbbbdb1d2e3270d7",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 21.198391666666666,
+          "fps": 47.173390119612066,
+          "median_ms": 20.930500000000002,
+          "p95_ms": 23.288,
+          "max_ms": 24.18,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/visibility-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/visibility-a/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 13.76558611111111,
+          "fps": 72.64492713411121,
+          "median_ms": 13.623000000000001,
+          "p95_ms": 15.702,
+          "max_ms": 18.458,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/visibility-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/visibility-a/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "visibility-b": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/visibility-editor",
+      "sha256": "6d87381820fb2359f3e775eea9f8fd64ba7c3ef0ec67384acbbbdb1d2e3270d7",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 22.985875,
+          "fps": 43.50497860098865,
+          "median_ms": 22.859,
+          "p95_ms": 24.943,
+          "max_ms": 26.334,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/visibility-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/visibility-b/static",
+            "--still"
+          ]
+        },
+        "diffuse": {
+          "mean_ms": 12.810980555555556,
+          "fps": 78.05803745181271,
+          "median_ms": 12.4315,
+          "p95_ms": 15.097,
+          "max_ms": 17.388,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/visibility-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/visibility-b/diffuse",
+            "--still",
+            "--no-specular"
+          ]
+        }
+      }
+    },
+    "lanes-a": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+      "sha256": "045b0382e816d6f4dfd7c9e03ce2aa40168d15dcaabaa597def8b9c228bd50a0",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 20.514869444444443,
+          "fps": 48.74513107227238,
+          "median_ms": 20.2575,
+          "p95_ms": 22.51,
+          "max_ms": 24.117,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/lanes-a/static",
+            "--still"
+          ]
+        }
+      }
+    },
+    "lanes-b": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+      "sha256": "045b0382e816d6f4dfd7c9e03ce2aa40168d15dcaabaa597def8b9c228bd50a0",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 19.678280555555556,
+          "fps": 50.817448057863004,
+          "median_ms": 19.533,
+          "p95_ms": 21.401,
+          "max_ms": 22.588,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/lanes-b/static",
+            "--still"
+          ]
+        }
+      }
+    },
+    "final-control": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+      "sha256": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 22.254025,
+          "fps": 44.93569140863282,
+          "median_ms": 21.802,
+          "p95_ms": 24.812,
+          "max_ms": 26.41,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-control/static",
+            "--still"
+          ]
+        },
+        "moving": {
+          "mean_ms": 28.536320512820513,
+          "fps": 35.043060283498356,
+          "median_ms": 29.0215,
+          "p95_ms": 35.393,
+          "max_ms": 40.012,
+          "frames": 1560,
+          "rendered_frame": 1798,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=1800",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-control/moving"
+          ]
+        },
+        "multi-light": {
+          "mean_ms": 28.448630555555557,
+          "fps": 35.1510768874151,
+          "median_ms": 28.2225,
+          "p95_ms": 31.403,
+          "max_ms": 34.195,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-control/multi-light",
+            "--still",
+            "--multi-light"
+          ]
+        },
+        "static-repeat": {
+          "mean_ms": 20.30168888888889,
+          "fps": 49.256985735176926,
+          "median_ms": 20.261000000000003,
+          "p95_ms": 21.904,
+          "max_ms": 22.714,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-control/static-repeat",
+            "--still"
+          ]
+        }
+      }
+    },
+    "final-optimized": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+      "sha256": "045b0382e816d6f4dfd7c9e03ce2aa40168d15dcaabaa597def8b9c228bd50a0",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 20.945972222222224,
+          "fps": 47.74187559262918,
+          "median_ms": 20.669,
+          "p95_ms": 23.03,
+          "max_ms": 24.461,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-optimized/static",
+            "--still"
+          ]
+        },
+        "moving": {
+          "mean_ms": 27.72842371794872,
+          "fps": 36.06407670958577,
+          "median_ms": 27.7275,
+          "p95_ms": 36.715,
+          "max_ms": 43.406,
+          "frames": 1560,
+          "rendered_frame": 1798,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=1800",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-optimized/moving"
+          ]
+        },
+        "multi-light": {
+          "mean_ms": 27.017991666666667,
+          "fps": 37.012373544912506,
+          "median_ms": 26.9685,
+          "p95_ms": 29.373,
+          "max_ms": 32.583,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-optimized/multi-light",
+            "--still",
+            "--multi-light"
+          ]
+        },
+        "static-repeat": {
+          "mean_ms": 21.21843611111111,
+          "fps": 47.12882677891357,
+          "median_ms": 20.908,
+          "p95_ms": 23.796,
+          "max_ms": 25.591,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/lanes-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-optimized/static-repeat",
+            "--still"
+          ]
+        }
+      }
+    },
+    "final-control-repeat": {
+      "engine": "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+      "sha256": "a48041f59bbb91a944b5be2fc92d691a4fc4bce456f96ee1b10013cdbba9cfff",
+      "size": "1280x720",
+      "warmup": 240,
+      "results": {
+        "static": {
+          "mean_ms": 21.94329722222222,
+          "fps": 45.57200268824181,
+          "median_ms": 21.5745,
+          "p95_ms": 24.124,
+          "max_ms": 25.174,
+          "frames": 360,
+          "rendered_frame": 598,
+          "command": [
+            "/private/tmp/kiln-xcode-opt-20260917/control-editor",
+            "--path",
+            "/Users/chenyi/Workspace/GodotKiln/kiln/sponza",
+            "--rendering-driver",
+            "metal",
+            "--rendering-method",
+            "kiln_deferred",
+            "--",
+            "--benchmark",
+            "--hardware",
+            "--rays=2",
+            "--specular-rays=2",
+            "--size=1280x720",
+            "--frames=600",
+            "--output=/tmp/kiln-xcode-opt-20260917/final-control-repeat/static",
+            "--still"
+          ]
+        }
+      }
+    }
+  },
+  "validation": {
+    "editor": {
+      "passed": true,
+      "metal_api_validation": true,
+      "size": "480x270",
+      "shader_variants": 24,
+      "checks": {
+        "comparison": 115,
+        "suite": 300,
+        "specular": 223,
+        "tod": 25
+      },
+      "lifecycle_records": 13,
+      "original_mesh_import_passed": true
+    },
+    "ray_counts": {
+      "hardware": {
+        "passed": true,
+        "metal_api_and_shader_validation": true,
+        "size": "481x271",
+        "rays": [
+          2,
+          1,
+          3,
+          8,
+          2
+        ]
+      },
+      "software": {
+        "passed": true,
+        "metal_api_and_shader_validation": true,
+        "size": "481x271",
+        "rays": [
+          2,
+          1,
+          3,
+          8,
+          2
+        ]
+      }
+    },
+    "quality_before": {
+      "passed": true,
+      "display_noise_std": 0.0023768419407693684,
+      "settled32_mae": 0.0014721617041878485
+    },
+    "quality_after": {
+      "passed": true,
+      "display_noise_std": 0.002386374286757678,
+      "settled32_mae": 0.001472403776325345
+    },
+    "release": {
+      "passed": true,
+      "checks": 223,
+      "size": "960x540 with 961x541 transition",
+      "metal_api_and_shader_validation": true,
+      "pck_sha256": "f392153498e666b769dc4d45e3a2cda36ffa3a4fa1e8ad3116b3203251c7fbd1"
+    },
+    "release_forward": {
+      "completed": true,
+      "metal_api_validation": true,
+      "size": [
+        1280,
+        720
+      ],
+      "scope": "real-window startup, final GPU capture and visual inspection; no FPS comparison"
+    }
+  },
+  "visual_inspection": [
+    "captured-optimized.png",
+    "acceptance/specular/emitter_blue/color.png",
+    "acceptance/specular/reflection_odd_resize/color.png",
+    "release-specular/wet_day/color.png",
+    "release-forward/final/color.png"
+  ],
+  "unverified": [
+    "Vulkan",
+    "D3D12",
+    "other operating systems",
+    "other GPUs",
+    "1080p performance",
+    "sustained 60 FPS"
+  ]
+}

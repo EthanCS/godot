@@ -43,6 +43,10 @@ CLI options after `--`: `--still`, `--no-gi`, `--no-aa`, `--rays=2`,
 `--surfel-two-bounce`, `--size=1280x720`, `--frames=600`,
 `--output=<temp-directory>`.
 Ray quality 1–8 selects 4–32 rays per updated surfel.
+On macOS, use the arm64 engine with `--rendering-driver metal`; supported Apple
+GPUs automatically select native Metal hardware ray queries. See
+[Metal requirements and validation](../docs/METAL-RAY-QUERY.md). `--software`
+still selects the compute BVH for diagnostic comparisons.
 `--benchmark` records whole-frame intervals after warmup without readbacks.
 Compare identical renderer options and quality; no performance result is implied.
 For reproducible paired runs, use `kiln/tools/benchmark_sponza.py --engine <exe>
@@ -103,3 +107,16 @@ Conversion merges OBJ faces by material to avoid Godot's surface-count limit;
 vertex positions, UVs and normals are preserved. Historical OBJ/PBR differences
 (including bump-map interpretation and opacity-map support) remain a limitation
 of this reference import. It is not the Intel remaster or Khronos glTF version.
+
+## Metal performance and ray-budget regression
+
+`kiln/tools/benchmark_sponza.py` accepts `--driver metal`. Benchmark windows stay
+on top, and the runner rejects stale rendered-frame counters so an occluded
+window cannot produce a false speedup. Use production builds without validation
+layers or diagnostic readbacks; keep GPU capture runs separate.
+
+The real-window script `res://tests/specular_ray_counts.gd` switches 2 → 1 → 3 →
+8 → 2 rays, checking finite, nonzero reflections at 481×271. Run it with
+`--still --output=<temporary directory>` after the engine argument separator; add
+`--software` to cover the compute-BVH pipeline cache. See the
+[Metal optimization report](../docs/METAL-GI-OPTIMIZATION.md) for measurements.

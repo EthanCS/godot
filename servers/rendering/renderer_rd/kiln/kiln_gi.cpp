@@ -7,6 +7,10 @@
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
+#include "core/os/os.h"
+#ifdef METAL_ENABLED
+#include "drivers/metal/kiln_specular_native.metal.gen.h"
+#endif
 #include "servers/rendering/renderer_rd/storage_rd/material_storage.h"
 #include "servers/rendering/renderer_rd/uniform_set_cache_rd.h"
 #include "servers/rendering/rendering_server_globals.h"
@@ -53,6 +57,23 @@ KilnGI::KilnGI() {
 			hardware_available &= hardware_pipelines[i].is_valid();
 		}
 	}
+#ifdef METAL_ENABLED
+	if (hardware_available && OS::get_singleton()->get_current_rendering_driver_name() == "metal" && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/metal_native_specular", false))) {
+		Vector<String> native_defines;
+		// Updating MSL invalidates the ShaderRD cache even when its descriptor
+		// metadata is unchanged. Native and translated variants have distinct IDs.
+		native_defines.push_back(String("\n#define KILN_NATIVE_MSL_") + KILN_NATIVE_SPECULAR_SHA256 + "\n");
+		native_specular_shader.initialize(native_defines);
+		native_specular_version = native_specular_shader.version_create();
+		native_specular_shader.version_set_compute_code(native_specular_version, HashMap<String, String>(), "", "", Vector<String>());
+		print_line("[KILN_GI] specular implementation=handwritten_msl");
+	} else
+#endif
+	{
+		print_line("[KILN_GI] specular implementation=translated_glsl");
+	}
+	specular_pipelines[0][1] = pipelines[SURFEL_SPECULAR];
+	specular_pipelines[1][1] = hardware_pipelines[3];
 	RD::SamplerState state;
 	sampler = RD::get_singleton()->sampler_create(state);
 	state.min_filter = state.mag_filter = RD::SAMPLER_FILTER_LINEAR;
@@ -64,6 +85,9 @@ KilnGI::KilnGI() {
 	print_line(vformat("[KILN_GI] hardware ray query=%s; compute software BVH fallback available", hardware_available));
 }
 KilnGI::~KilnGI() {
+	if (native_specular_version.is_valid()) {
+		native_specular_shader.version_free(native_specular_version);
+	}
 	shader.version_free(version);
 	if (hardware_version.is_valid()) {
 		hardware_shader.version_free(hardware_version);
@@ -115,7 +139,7 @@ void KilnGI::View::free_data() {
 	static_material_version = dynamic_material_version = 0;
 	ready = false;
 }
-void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z, RID tlas) {
+void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z, RID tlas, bool force_translated) {
 	RD *rd = RD::get_singleton();
 	static const char *stage_names[] = { "Update", "Grid", "Generate", "Trace diffuse", "Integrate", "Evaluate", "Publish diffuse", "Trace specular", "Filter specular", "Debug", "Sequence", "AO depth", "AO main", "AO denoise", "AO temporal", "BVH refit", "Grid prefix", "Grid prefix sums", "Grid scatter", "Query validation" };
 	RENDER_TIMESTAMP(String("Kiln / ") + stage_names[stage]);
@@ -175,6 +199,25 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 		code = shader.version_get_shader(version, stage);
 		pipeline = pipelines[stage];
 	}
+	if (stage == SURFEL_SPECULAR) {
+		uint32_t rays = CLAMP(stride, 1, 8);
+		int implementation = tlas.is_valid() ? 1 : 0;
+		if (tlas.is_valid() && native_specular_version.is_valid() && !force_translated) {
+			code = native_specular_shader.version_get_shader(native_specular_version, 0);
+			implementation = 2;
+		}
+		RID &specialized = specular_pipelines[implementation][rays - 1];
+		if (!specialized.is_valid()) {
+			RD::PipelineSpecializationConstant count;
+			count.type = RD::PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT;
+			count.constant_id = 0;
+			count.int_value = rays;
+			Vector<RD::PipelineSpecializationConstant> constants;
+			constants.push_back(count);
+			specialized = rd->compute_pipeline_create(code, constants);
+		}
+		pipeline = specialized;
+	}
 	RID set = UniformSetCacheRD::get_singleton()->get_cache_vec(code, 0, uniforms);
 	RD::ComputeListID list = rd->compute_list_begin();
 	rd->compute_list_bind_compute_pipeline(list, pipeline);
@@ -183,7 +226,9 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 		int push[4] = { stride, size.x, 0, 0 };
 		rd->compute_list_set_push_constant(list, push, (stage == BVH_REFIT) ? sizeof(push) : sizeof(int));
 	}
-	rd->compute_list_dispatch(list, (size.x + 7) / 8, (size.y + 7) / 8, z);
+	uint32_t group_width = stage == SURFEL_SPECULAR ? 16 : 8;
+	uint32_t group_height = stage == SURFEL_SPECULAR ? 2 : 8;
+	rd->compute_list_dispatch(list, (size.x + group_width - 1) / group_width, (size.y + group_height - 1) / group_height, z);
 	rd->compute_list_end();
 	RENDER_TIMESTAMP("Kiln / between passes");
 }
@@ -517,12 +562,22 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	if (state->frames == 0 || changed_world) {
 		rd->buffer_clear(state->storage["surfels"], 0, state->slots * 128);
 	}
+	auto trace_specular = [&](RID base, RID fresnel, bool force_translated) {
+		dispatch(SURFEL_SPECULAR, state->size,
+				{ U(), S(1, depth), S(2, normal), S(31, surface_input), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"),
+						B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(35, "grid_sums"), I(6, base), I(7, fresnel) },
+				specular_rays, 1, query_tlas, force_translated);
+	};
 	if (world.enabled) {
 		const Size2i surfel_dispatch(256, state->slots / 256);
 		auto surfel_pass = [&](Stage stage, bool geometry, bool screen, RID tlas = RID()) {
 			Size2i work = screen ? state->size : surfel_dispatch;
-			if (stage == SURFEL_GRID_PREFIX) work = Size2i(256, 1024);
-			if (stage == SURFEL_GRID_PREFIX_SUMS) work = Size2i(8, 8);
+			if (stage == SURFEL_GRID_PREFIX) {
+				work = Size2i(256, 1024);
+			}
+			if (stage == SURFEL_GRID_PREFIX_SUMS) {
+				work = Size2i(8, 8);
+			}
 			// Fixed descriptors are shared by the stages; ShaderRD retains the
 			// declared binding contract even for helpers eliminated by glslang.
 			if (geometry) {
@@ -551,10 +606,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		surfel_pass(SURFEL_TRACE, true, false, query_tlas);
 		surfel_pass(SURFEL_INTEGRATE, false, false);
 		surfel_pass(SURFEL_EVALUATE, false, true);
-		dispatch(SURFEL_SPECULAR, state->size,
-				{ U(), S(1, depth), S(2, normal), S(31, surface_input), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"),
-						B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(35, "grid_sums"), I(6, T("specular_raw")), I(7, T("fresnel_raw")) },
-				0, 1, query_tlas);
+		trace_specular(T("specular_raw"), T("fresnel_raw"), false);
 	} else {
 		rd->texture_clear(T("raw"), Color(0, 0, 0, 0), 0, 1, 0, 1);
 	}
@@ -604,6 +656,25 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["surfel_multibounce"] = multibounce;
 			metadata["surfel_specular"] = specular_rays > 0;
 			metadata["specular_rays"] = specular_rays;
+			metadata["specular_implementation"] = state->hardware_active && native_specular_version.is_valid() ? "handwritten_msl" : "translated_glsl";
+			if (world.enabled && query_tlas.is_valid() && native_specular_version.is_valid() && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/metal_specular_validation", false))) {
+				// Replay ONLY this read-only pass against the exact same frame's
+				// inputs. Diagnostics allocate/read back these textures on demand;
+				// normal rendering and timing never execute the reference dispatch.
+				for (const char *name : { "specular_reference", "fresnel_reference" }) {
+					if (!state->textures.has(String(name) + "0")) {
+						state->textures[String(name) + "0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+					}
+				}
+				trace_specular(T("specular_reference"), T("fresnel_reference"), true);
+				for (const char *name : { "specular_reference", "fresnel_reference" }) {
+					Ref<FileAccess> dump = FileAccess::open(world.capture_directory.path_join(String(name) + ".bin"), FileAccess::WRITE);
+					if (dump.is_valid()) {
+						dump->store_buffer(rd->texture_get_data(T(name), 0));
+					}
+				}
+				metadata["specular_reference"] = "same_frame_translated_glsl";
+			}
 			metadata["specular_checkerboard"] = specular_checkerboard;
 			metadata["texture_pages"] = world.texture_pixels.size() / (512 * 512 * 4);
 			metadata["texture_version"] = world.texture_version;
@@ -702,6 +773,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	statistics["surfel_capacity"] = state->slots;
 	statistics["surfel_multibounce"] = multibounce;
 	statistics["specular_rays"] = specular_rays;
+	statistics["specular_implementation"] = state->hardware_active && native_specular_version.is_valid() ? "handwritten_msl" : "translated_glsl";
 	statistics["specular_checkerboard"] = specular_checkerboard;
 	statistics["surfel_grid"] = "compact_overlap_lists";
 	statistics["backend"] = state->hardware_active ? "hardware_ray_query" : "compute_software_bvh";

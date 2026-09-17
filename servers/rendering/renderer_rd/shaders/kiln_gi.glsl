@@ -284,11 +284,12 @@ bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
 }
 #ifdef KILN_HARDWARE_RAY_QUERY
 layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
-bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     triangle_id=-1;distance=maximum;normal=vec3(0);
     rayQueryEXT query;
-    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
-    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -296,7 +297,7 @@ bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
     distance=rayQueryGetIntersectionTEXT(query,true);
     Triangle tri=world_triangle(triangle_id);
     normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
-    if(dot(normal,ray)>0.0)normal=-normal;
+    if(dot(normal,direction)>0.0)normal=-normal;
     return true;
 }
 #endif
@@ -308,8 +309,18 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
     int id;float distance;vec3 normal;
     return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);
@@ -402,28 +413,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -708,28 +757,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -1121,11 +1208,12 @@ bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
 }
 #ifdef KILN_HARDWARE_RAY_QUERY
 layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
-bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     triangle_id=-1;distance=maximum;normal=vec3(0);
     rayQueryEXT query;
-    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
-    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -1133,7 +1221,7 @@ bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
     distance=rayQueryGetIntersectionTEXT(query,true);
     Triangle tri=world_triangle(triangle_id);
     normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
-    if(dot(normal,ray)>0.0)normal=-normal;
+    if(dot(normal,direction)>0.0)normal=-normal;
     return true;
 }
 #endif
@@ -1145,8 +1233,18 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
     int id;float distance;vec3 normal;
     return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);
@@ -1239,28 +1337,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -1698,11 +1834,12 @@ bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
 }
 #ifdef KILN_HARDWARE_RAY_QUERY
 layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
-bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     triangle_id=-1;distance=maximum;normal=vec3(0);
     rayQueryEXT query;
-    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
-    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -1710,7 +1847,7 @@ bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
     distance=rayQueryGetIntersectionTEXT(query,true);
     Triangle tri=world_triangle(triangle_id);
     normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
-    if(dot(normal,ray)>0.0)normal=-normal;
+    if(dot(normal,direction)>0.0)normal=-normal;
     return true;
 }
 #endif
@@ -1722,8 +1859,18 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
     int id;float distance;vec3 normal;
     return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);
@@ -1816,28 +1963,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -2133,28 +2318,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -2493,28 +2716,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -3115,11 +3376,12 @@ bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
 }
 #ifdef KILN_HARDWARE_RAY_QUERY
 layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
-bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     triangle_id=-1;distance=maximum;normal=vec3(0);
     rayQueryEXT query;
-    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
-    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -3127,7 +3389,7 @@ bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
     distance=rayQueryGetIntersectionTEXT(query,true);
     Triangle tri=world_triangle(triangle_id);
     normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
-    if(dot(normal,ray)>0.0)normal=-normal;
+    if(dot(normal,direction)>0.0)normal=-normal;
     return true;
 }
 #endif
@@ -3139,8 +3401,18 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
     int id;float distance;vec3 normal;
     return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);
@@ -3233,28 +3505,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -3341,7 +3651,13 @@ layout(set = 0, binding = 1) uniform sampler2D depth;
 layout(set = 0, binding = 2) uniform sampler2D normals;
 layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D specular_base;
 layout(set = 0, binding = 7, rgba16f) uniform writeonly image2D specular_fresnel;
-layout(local_size_x = 8, local_size_y = 8) in;
+// Each 32-lane SIMD group covers one checkerboard parity, with adjacent lanes
+// tracing independent samples of the same receiver. Rough-reflection omissions
+// can then retire a whole SIMD group instead of leaving both groups half idle.
+layout(local_size_x = 16, local_size_y = 2, local_size_z = 2) in;
+layout(constant_id = 0) const uint REFLECTION_RAY_COUNT = 2u;
+shared vec4 sample_base[64];
+shared vec4 sample_fresnel[64];
 
 // Isotropic GGX visible-normal sampling, following Heitz, JCGT 7(4), 2018.
 // https://jcgt.org/published/0007/04/01/ -- independently implemented here.
@@ -3391,8 +3707,10 @@ vec3 reflected_radiance(vec3 origin, vec3 direction, inout uint seed, out float 
 	// There is no second emitter estimator at the receiver to double count it.
 	return t.emission.rgb + clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
 }
-void main() {
-	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+void trace_pixel(ivec2 pixel, uint lane, out vec4 output_base, out vec4 output_fresnel) {
+	ivec2 size = ivec2(p.size_frame.xy);
+	output_base = vec4(0);
+	output_fresnel = vec4(0);
 	if (any(greaterThanEqual(pixel, size))) {
 		return;
 	}
@@ -3413,8 +3731,7 @@ void main() {
 			float nr = receiver_roughness(normals, neighbor);
 			if (nd > 1e-7 && nr >= 0.45 && abs(nr - roughness) <= 0.025 && dot(n, nn) >= 0.99 &&
 					abs(dot(neighbor_position - position, n)) <= 0.02) {
-				imageStore(specular_base, pixel, vec4(0, 0, 0, -1));
-				imageStore(specular_fresnel, pixel, vec4(0));
+				output_base = vec4(0, 0, 0, -1);
 				return;
 			}
 		}
@@ -3430,9 +3747,12 @@ void main() {
 		mat3 basis = mat3(tangent, cross(n, tangent), n);
 		vec3 local_view = transpose(basis) * v;
 		float alpha = max(0.002, roughness * roughness);
-		uint seed = surfel_hash(uint(pixel.x + pixel.y * size.x) ^ uint(p.size_frame.z) * 1664525u);
-		uint count = uint(clamp(p.debug.w, 1.0, 8.0));
-		for (uint i = 0u; i < count; i++) {
+		uint base_seed = surfel_hash(uint(pixel.x + pixel.y * size.x) ^ uint(p.size_frame.z) * 1664525u);
+		uint count = REFLECTION_RAY_COUNT;
+		for (uint i = lane; i < count; i += 2u) {
+			// Preserve the first stream; subsequent rays use independent streams
+			// so hit-light sampling in one ray cannot serialize the next ray.
+			uint seed = i == 0u ? base_seed : surfel_hash(base_seed ^ (i * 0x9e3779b9u));
 			vec3 h = basis * visible_microfacet(vec3(local_view.xy, max(0.0001, local_view.z)), alpha, random_pair(seed));
 			vec3 direction = reflect(-v, h);
 			float nl = dot(n, direction), nv = max(dot(n, v), 0.0001);
@@ -3452,8 +3772,30 @@ void main() {
 		fresnel /= float(count);
 		mean_distance /= float(count);
 	}
-	imageStore(specular_base, pixel, vec4(base, mean_distance));
-	imageStore(specular_fresnel, pixel, vec4(fresnel, 0));
+	output_base = vec4(base, mean_distance);
+	output_fresnel = vec4(fresnel, 0);
+}
+void main() {
+	uint index = gl_LocalInvocationIndex;
+	uint receiver = (index & 31u) >> 1u;
+	uint y = receiver >> 3u;
+	uint x = (receiver & 7u) * 2u + ((y + (index >> 5u)) & 1u);
+	ivec2 pixel = ivec2(gl_WorkGroupID.xy) * ivec2(16, 2) + ivec2(x, y);
+	uint lane = index & 1u;
+	vec4 a, b;
+	trace_pixel(pixel, lane, a, b);
+	sample_base[index] = a;
+	sample_fresnel[index] = b;
+	barrier();
+	if (lane == 0u && all(lessThan(pixel, ivec2(p.size_frame.xy)))) {
+		// The missing-sample marker is shared by both lanes, not accumulated.
+		if (a.a >= 0.0) {
+			a += sample_base[index + 1u];
+			b += sample_fresnel[index + 1u];
+		}
+		imageStore(specular_base, pixel, a);
+		imageStore(specular_fresnel, pixel, b);
+	}
 }
 
 #endif
@@ -3617,15 +3959,29 @@ layout(set = 0, binding = 11, rgba16f) uniform writeonly image2D new_geometry;
 layout(set = 0, binding = 12, rgba16f) uniform writeonly image2D result_base;
 layout(set = 0, binding = 13, rgba16f) uniform writeonly image2D result_fresnel;
 layout(local_size_x = 8, local_size_y = 8) in;
+// Reconstruct each receiver once for the 8x8 tile and its two-pixel halo.
+// Every neighbor, rejection threshold and filter weight remains unchanged.
+shared vec4 filter_normals[144];
+shared vec4 filter_positions[144];
 void main() {
 	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+	ivec2 tile_origin = ivec2(gl_WorkGroupID.xy) * 8 - 2;
+	for (uint i = gl_LocalInvocationIndex; i < 144u; i += 64u) {
+		ivec2 q = clamp(tile_origin + ivec2(i % 12u, i / 12u), ivec2(0), size - 1);
+		float qd = texelFetch(depth, q, 0).r;
+		filter_positions[i] = vec4(world_position((vec2(q) + 0.5) / vec2(size), qd), qd);
+		filter_normals[i] = vec4(safe_normalize(mat3(p.inv_view) * receiver_view_normal(normals, depth, q)), receiver_roughness(normals, q));
+	}
+	barrier();
+	// Edge workgroups must populate the halo before any out-of-bounds lane exits.
 	if (any(greaterThanEqual(pixel, size))) {
 		return;
 	}
-	float d = texelFetch(depth, pixel, 0).r;
-	float roughness = receiver_roughness(normals, pixel);
-	vec3 n = safe_normalize(mat3(p.inv_view) * receiver_view_normal(normals, depth, pixel));
-	vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
+	uint center_index = (gl_LocalInvocationID.y + 2u) * 12u + gl_LocalInvocationID.x + 2u;
+	float d = filter_positions[center_index].w;
+	float roughness = filter_normals[center_index].w;
+	vec3 n = filter_normals[center_index].xyz;
+	vec3 position = filter_positions[center_index].xyz;
 	vec4 center = texelFetch(raw_base, pixel, 0);
 	vec3 a = center.rgb, b = texelFetch(raw_fresnel, pixel, 0).rgb;
 	bool missing = center.a < 0.0;
@@ -3647,10 +4003,9 @@ void main() {
 		for (int x = -2; x <= 2; x++) {
 			if ((x == 0 && y == 0) || abs(x) > max(radius, 1) || abs(y) > max(radius, 1)) continue;
 			ivec2 q = clamp(pixel + ivec2(x, y), ivec2(0), size - 1);
-			float qd = texelFetch(depth, q, 0).r;
-			vec3 qn = safe_normalize(mat3(p.inv_view) * receiver_view_normal(normals, depth, q));
-			vec3 qp = world_position((vec2(q) + 0.5) / vec2(size), qd);
-			if (qd <= 1e-7 || dot(n, qn) < 0.97 || abs(dot(qp - position, n)) > 0.035 || abs(receiver_roughness(normals, q) - roughness) > 0.04) continue;
+			uint qi = uint(int(center_index) + y * 12 + x);
+			vec4 qgeometry = filter_positions[qi], qnormal = filter_normals[qi];
+			if (qgeometry.w <= 1e-7 || dot(n, qnormal.xyz) < 0.97 || abs(dot(qgeometry.xyz - position, n)) > 0.035 || abs(qnormal.w - roughness) > 0.04) continue;
 			vec4 qa = texelFetch(raw_base, q, 0);
 			if (qa.a < 0.0) continue;
 			vec3 qb = texelFetch(raw_fresnel, q, 0).rgb;
@@ -3869,28 +4224,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -5108,28 +5501,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -5383,28 +5814,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -5662,28 +6131,66 @@ struct Surfel {
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
-layout(set = 0, binding = 20, std430) buffer Surfels {
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
 	Surfel surfels[];
 };
-layout(set = 0, binding = 21, std430) buffer CellHeads {
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
-layout(set = 0, binding = 22, std430) buffer CellLinks {
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
 	uint cell_links[]; // compact indices, at most 27 references per surfel
 };
-layout(set = 0, binding = 35, std430) buffer GridSums {
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
 };
-layout(set = 0, binding = 23, std430) buffer FreeSlots {
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
 	uint free_slots[];
 };
-layout(set = 0, binding = 24, std430) buffer Counters {
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint free_count;
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
 	uint spawn_claims[]; // per-frame world-space allocation deduplication
 };
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
 uint surfel_hash(uint x) {
 	x ^= x >> 16;
 	x *= 0x7feb352du;
@@ -6073,11 +6580,12 @@ bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
 }
 #ifdef KILN_HARDWARE_RAY_QUERY
 layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
-bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
     triangle_id=-1;distance=maximum;normal=vec3(0);
     rayQueryEXT query;
-    uint flags=gl_RayFlagsOpaqueEXT|(any_hit?gl_RayFlagsTerminateOnFirstHitEXT:0u);
-    rayQueryInitializeEXT(query,scene_tlas,flags,255u,origin,.006,ray,maximum);
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -6085,7 +6593,7 @@ bool world_trace_hardware(vec3 origin,vec3 ray,float maximum,bool any_hit,out in
     distance=rayQueryGetIntersectionTEXT(query,true);
     Triangle tri=world_triangle(triangle_id);
     normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
-    if(dot(normal,ray)>0.0)normal=-normal;
+    if(dot(normal,direction)>0.0)normal=-normal;
     return true;
 }
 #endif
@@ -6097,8 +6605,18 @@ bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangl
 #endif
 }
 bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
     int id;float distance;vec3 normal;
     return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);
@@ -6188,7 +6706,8 @@ void main(){
     float reference_distance;
     world_trace_software(origin,direction,1000.0,false,soft_id,reference_distance,n);
     bool hard_blocked=world_trace_hardware(origin,direction,2.0,true,hard_id,hard_distance,n);
-    results[index]=vec4(soft==hard?0.0:1.0,soft&&hard?abs(reference_distance-saved_distance):0.0,soft_blocked==hard_blocked?0.0:1.0,soft?1.0:0.0);
+    bool visibility=visibility_blocked(origin,direction,2.0);
+    results[index]=vec4(soft==hard?0.0:1.0,soft&&hard?abs(reference_distance-saved_distance):0.0,soft_blocked==hard_blocked&&soft_blocked==visibility?0.0:1.0,soft?1.0:0.0);
 }
 
 #endif

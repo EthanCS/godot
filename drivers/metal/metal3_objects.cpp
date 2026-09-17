@@ -112,6 +112,16 @@ void MDCommandBuffer::end() {
 	}
 }
 
+void MDCommandBuffer::build_acceleration_structure(MTL::AccelerationStructure *p_structure, MTL::AccelerationStructureDescriptor *p_descriptor, MTL::Buffer *p_scratch) {
+	// Tracked Metal resources synchronize blit uploads, BLAS -> TLAS builds,
+	// and subsequent compute ray queries across these encoder boundaries.
+	DEV_ASSERT(!use_barriers);
+	end();
+	MTL::AccelerationStructureCommandEncoder *encoder = command_buffer()->accelerationStructureCommandEncoder();
+	encoder->buildAccelerationStructure(p_structure, p_descriptor, p_scratch, 0);
+	encoder->endEncoding();
+}
+
 void MDCommandBuffer::commit() {
 	end();
 	if (use_barriers) {
@@ -1609,6 +1619,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDSha
 	DEV_ASSERT(render.encoder.get() != nullptr);
 
 	MTL::RenderCommandEncoder *enc = render.encoder.get();
+	_use_acceleration_structures(p_set, DirectEncoder(enc, binding_cache, DirectEncoder::RENDER));
 	render.resource_tracker.merge_from(p_set->usage_to_resources);
 
 	const UniformSet &shader_set = p_shader->sets[p_set_index];
@@ -1651,6 +1662,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDSha
 
 void MDCommandBuffer::_bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_shader, DirectEncoder p_enc, uint32_t p_set_index, uint32_t p_dynamic_offsets) {
 	DEV_ASSERT(!p_shader->uses_argument_buffers);
+	_use_acceleration_structures(p_set, p_enc);
 
 	UniformSet const &set = p_shader->sets[p_set_index];
 	DynamicOffsetLayout layout = p_shader->dynamic_offset_layout;
@@ -1744,6 +1756,26 @@ void MDCommandBuffer::_bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_sha
 				const MetalBufferDynamicInfo *buf_info = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
 				p_enc.set(buf_info->metal_buffer.get(), frame_idx * buf_info->size_bytes, indexes.buffer);
 			} break;
+			case RDD::UNIFORM_TYPE_ACCELERATION_STRUCTURE: {
+				for (uint32_t j = 0; j < uniform.ids.size(); j++) {
+					const RDM::AccelerationStructureInfo *info = (const RDM::AccelerationStructureInfo *)uniform.ids[j].id;
+					uint32_t slot = indexes.buffer + j;
+					// AS bindings share the buffer index space. Invalidate cached
+					// buffer bindings so a later ordinary buffer is always rebound.
+					binding_cache.clear();
+					if (p_enc.mode == DirectEncoder::COMPUTE) {
+						static_cast<MTL::ComputeCommandEncoder *>(p_enc.encoder)->setAccelerationStructure(info->structure.get(), slot);
+					} else {
+						auto *enc = static_cast<MTL::RenderCommandEncoder *>(p_enc.encoder);
+						if (ui.active_stages.has_flag(RDD::SHADER_STAGE_VERTEX_BIT)) {
+							enc->setVertexAccelerationStructure(info->structure.get(), slot);
+						}
+						if (ui.active_stages.has_flag(RDD::SHADER_STAGE_FRAGMENT_BIT)) {
+							enc->setFragmentAccelerationStructure(info->structure.get(), slot);
+						}
+					}
+				}
+			} break;
 			case RDD::UNIFORM_TYPE_INPUT_ATTACHMENT: {
 				size_t count = uniform.ids.size();
 				MTL::Texture **objects = ALLOCA_ARRAY(MTL::Texture *, count);
@@ -1765,6 +1797,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 	DEV_ASSERT(compute.encoder.get() != nullptr);
 
 	MTL::ComputeCommandEncoder *enc = compute.encoder.get();
+	_use_acceleration_structures(p_set, DirectEncoder(enc, binding_cache, DirectEncoder::COMPUTE));
 	compute.resource_tracker.merge_from(p_set->usage_to_resources);
 
 	const UniformSet &shader_set = p_shader->sets[p_set_index];
@@ -1804,3 +1837,22 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 }
 
 GODOT_CLANG_WARNING_POP
+
+void MDCommandBuffer::_use_acceleration_structures(MDUniformSet *p_set, DirectEncoder p_enc) {
+	// Uniform sets can be created before the draw graph executes the TLAS build,
+	// so resolve its BLAS residency here instead of caching it in the set.
+	for (const RDD::ID &id : p_set->acceleration_structures) {
+		const RDM::AccelerationStructureInfo *info = (const RDM::AccelerationStructureInfo *)id.id;
+		auto use_resource = [&](MTL::Resource *p_resource) {
+			if (p_enc.mode == DirectEncoder::COMPUTE) {
+				static_cast<MTL::ComputeCommandEncoder *>(p_enc.encoder)->useResource(p_resource, MTL::ResourceUsageRead);
+			} else {
+				static_cast<MTL::RenderCommandEncoder *>(p_enc.encoder)->useResource(p_resource, MTL::ResourceUsageRead, MTL::RenderStageVertex | MTL::RenderStageFragment);
+			}
+		};
+		use_resource(info->structure.get());
+		for (const NS::SharedPtr<MTL::AccelerationStructure> &instance : info->instances) {
+			use_resource(instance.get());
+		}
+	}
+}

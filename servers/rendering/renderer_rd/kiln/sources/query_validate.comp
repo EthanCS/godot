@@ -17,5 +17,6 @@ void main(){
     float reference_distance;
     world_trace_software(origin,direction,1000.0,false,soft_id,reference_distance,n);
     bool hard_blocked=world_trace_hardware(origin,direction,2.0,true,hard_id,hard_distance,n);
-    results[index]=vec4(soft==hard?0.0:1.0,soft&&hard?abs(reference_distance-saved_distance):0.0,soft_blocked==hard_blocked?0.0:1.0,soft?1.0:0.0);
+    bool visibility=visibility_blocked(origin,direction,2.0);
+    results[index]=vec4(soft==hard?0.0:1.0,soft&&hard?abs(reference_distance-saved_distance):0.0,soft_blocked==hard_blocked&&soft_blocked==visibility?0.0:1.0,soft?1.0:0.0);
 }

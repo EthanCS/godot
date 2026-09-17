@@ -33,6 +33,9 @@ for path in sorted(root.iterdir()):
         packed=ids[:,:,1][visible]
         oct_xy=np.stack([(packed & 65535).astype('<u2').view('<i2'),(packed >> 16).astype('<u2').view('<i2')],axis=-1).astype(float)/32767.0
         checks[name+'_gbuffer_geometric_normal']=bool(np.isfinite(oct_xy).all() and np.max(np.abs(oct_xy))<=1.001)
+        # Sponza contains many differently oriented surfaces. A zeroed normal
+        # attachment is finite/in-range but cannot anchor world-space surfels.
+        checks[name+'_gbuffer_normal_variation']=np.unique(packed).size>8
         coverage=float((confidence[visible]>0).mean())
     else:visible=np.ones((h,w),bool);coverage=float((confidence>0).mean())
     measurements[name]={'mean_rgb':gi[visible,:3].mean(0).tolist(),'coverage':coverage,'surfels':int(alive.sum()),'rays':m['surfel_rays']}
@@ -48,6 +51,9 @@ if 'multibounce' in captures:
     checks['odd_resize']=(root/'odd_resize/metadata.json').exists()
     m=json.loads((root/'odd_resize/metadata.json').read_text())
     checks['odd_dimensions']=m['width']==961 and m['height']==541
+    restored=json.loads((root/'resize_restored/metadata.json').read_text())
+    original=json.loads((root/'multibounce/metadata.json').read_text())
+    checks['restored_dimensions']=(restored['width'],restored['height'])==(original['width'],original['height'])
     checks['instance_debug_changes_output']=float(np.abs(display('debug_13')-display('debug_0')).mean())>0.02
     checks['geometric_normal_debug_changes_output']=float(np.abs(display('debug_14')-display('debug_0')).mean())>0.02
 if '00_dark' in captures:

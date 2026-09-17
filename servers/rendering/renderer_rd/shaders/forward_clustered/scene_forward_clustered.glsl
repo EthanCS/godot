@@ -1797,7 +1797,11 @@ void fragment_shader(in SceneData scene_data) {
     vec3 geometric_normal = normalize(normal_interp);
     geometric_normal /= abs(geometric_normal.x) + abs(geometric_normal.y) + abs(geometric_normal.z);
     vec2 oct = geometric_normal.z >= 0.0 ? geometric_normal.xy : (1.0 - abs(geometric_normal.yx)) * mix(vec2(-1), vec2(1), greaterThanEqual(geometric_normal.xy, vec2(0)));
-    kiln_surface_out = uvec2(surface_instance, packSnorm2x16(oct));
+    // Explicit SNORM packing avoids a Metal compiler issue with the native
+    // pack_float_to_snorm2x16 intrinsic in integer fragment outputs.
+    ivec2 packed_normal = ivec2(round(clamp(oct, vec2(-1.0), vec2(1.0)) * 32767.0));
+    uint encoded_normal = (uint(packed_normal.x) & 0xffffu) | (uint(packed_normal.y) << 16);
+    kiln_surface_out = uvec2(surface_instance, encoded_normal);
 #endif
 
 	//apply energy conservation
