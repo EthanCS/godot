@@ -1,4 +1,17 @@
 #!/usr/bin/env python
 from misc.utility.scons_hints import *
+from pathlib import Path
+import subprocess
+import sys
+
 Import("env")
+
+def surfel_shader_builder(target, source, env):
+    subprocess.check_call([sys.executable, str(source[0])])
+
+root = Path(env.Dir("#").abspath)
+inputs = [env.File("#kiln/tools/build_gi_shaders.py")]
+inputs += [env.File(str(p)) for p in sorted((root / "servers/rendering/renderer_rd/kiln/sources").glob("*")) if p.suffix in (".comp", ".inc")]
+inputs += [env.File("#thirdparty/surfelplus/upstream/msme.glsl"), env.File("#kiln/demo/rendering/sky/sky_radiance.gdshaderinc")]
+env.CommandNoCache("#servers/rendering/renderer_rd/shaders/kiln_gi.glsl", inputs, env.Run(surfel_shader_builder))
 env.add_source_files(env.servers_sources, "*.cpp")

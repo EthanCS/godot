@@ -17,6 +17,7 @@ struct KilnWorld {
 	struct Geometry {
 		PackedByteArray nodes;
 		PackedByteArray triangles;
+		PackedByteArray texture_coordinates;
 		PackedInt32Array source_order;
 		PackedByteArray refit_order;
 		Vector<Vector2i> refit_levels;
@@ -28,6 +29,8 @@ struct KilnWorld {
 	};
 	Geometry world;
 	Geometry dynamic;
+	PackedByteArray texture_pixels; // 512x512 RGBA8 sRGB pages, bilinear sampled at ray hits.
+	uint64_t texture_version = 0;
 	uint64_t geometry_version = 0;
 	uint64_t material_version = 0;
 	uint64_t static_material_version = 0, dynamic_material_version = 0;
@@ -48,7 +51,6 @@ struct KilnWorld {
 	int ao_quality = 3;
 	int rays = 1;
 	int samples = 256;
-	int resolution_divisor = 2;
 	int query_backend = 0; // 0 auto, 1 compute software, 2 prefer hardware.
 
 	static void report(RID p_environment, const Dictionary &p_statistics);

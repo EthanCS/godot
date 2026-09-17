@@ -19,6 +19,8 @@ args.engine = args.engine.resolve()
 args.output = args.output.resolve()
 args.output.mkdir(parents=True, exist_ok=True)
 base = [str(args.engine), '--path', str(ROOT / 'kiln/sponza'), '--rendering-driver', args.driver, '--rendering-method', 'kiln_deferred']
+if args.driver == 'vulkan':
+    base.append('--gpu-validation')
 
 def run(name, command, marker=None):
     path = args.output / (name + '.log')
@@ -26,24 +28,36 @@ def run(name, command, marker=None):
     with path.open('w', encoding='utf-8') as log:
         result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=900)
     output = path.read_text(encoding='utf-8', errors='replace')
-    if result.returncode or 'ERROR:' in output or (marker and marker not in output):
+    if result.returncode or 'ERROR:' in output or 'Validation Error' in output or (marker and marker not in output):
         raise RuntimeError(f'{name} failed: {path}')
 
 run('import', base + ['--headless', '--editor', '--import'])
 backend = ['--software'] if args.software else []
-run('proxy_import', base + ['--script', 'res://tests/import_proxy.gd', '--', '--output=' + str(args.output / 'proxy_import')], '[IMPORT_PROXY] passed')
+run('geometry_import', base + ['--script', 'res://tests/import_geometry.gd', '--', '--output=' + str(args.output / 'geometry_import')], '[IMPORT_GEOMETRY] passed')
+run('comparison', base + ['--', *backend, '--surfel-suite', '--size=' + args.size, '--output=' + str(args.output / 'comparison')], '[SPONZA_SURFEL_SUITE] completed')
+run('comparison_analysis', [sys.executable, str(ROOT / 'kiln/tools/check_surfel.py'), str(args.output / 'comparison')])
 run('suite', base + ['--', *backend, '--suite', '--size=' + args.size, '--output=' + str(args.output / 'suite')], '[SPONZA_SUITE] completed')
 run('analysis', [sys.executable, str(ROOT / 'kiln/tools/check_sponza.py'), str(args.output / 'suite')])
-run('lifecycle', base + ['res://proxy_lifecycle.tscn', '--', '--output=' + str(args.output / 'lifecycle')], '[PROXY_LIFECYCLE] passed')
+run('specular', base + ['--', *backend, '--specular-suite', '--size=' + args.size, '--output=' + str(args.output / 'specular')], '[SPONZA_SPECULAR] completed')
+run('specular_analysis', [sys.executable, str(ROOT / 'kiln/tools/check_specular.py'), str(args.output / 'specular')])
+run('lifecycle', base + ['res://scene_geometry_lifecycle.tscn', '--', '--output=' + str(args.output / 'lifecycle')], '[SCENE_GEOMETRY_LIFECYCLE] passed')
 run('tod', base + ['--', *backend, '--tod-suite', '--size=' + args.size, '--output=' + str(args.output / 'tod')], '[SPONZA_TOD] completed')
 run('tod_analysis', [sys.executable, str(ROOT / 'kiln/tools/check_tod.py'), str(args.output / 'tod')])
+runtime_engine = args.engine
+if args.engine.name.endswith('.console.exe'):
+    runtime_engine = args.engine.with_name(args.engine.name.removesuffix('.console.exe') + '.exe')
 record = {
     'passed': True,
     'engine': str(args.engine),
     'engine_sha256': hashlib.sha256(args.engine.read_bytes()).hexdigest(),
+    'runtime_engine': str(runtime_engine),
+    'runtime_engine_sha256': hashlib.sha256(runtime_engine.read_bytes()).hexdigest(),
     'driver': args.driver,
     'force_software': args.software,
-    'proxy_import': json.loads((args.output / 'proxy_import/checks.json').read_text()),
+    'gi_algorithm': 'Surfel GI (SurfelPlus adaptation)',
+    'comparison': json.loads((args.output / 'comparison/checks.json').read_text()),
+    'geometry_import': json.loads((args.output / 'geometry_import/checks.json').read_text()),
+    'specular': json.loads((args.output / 'specular/specular_checks.json').read_text()),
     'tod': json.loads((args.output / 'tod/checks.json').read_text()),
     'size': args.size,
     'suite': json.loads((args.output / 'suite/checks.json').read_text()),

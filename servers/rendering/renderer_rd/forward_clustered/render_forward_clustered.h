@@ -158,7 +158,7 @@ public:
 		RendererRD::MFXTemporalContext *get_mfx_temporal_context() const { return mfx_temporal_context; }
 #endif
 
-		RID get_kiln_gbuffer_fb();
+		RID get_kiln_material_fb();
 		RID get_color_only_fb();
 		RID get_color_pass_fb(uint32_t p_color_pass_flags);
 		RID get_depth_fb(DepthFrameBufferType p_type = DEPTH_FB);
@@ -208,7 +208,7 @@ private:
 
 	enum PassMode {
 		PASS_MODE_COLOR,
-		PASS_MODE_KILN_GBUFFER,
+		PASS_MODE_KILN_MATERIAL,
 		PASS_MODE_SHADOW,
 		PASS_MODE_SHADOW_DP,
 		PASS_MODE_DEPTH,

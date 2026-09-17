@@ -1,17 +1,13 @@
 # Phase 1 development status
 
-Implementation and validation record, updated 2026-09-17. Functional checks and performance results are reported separately. See [GI-PROXY.md](GI-PROXY.md) for current Sponza results and [PERFORMANCE.md](PERFORMANCE.md) for the historical island A/B measurements.
+Current rendering work uses a standard G-buffer and Surfel GI on original scene
+meshes, with diffuse multibounce and world-space glossy reflection rays. See [SURFEL-GI.md](SURFEL-GI.md) for separately recorded
+implementation, builds, GPU validation and unsupported features.
+The current [GI optimization report](GI-OPTIMIZATION-2026-09-17.md) supersedes
+the slow pre-optimization performance baseline and records the tested scope.
 
-## Current GI work
-
-The user has resumed GI development and selected **Sponza**, replacing the island
-as the GI acceptance scene. Persistent import-time proxies, automatic material
-updates, Vulkan hardware queries with compute BVH fallback, sun/sky TOD and
-variance-guided filtering are implemented. Windows editor/export builds and
-RTX 5070 Ti GPU checks pass; Metal hardware queries remain unimplemented. See
-[GI-PROXY.md](GI-PROXY.md) for separately recorded implementation, builds, numerical
-and real-GPU visual checks, and unsupported features. New Mac performance is not
-validated by the earlier non-GI work below.
+The proxy/SH pipeline and all results in GI-PROXY.md are historical and superseded.
+The remainder of this document records the earlier Mac non-GI checkpoint.
 
 ## Previous non-GI delivery scope
 

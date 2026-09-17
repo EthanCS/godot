@@ -13,7 +13,7 @@
 #include "../oct_inc.glsl"
 #include "../scene_data_inc.glsl"
 
-#if !defined(MODE_RENDER_DEPTH) || defined(MODE_KILN_GBUFFER) || defined(MODE_RENDER_MATERIAL) || defined(MODE_RENDER_SDF) || defined(MODE_RENDER_NORMAL_ROUGHNESS) || defined(MODE_RENDER_VOXEL_GI) || defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(BENT_NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if !defined(MODE_RENDER_DEPTH) || defined(MODE_KILN_MATERIAL) || defined(MODE_RENDER_MATERIAL) || defined(MODE_RENDER_SDF) || defined(MODE_RENDER_NORMAL_ROUGHNESS) || defined(MODE_RENDER_VOXEL_GI) || defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(BENT_NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 #ifndef NORMAL_USED
 #define NORMAL_USED
 #endif
@@ -508,6 +508,7 @@ vec3 get_energy_compensation(vec3 f0, float env) {
 layout(set = 1, binding = 37) uniform texture2D kiln_forward_diffuse;
 layout(set = 1, binding = 38) uniform texture2D kiln_forward_specular;
 layout(set = 1, binding = 39) uniform texture2D kiln_forward_ao;
+layout(set = 1, binding = 40) uniform texture2D kiln_forward_fresnel;
 
 layout(set = 2, binding = 0, std430) restrict readonly buffer Transforms {
 	vec4 data[];

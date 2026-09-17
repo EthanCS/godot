@@ -1,96 +1,94 @@
-# Sponza GI benchmark
+# Sponza Surfel GI benchmark
 
-The active GI acceptance scene is Sponza. GI is enabled by default. The old island
-project is retained as historical material, not used by this scene.
+Sponza is the active acceptance scene for standard G-buffer deferred rendering and
+Surfel GI. GI uses original mesh triangles: no simplified mesh, proxy import
+metadata or manual generation step is required. See
+[implementation and verified scope](../docs/SURFEL-GI.md).
 
 ## Run
 
 From the repository root:
 
-```powershell
+~~~powershell
 python kiln/tools/fetch_sponza.py
 bin/godot.windows.editor.x86_64.mono.console.exe --headless --editor --import --path kiln/sponza
 kiln/sponza/run.ps1
-```
+~~~
 
-The headless command only imports assets. All rendering checks use a window on a
-real GPU. On macOS, build the changed engine and run its native executable with
-`--path kiln/sponza --rendering-driver metal --rendering-method kiln_deferred`.
-The new implementation has **not** been tested on macOS.
+Use `run.ps1 -Still` for paused noon, `-MultiLight` for the local-light workload,
+`-TwoBounce` to disable recursive surfel-cache feedback, `-NoGI` for direct-only,
+and `-ForwardPlus` for the existing Forward+ renderer. Headless is used only for
+import/export, never as visual validation.
 
-Space pauses TOD, lights and emitters. C toggles the camera orbit. Hold RMB and use
-WASD/QE to fly; G toggles GI; F1 shows indirect illumination. Simulation advances
-by exactly 1/60 second per rendered frame so renderer comparisons replay identical
-inputs. The default scene is **sun and sky only**, with a time-of-day slider. Moving the
-slider pauses the clock; Space resumes from the chosen time. The checkbox or
-`run.ps1 -MultiLight` enables the additional eight omni lights, four spot lights,
-four local shadows and three animated emissive meshes. Those props are hidden in
-sun/sky mode. `--suite` continues to test the full multi-light workload.
+Space pauses the deterministic 1/60-second timeline. C toggles camera orbit;
+hold RMB and use WASD/QE to fly. G toggles GI; B toggles recursive multibounce.
+F1 shows indirect light, F2 G-buffer instance IDs, F3 geometric normals.
+The debug selector also exposes indirect specular (28). The TOD
+slider pauses the clock; Space resumes it. Default lighting is sun and sky only.
+The optional workload adds eight omni lights, four spots, four local shadows,
+three animated emissive meshes and moving occluders.
+
+The original floor material is duplicated at runtime, preserving its texture.
+Default roughness is 0.18 with metallic 0 and specular 0.5. `-DryFloor` / `--dry-floor`
+sets roughness 0.85; `--roughness=0.06` gives a nearly smooth floor.
+`-NoSpecular` / `--no-specular` isolates diffuse GI without disabling it.
+`--specular-rays=1..8` sets the independent reflection budget (default 2).
+Roughness >= 0.45 uses alternating half-rate samples only where adjacent
+receivers agree in depth, normal and roughness. Wet/sharp reflections and edges
+keep full-rate rays. `-FullSpecularRate` / `--full-specular-rate` disables this
+reuse; the engine setting is `rendering/kiln/specular_checkerboard`.
 
 CLI options after `--`: `--still`, `--no-gi`, `--no-aa`, `--rays=2`,
-`--multi-light`, `--hour=12`, `--software` (force fallback), `--hardware`,
-`--proxy-ratio=0.12`, `--gi-divisor=4` (balanced; use 2 for quality), `--size=1280x720`, `--frames=600`, `--output=<temp-directory>`.
-`--benchmark` records frame intervals after 60 warmup frames, with no captures or
-GPU buffer readbacks. Both renderers must use identical options. These are whole
-frame timings, not per-stage GPU timestamps. `run.ps1 -ForwardPlus` uses Forward+.
+`--multi-light`, `--hour=12`, `--software`, `--hardware`,
+`--surfel-two-bounce`, `--size=1280x720`, `--frames=600`,
+`--output=<temp-directory>`.
+Ray quality 1–8 selects 4–32 rays per updated surfel.
+`--benchmark` records whole-frame intervals after warmup without readbacks.
+Compare identical renderer options and quality; no performance result is implied.
+For reproducible paired runs, use `kiln/tools/benchmark_sponza.py --engine <exe>
+--output <temporary-directory>`; add `--embedded` for an exported executable.
+This uses 180 warmup frames and 300 measured frames per short case at 1080p,
+plus a 3600-frame moving regression to catch close-geometry allocation spikes.
+The [optimization report](../docs/GI-OPTIMIZATION-2026-09-17.md) separates
+full-rate, default-quality, GPU-pass and whole-frame measurements.
 
-Imported OBJ/glTF/FBX scene meshes contain an inspectable `KilnGIProxy` resource
-in `mesh.get_meta("kiln_gi_proxy")`, including `proxy_mesh`. It is generated during
-import and persists in the imported resource and exported game. Source color,
-texture, emission and material replacement update the solid-color proxy; there
-is no manual generation or material-rebuild step. Instance overrides update GI
-transport independently so they cannot recolor another instance's shared proxy.
+## Real-GPU validation
 
-## Sun/sky TOD gallery and video
-
-```powershell
+~~~powershell
 $engine = './bin/godot.windows.editor.x86_64.mono.console.exe'
-& $engine --path kiln/sponza --rendering-driver vulkan --rendering-method kiln_deferred -- --tod-suite "--output=$env:TEMP/kiln-sponza-tod-hardware"
-python kiln/tools/check_tod.py "$env:TEMP/kiln-sponza-tod-hardware"
-& $engine --path kiln/sponza --rendering-driver vulkan --rendering-method kiln_deferred -- --tod-video "--output=$env:TEMP/kiln-sponza-tod-video"
-```
+python kiln/tools/check_surfel_shaders.py
+& $engine --path kiln/sponza --rendering-driver vulkan --rendering-method kiln_deferred --gpu-validation -- --surfel-suite --size=960x540 "--output=$env:TEMP/kiln-surfel-comparison"
+python kiln/tools/check_surfel.py "$env:TEMP/kiln-surfel-comparison"
+python kiln/tools/validate_sponza.py --engine $engine --driver vulkan --size 960x540 --output "$env:TEMP/kiln-surfel-validation"
+~~~
 
-TOD captures use a fixed camera at 06:30, 09:00, 12:00, 17:30 and 21:00. Each has
-GI on/off and indirect-only images, followed by a rotating-camera daylight cycle.
-The video writes 480 PNG frames for a continuous 24-hour cycle. All local lights
-and emissive props remain hidden. Readbacks are excluded from performance claims.
-Use `python kiln/tools/build_tod_gallery.py <capture-directory> <output-directory>`
-to build an HTML gallery with time selection, GI on/off wipe and indirect view.
-An optional `tod.mp4` in that directory is displayed as the continuous cycle.
-The `check_tod.py --compare <other-backend-directory>` option checks equivalent
-hardware/software images in addition to isolated diffuse transport and noise.
+The comparison checks multibounce, instance/geometric-normal diagnostics and odd-size
+resize. Combined validation checks original OBJ/glTF imports and serialization,
+isolated sun/sky/local/emissive transport, material changes without geometry
+rebuilds, turn-off decay, motion coverage/settling, noise, resource lifecycle,
+software/hardware selection and TOD. Diagnostic readbacks compare compute BVH
+bounds and 2,048 hardware/software rays. Numerical checks and visual inspection
+are separate; inspect captured color/indirect images too.
 
-## Automated GPU checks
+For a TOD gallery, run `--tod-suite`, then `kiln/tools/check_tod.py <directory>`.
+`--tod-video` captures 480 PNG frames of a 24-hour cycle.
+`kiln/tools/build_tod_gallery.py <capture-directory> <output-directory>` builds
+an HTML gallery; an optional `tod.mp4` is shown alongside still comparisons.
 
-```powershell
+## Wet-floor reflection acceptance
+
+~~~powershell
 $engine = './bin/godot.windows.editor.x86_64.mono.console.exe'
-& $engine --path kiln/sponza --rendering-driver vulkan --rendering-method kiln_deferred -- --suite --size=960x540 "--output=$env:TEMP/kiln-sponza-validation"
-python kiln/tools/check_sponza.py "$env:TEMP/kiln-sponza-validation"
-& $engine --path kiln/sponza --rendering-driver vulkan --rendering-method kiln_deferred res://proxy_lifecycle.tscn -- "--output=$env:TEMP/kiln-proxy-lifecycle"
-```
+& $engine --path kiln/sponza --rendering-driver vulkan --rendering-method kiln_deferred --gpu-validation -- --specular-suite --size=960x540 "--output=$env:TEMP/kiln-specular-check"
+python kiln/tools/check_specular.py "$env:TEMP/kiln-specular-check"
+~~~
 
-For a reproducible combined run on either host, use:
-
-```powershell
-python kiln/tools/validate_sponza.py --engine $engine --driver vulkan --output "$env:TEMP/kiln-sponza-validation"
-```
-
-The suite isolates darkness, sun/sky, TOD, local lights and material emission. It
-captures camera rotation and moving emitters, tests turn-off decay and measures
-stationary temporal noise and post-motion settling. Raw GI readbacks ensure a
-visible emissive object or direct light cannot masquerade as indirect transport.
-Every diagnostic capture compares compute-built BVH bounds to the CPU reference.
-Lifecycle checks cover live texture pixel updates, material replacement, static
-transforms, in-place mesh edits, visibility changes and unused cache release.
-
-The importer fixture runs **on a GPU**, without a GI node, to verify persisted
-OBJ/glTF proxies, color/texture/emission edits, material replacement and reload:
-
-```powershell
-& $engine --path kiln/sponza --rendering-driver vulkan --script res://tests/import_proxy.gd
-```
-
-See [GI implementation and validation](../docs/GI-PROXY.md) for the exact scope.
+The deterministic suite compares dry/wet and reflection on/off, isolates specular,
+checks zero-F0 and metallic response, sweeps roughness 0.06/0.18/0.50/0.85, changes
+emitter color, puts it outside the camera frustum, moves camera/source, tests
+turn-off decay, disables GI and resizes to 961x541. Raw material attachments prove
+roughness and primary-emitter absence. `validate_sponza.py` includes this suite.
+Captures and logs remain in temporary storage. This is not a timing benchmark.
 
 ## Asset provenance
 

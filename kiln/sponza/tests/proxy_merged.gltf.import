@@ -5,9 +5,7 @@ importer_version=2
 type="ArrayMesh"
 uid="uid://cyp1oqr2g2egu"
 path="res://.godot/imported/proxy_merged.gltf-4dee29758bc4dfd28e69f93a181ee1a4.res"
-metadata={
-"kiln_gi_proxy_version": 1
-}
+metadata={}
 
 [deps]
 

@@ -9,7 +9,27 @@ layout(set=0,binding=5,std430) readonly buffer Triangles { Triangle triangles[];
 layout(set=0,binding=16,std430) readonly buffer DynamicNodes { BvhNode dynamic_nodes[]; };
 layout(set=0,binding=17,std430) readonly buffer DynamicTriangles { Triangle dynamic_triangles[]; };
 layout(set=0,binding=18,std430) readonly buffer Emitters { vec4 emitters[]; };
+struct TextureCoordinates { vec4 ab; vec4 c_page_repeat; };
+layout(set=0,binding=32) uniform sampler2DArray ray_albedo;
+layout(set=0,binding=33,std430) readonly buffer StaticUVs { TextureCoordinates static_uvs[]; };
+layout(set=0,binding=34,std430) readonly buffer DynamicUVs { TextureCoordinates dynamic_uvs[]; };
 Triangle world_triangle(int id){return id<int(p.source_bvh_state.y)?triangles[id]:dynamic_triangles[id-int(p.source_bvh_state.y)];}
+vec3 hit_albedo(int id, vec3 position) {
+    Triangle t = world_triangle(id);
+    TextureCoordinates record = id < int(p.source_bvh_state.y) ? static_uvs[id] : dynamic_uvs[id-int(p.source_bvh_state.y)];
+    if (record.c_page_repeat.z < 0.5) return t.albedo.rgb;
+    vec3 delta = position - t.p0.xyz;
+    float aa = dot(t.p1.xyz,t.p1.xyz), ab = dot(t.p1.xyz,t.p2.xyz), bb = dot(t.p2.xyz,t.p2.xyz);
+    float da = dot(delta,t.p1.xyz), db = dot(delta,t.p2.xyz), denominator = max(aa*bb-ab*ab,1e-20);
+    vec2 bary = vec2(da*bb-db*ab, db*aa-da*ab)/denominator;
+    vec2 uv = record.ab.xy*(1.0-bary.x-bary.y)+record.ab.zw*bary.x+record.c_page_repeat.xy*bary.y;
+    // The sampler repeats; clamping to texel centers gives clamp-to-edge pages
+    // without a second sampler or an extra fetch. sRGB is decoded by hardware
+    // before filtering, matching the original four-tap linear-light estimator.
+    uv = record.c_page_repeat.w > 0.5 ? fract(uv) : clamp(uv, vec2(0.5/512.0), vec2(511.5/512.0));
+    vec3 color = textureLod(ray_albedo, vec3(uv, record.c_page_repeat.z - 1.0), 0.0).rgb;
+    return t.albedo.rgb*color;
+}
 BvhNode world_node(int id,bool dynamic){return dynamic?dynamic_nodes[id]:nodes[id];}
 float box_near(vec3 origin,vec3 inverse_ray,BvhNode node,float maximum){
     vec3 a=(node.lo.xyz-origin)*inverse_ray,b=(node.hi.xyz-origin)*inverse_ray;
@@ -208,19 +228,4 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
         }
     }
     return vec3(0);
-}
-vec3 world_hit_radiance(vec3 origin,vec3 ray,int id,float distance,vec3 normal,vec2 xi,vec3 emitter_xi){
-    vec3 hit=origin+ray*distance;Triangle tri=world_triangle(id);
-    float nl=max(0.0,dot(normal,p.sun_direction.xyz));
-    vec3 incident=vec3(0);
-    if(nl>0.0&&p.sun_direction.w>0.0&&!occluded(hit+normal*.025,p.sun_direction.xyz))
-        incident=p.sun_color.rgb*p.sun_direction.w*(nl/PI);
-    incident+=sky_at_surface(hit,normal,xi);
-    incident+=local_light_sample(hit,normal,fract(emitter_xi.z+xi.x*.75487766));
-    vec3 emitter_direction;
-    vec3 emitter=emitter_sample(hit,normal,emitter_xi,emitter_direction);
-    incident+=emitter*(max(0.0,dot(normal,emitter_direction))/PI);
-    // Emission is sampled explicitly at the receiver, so a hemisphere hit
-    // must not count it a second time. Reflected lighting remains here.
-    return tri.albedo.rgb*incident;
 }

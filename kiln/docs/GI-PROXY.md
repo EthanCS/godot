@@ -1,5 +1,9 @@
 # Imported GI proxies, hardware queries and Sponza TOD
 
+**Historical record, superseded by [Surfel GI](SURFEL-GI.md).** The simplified
+proxy resource, generation/import hooks and old SH transport described below have
+been removed. Its captured validation JSON describes the former binaries only.
+
 Implementation and validation record, 2026-09-17. Sponza is the active GI
 acceptance scene. The default demonstration uses only sun and sky; local lights
 and emissive test objects are an optional, separately checked workload.

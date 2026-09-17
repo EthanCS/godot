@@ -314,7 +314,7 @@ uint16_t SceneShaderForwardClustered::ShaderData::_get_shader_version(PipelineVe
 			return ShaderVersion::SHADER_VERSION_DEPTH_PASS_WITH_MATERIAL + ubershader_base;
 		case PIPELINE_VERSION_DEPTH_PASS_WITH_SDF:
 			return ShaderVersion::SHADER_VERSION_DEPTH_PASS_WITH_SDF + ubershader_base;
-		case PIPELINE_VERSION_KILN_GBUFFER:
+		case PIPELINE_VERSION_KILN_MATERIAL:
 			return ShaderVersion::SHADER_VERSION_COLOR_PASS * 2 + SHADER_COLOR_PASS_FLAG_COUNT + (p_ubershader ? 1 : 0);
 		case PIPELINE_VERSION_COLOR_PASS: {
 			int shader_flags = 0;
@@ -487,7 +487,9 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 			case PIPELINE_VERSION_DEPTH_PASS_WITH_NORMAL_AND_ROUGHNESS_AND_VOXEL_GI_MULTIVIEW:
 				blend_state = blend_state_depth_normal_roughness_giprobe;
 				break;
-			case PIPELINE_VERSION_KILN_GBUFFER:
+			case PIPELINE_VERSION_KILN_MATERIAL:
+				depth_stencil_state.enable_depth_write = true;
+				depth_stencil_state.depth_compare_operator = RD::COMPARE_OP_GREATER_OR_EQUAL;
 				blend_state = RD::PipelineColorBlendState::create_disabled(6);
 				break;
 			case PIPELINE_VERSION_DEPTH_PASS_WITH_MATERIAL:
@@ -715,7 +717,7 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 
 		for (uint32_t uber = 0; uber < 2; uber++) {
 			shader_versions.push_back(ShaderRD::VariantDefine(SHADER_GROUP_KILN,
-					String(uber ? "\n#define UBERSHADER\n" : "") + "\n#define MODE_RENDER_DEPTH\n#define MODE_KILN_GBUFFER\n#define MOTION_VECTORS\n", true));
+					String(uber ? "\n#define UBERSHADER\n" : "") + "\n#define MODE_RENDER_DEPTH\n#define MODE_KILN_MATERIAL\n#define MOTION_VECTORS\n", true));
 		}
 
 		Vector<uint64_t> dynamic_buffers;

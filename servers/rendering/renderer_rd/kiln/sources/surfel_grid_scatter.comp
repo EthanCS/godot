@@ -1,0 +1,9 @@
+#version 450
+// @GI_COMMON@
+// @SURFEL_DATA@
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+	uint id = gl_GlobalInvocationID.y * 256u + gl_GlobalInvocationID.x;
+	if (id >= SURFEL_CAPACITY || surfels[id].anchor.z == 0u) return;
+	// @SURFEL_GRID_INSERT@
+}

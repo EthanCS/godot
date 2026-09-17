@@ -29,22 +29,16 @@ Dictionary KilnGIWorld::get_statistics() const {
 	result["convergence_samples"] = snapshot.samples;
 	result["backend"] = result.get("backend", "pending");
 	result["requested_backend"] = snapshot.query_backend;
-	result["resolution_divisor"] = snapshot.resolution_divisor;
-	result["proxy_builds"] = proxy_builds;
-	result["imported_proxy_surfaces"] = imported_proxy_hits;
-	result["runtime_proxy_builds"] = runtime_proxy_builds;
+	result["mesh_uploads"] = mesh_uploads;
 	result["material_updates"] = material_updates;
-	result["proxy_ratio"] = proxy_ratio;
-	result["proxy_error"] = proxy_error;
-	uint64_t source_count = 0, proxy_count = 0;
+	uint64_t source_count = 0;
 	for (const auto &mesh : mesh_cache) {
 		for (const auto &surface : mesh.value) {
 			source_count += surface.value.source_triangles;
-			proxy_count += surface.value.indices.size() / 3;
 		}
 	}
 	result["source_triangles_unique"] = source_count;
-	result["proxy_triangles_unique"] = proxy_count;
+	result["ray_geometry"] = "original_scene_meshes";
 	Array profile;
 	auto areas = RenderingServer::get_singleton()->get_frame_profile();
 	bool gpu_available = false;
@@ -76,7 +70,7 @@ void KilnGIWorld::set_sky(Vector3 p_horizon, Vector3 p_zenith, bool p_procedural
 	snapshot.light_version++;
 }
 void KilnGIWorld::set_quality(int p_rays, int p_samples) {
-	ERR_FAIL_COND_MSG(p_rays < 1 || p_rays > 8 || p_samples < 16 || p_samples > 1024, "Kiln GI supports 1-8 rays per frame and 16-1024 convergence samples.");
+	ERR_FAIL_COND_MSG(p_rays < 1 || p_rays > 8 || p_samples < 16 || p_samples > 1024, "Kiln Surfel GI supports quality levels 1-8 (4-32 rays per updated surfel) and 16-1024 convergence samples.");
 	if (snapshot.rays != p_rays || snapshot.samples != p_samples) {
 		snapshot.rays = p_rays;
 		snapshot.samples = p_samples;
@@ -92,8 +86,6 @@ void KilnGIWorld::set_query_backend(int p_backend) {
 }
 void KilnGIWorld::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_query_backend", "backend"), &KilnGIWorld::set_query_backend);
-	ClassDB::bind_method(D_METHOD("set_resolution_divisor", "divisor"), &KilnGIWorld::set_resolution_divisor);
-	ClassDB::bind_method(D_METHOD("set_proxy_quality", "ratio", "error"), &KilnGIWorld::set_proxy_quality);
 	ClassDB::bind_method(D_METHOD("set_quality", "rays", "samples"), &KilnGIWorld::set_quality);
 	ClassDB::bind_method(D_METHOD("validate_bvh", "rays"), &KilnGIWorld::validate_bvh, DEFVAL(64));
 	ClassDB::bind_method(D_METHOD("set_profiling", "enabled"), &KilnGIWorld::set_profiling);
@@ -165,41 +157,64 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				mesh_cache.insert(key, HashMap<int, MeshData>());
 			}
 			if (!mesh_cache[key].has(surface)) {
-				mesh_cache[key].insert(surface, make_proxy(mesh, surface));
+				mesh_cache[key].insert(surface, capture_mesh(mesh, surface));
 			}
-			const MeshData &proxy = mesh_cache[key][surface];
+			const MeshData &geometry = mesh_cache[key][surface];
 			Ref<Material> material = instance->get_active_material(surface);
 			Transport response = transport(material);
-			r_hash = hash_murmur3_one_64(proxy.revision, r_hash);
+			r_hash = hash_murmur3_one_64(geometry.revision, r_hash);
 			r_hash = hash_murmur3_one_32(response.supported, r_hash);
 			if (!response.supported) {
 				continue;
 			}
 			Vector3 color = response.albedo, emission = response.emission;
 			Ref<BaseMaterial3D> base = material;
-			if (base.is_valid() && base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR)) {
-				color *= proxy.vertex_color;
-			}
 			r_material_hash = hash_murmur3_one_32(Variant(color).hash(), r_material_hash);
 			r_material_hash = hash_murmur3_one_32(Variant(emission).hash(), r_material_hash);
+			r_material_hash = hash_murmur3_one_32(response.texture_page + 1, r_material_hash);
+			r_material_hash = hash_murmur3_one_64(snapshot.texture_version, r_material_hash);
+			if (base.is_valid()) {
+				r_material_hash = hash_murmur3_one_32(Variant(base->get_uv1_scale()).hash(), r_material_hash);
+				r_material_hash = hash_murmur3_one_32(Variant(base->get_uv1_offset()).hash(), r_material_hash);
+				r_material_hash = hash_murmur3_one_32(base->get_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT), r_material_hash);
+			}
 			if (!p_geometry) {
 				continue;
 			}
-			int count = proxy.indices.is_empty() ? proxy.positions.size() : proxy.indices.size();
+			int count = geometry.indices.is_empty() ? geometry.positions.size() : geometry.indices.size();
 			for (int i = 0; i + 2 < count; i += 3) {
-				int a = proxy.indices.is_empty() ? i : proxy.indices[i];
-				int b = proxy.indices.is_empty() ? i + 1 : proxy.indices[i + 1];
-				int c = proxy.indices.is_empty() ? i + 2 : proxy.indices[i + 2];
+				int a = geometry.indices.is_empty() ? i : geometry.indices[i];
+				int b = geometry.indices.is_empty() ? i + 1 : geometry.indices[i + 1];
+				int c = geometry.indices.is_empty() ? i + 2 : geometry.indices[i + 2];
+				if (a < 0 || b < 0 || c < 0 || a >= geometry.positions.size() || b >= geometry.positions.size() || c >= geometry.positions.size()) {
+					continue;
+				}
 				Triangle tri;
-				tri.a = transform.xform(proxy.positions[a]);
-				tri.b = transform.xform(proxy.positions[b]);
-				tri.c = transform.xform(proxy.positions[c]);
+				tri.a = transform.xform(geometry.positions[a]);
+				tri.b = transform.xform(geometry.positions[b]);
+				tri.c = transform.xform(geometry.positions[c]);
 				Vector3 face = (tri.b - tri.a).cross(tri.c - tri.a);
 				if (face.length_squared() < 1e-12) {
 					continue;
 				}
-				tri.normal = proxy.normals.size() == proxy.positions.size() ? normal_transform.xform(proxy.normals[a] + proxy.normals[b] + proxy.normals[c]).normalized() : -face.normalized();
+				tri.normal = geometry.normals.size() == geometry.positions.size() ? normal_transform.xform(geometry.normals[a] + geometry.normals[b] + geometry.normals[c]).normalized() : -face.normalized();
 				tri.albedo = color;
+				if (base.is_valid() && response.texture_page >= 0 && geometry.uvs.size() == geometry.positions.size()) {
+					Vector3 scale = base->get_uv1_scale(), offset = base->get_uv1_offset();
+					auto uv = [&](int index) { return geometry.uvs[index] * Vector2(scale.x, scale.y) + Vector2(offset.x, offset.y); };
+					tri.uv_a = uv(a);
+					tri.uv_b = uv(b);
+					tri.uv_c = uv(c);
+					tri.texture_page = response.texture_page;
+					tri.texture_repeat = base->get_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT);
+				} else if (base.is_valid() && response.texture_page >= 0) {
+					Color average = texture_average(base->get_texture(BaseMaterial3D::TEXTURE_ALBEDO));
+					tri.albedo *= Vector3(average.r, average.g, average.b);
+				}
+				if (base.is_valid() && base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR) && geometry.colors.size() == geometry.positions.size()) {
+					Color vertex_color = (geometry.colors[a].srgb_to_linear() + geometry.colors[b].srgb_to_linear() + geometry.colors[c].srgb_to_linear()) / 3.0;
+					tri.albedo *= Vector3(vertex_color.r, vertex_color.g, vertex_color.b);
+				}
 				tri.emission = emission;
 				r_triangles.push_back(tri);
 			}
@@ -352,6 +367,9 @@ void KilnGIWorld::pack_triangles(RendererRD::KilnWorld::Geometry &result, const 
 	result.power = 0;
 	result.triangles.resize(MAX(1, triangles.size()) * 80);
 	result.triangles.fill(0);
+	result.texture_coordinates.resize(MAX(1, triangles.size()) * 32);
+	result.texture_coordinates.fill(0);
+	float *uvs = reinterpret_cast<float *>(result.texture_coordinates.ptrw());
 	auto pack = [](float *p, Vector3 v, float w) { p[0] = v.x; p[1] = v.y; p[2] = v.z; p[3] = w; };
 	float *out = reinterpret_cast<float *>(result.triangles.ptrw());
 	for (int i = 0; i < triangles.size(); i++) {
@@ -361,6 +379,14 @@ void KilnGIWorld::pack_triangles(RendererRD::KilnWorld::Geometry &result, const 
 		pack(out + i * 20 + 8, t.c - t.a, t.normal.z);
 		pack(out + i * 20 + 12, t.albedo, 1);
 		pack(out + i * 20 + 16, t.emission, 0);
+		uvs[i * 8] = t.uv_a.x;
+		uvs[i * 8 + 1] = t.uv_a.y;
+		uvs[i * 8 + 2] = t.uv_b.x;
+		uvs[i * 8 + 3] = t.uv_b.y;
+		uvs[i * 8 + 4] = t.uv_c.x;
+		uvs[i * 8 + 5] = t.uv_c.y;
+		uvs[i * 8 + 6] = t.texture_page + 1;
+		uvs[i * 8 + 7] = t.texture_repeat;
 		float luminance = t.emission.dot(Vector3(0.2126, 0.7152, 0.0722));
 		float area = (t.b - t.a).cross(t.c - t.a).length() * 0.5;
 		float weight = area * luminance;
@@ -577,7 +603,7 @@ void KilnGIWorld::_notification(int p_what) {
 		}
 	}
 	if (rebuild_pending) {
-		print_line(vformat("[KILN_WORLD] proxy triangles=%d nodes=%d", snapshot.world.triangle_count, snapshot.world.node_count));
+		print_line(vformat("[KILN_WORLD] original scene triangles=%d nodes=%d", snapshot.world.triangle_count, snapshot.world.node_count));
 	}
 	rebuild_pending = false;
 	Vector<ObjectID> unused;
@@ -591,6 +617,11 @@ void KilnGIWorld::_notification(int p_what) {
 		watched_resources.erase(id);
 		mesh_cache.erase(uint64_t(id));
 		texture_cache.erase(id);
+		if (texture_pages.has(id)) {
+			free_texture_pages.push_back(texture_pages[id]);
+			texture_pages.erase(id);
+			dirty_textures.erase(id);
+		}
 		material_cache.erase(id);
 		shader_defaults.erase(id);
 	}

@@ -1,0 +1,6 @@
+SurfelPlus by Zhen Ren, Ruipeng Wang and Jinxiang Wang.
+Based on NVIDIA vk_raytrace; Copyright (c) 2021 NVIDIA CORPORATION.
+Apache License 2.0; see LICENSE and the original notices in upstream/.
+MSME references Ray Tracing Gems, Chapter 25, Copyright 2019 NVIDIA.
+Its MIT permission and copyright notice are retained in MSME-LICENSE.txt.
+Kiln changes are identified in servers/rendering/renderer_rd/kiln/sources/surfel_*.

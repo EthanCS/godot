@@ -1,0 +1,159 @@
+{
+  "date": "2026-09-17",
+  "platform": "Windows x86_64",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "driver": "Vulkan 1.4.341",
+  "implementation": "standard G-buffer deferred + Surfel diffuse multibounce + GGX indirect specular",
+  "evidence_root": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-deferred-specular",
+  "builds": {
+    "editor": {
+      "sha256": "bdfc4a439e0b006b3c6375bd94b2750a968457682396c2f8190f655ae107d0bb",
+      "settings": "MSVC, Mono, production=yes, optimize=speed, x86_64"
+    },
+    "template_release": {
+      "sha256": "b6db113f8feea202ed6c8c89deac535ae1fb8b0eaf57f9a44affbfdb036fe39f",
+      "settings": "MSVC, Mono, production=yes, optimize=speed, x86_64"
+    },
+    "embedded_pck_release": {
+      "sha256": "5c1965a3441ea0525cdff753fc14f10b82bb3e56eb344b6a316ba64c8b69a3d8",
+      "export_log": "release/export.log"
+    }
+  },
+  "shader_variants": 20,
+  "editor": {
+    "comparison": {
+      "passed": true,
+      "check_count": 105
+    },
+    "suite": {
+      "passed": true,
+      "check_count": 276
+    },
+    "specular": {
+      "passed": true,
+      "check_count": 223
+    },
+    "tod": {
+      "passed": true,
+      "check_count": 25
+    },
+    "geometry_import": {
+      "passed": true
+    },
+    "lifecycle": {
+      "passed": true
+    }
+  },
+  "release_1080": {
+    "passed": true,
+    "check_count": 224,
+    "stationary_display_rgb_std": 0.0013966885667975814,
+    "settled32_mae": 0.0011930317265795205
+  },
+  "alternate_runs": {
+    "software": {
+      "passed": true,
+      "check_count": 10,
+      "backend": "compute_software_bvh",
+      "renderer": "G-buffer deferred",
+      "resolution": [
+        480,
+        270
+      ],
+      "specular_max": 0.66064453125
+    },
+    "forward": {
+      "passed": true,
+      "check_count": 9,
+      "backend": "hardware_ray_query",
+      "renderer": "Forward+",
+      "resolution": [
+        960,
+        540
+      ],
+      "specular_max": 0.79833984375
+    },
+    "deferred": {
+      "passed": true,
+      "check_count": 11,
+      "backend": "hardware_ray_query",
+      "renderer": "G-buffer deferred",
+      "resolution": [
+        960,
+        540
+      ],
+      "specular_max": 0.79736328125
+    }
+  },
+  "visual_review": [
+    "Editor wet day, indirect-only, zero-F0, metallic, offscreen blue emitter and turn-off black frame",
+    "Release 1920x1080 wet day, roughness 0.06 versus 0.85 red-emitter reflection, offscreen blue emitter",
+    "Forward+ and compute-BVH Sponza",
+    "Deferred and Forward+ material contract: texture, alpha cutout, normal map, transparent/additive/refraction"
+  ],
+  "performance_verified": false,
+  "other_platforms_verified": false,
+  "unsupported": [
+    "Secondary alpha cutout/blended transport",
+    "Skinned/blend-shape/MultiMesh ray geometry",
+    "Recursive specular chains, transmission, caustics, anisotropy/clearcoat GI",
+    "Per-hit emission/normal texture detail, UV2/triplanar/custom shaders"
+  ],
+  "source_sha256": {
+    "scene/3d/kiln_gi_scene.cpp": "4496f6b7ca0a612e9da75c90f3330741c9ec10e71d9a42057f1b8f2d003b0915",
+    "scene/3d/kiln_gi_world.cpp": "9281cc95108808fd408c73536726f91342e7ebc261a1a459cb92f94da857ab5b",
+    "scene/3d/kiln_gi_world.h": "5229101fb25f09d09bd862885b3ad20a33f05e6b0bbf62af7c01e872e66ffaf1",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.cpp": "5ef2e716dc5ceb5477924f5ff5dea83b827ed02531fbcb5f6cb9040ed8cf9d0b",
+    "servers/rendering/renderer_rd/kiln/kiln_world.cpp": "9ea3df7b70408ccc6af8a8e366fc22dee589207f246fa21838382978e24651ed",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.h": "60e18f3caa25ade01cc9f7f787e77d1aaa3438fa9b5cca9cf55165c530118bc9",
+    "servers/rendering/renderer_rd/kiln/kiln_world.h": "a57323807915c3a096e015bdfd2f8b84395a99c6d9835418e4f333c5575bba85",
+    "servers/rendering/renderer_rd/kiln/sources/bvh_refit.comp": "ed581eaa50a655589e0312cb6c91a070f5ef3d7b2326df801a284a545d3d86f0",
+    "servers/rendering/renderer_rd/kiln/sources/capture_geometry.comp": "3b96bcdf918137dba28a87d3e95f19139f590d6d9c1bfd4355d5012cb561f59c",
+    "servers/rendering/renderer_rd/kiln/sources/query_validate.comp": "ffd586ce364aceac0c1cdd3070c05a7286f323a9bab183bee80def7600596840",
+    "servers/rendering/renderer_rd/kiln/sources/sequence_lut.comp": "6582bcc997a843c63d86d1a4e498eab3a80a1fa80929a12767171a2a756430b0",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_debug.comp": "17ba70df0ae7b40d56260751ebdba4246f19787a8db5d81312bcf9a23b637a47",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_evaluate.comp": "7e60c1f4e2298fadb39b195264f4917274ab3921795b8c8ddce8bfc0a97a0439",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_generate.comp": "17f07408c2fa515047f67491ff4b37bc9ea9ee253385345950bed6973bcea251",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_grid.comp": "815a2533e7989ca1cc440a9b7ca7011bfc984d5a14e662c4af06b3b75a2ec61e",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_integrate.comp": "9fd3f53fd871df2e907c6915acc588353e117acf0124034b8046deaeb6e37388",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_publish.comp": "62394346d40991426d3db702d0a4def4e72fdd179b115b7c385f634f34b38898",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_specular.comp": "e6de0b65cf13823727de104cc5be29fbdcb8ef3afe0ba813f08af4fcfa26a011",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_specular_filter.comp": "cd39a52513f93a41e58626af20cb8b6bb6ce32ccb25e36068f01ee3c82635a3d",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_trace.comp": "05cbf5738f6cae66cea378223e46d127e70bf4ce29b59a2fba6abc7c8270c1ff",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_update.comp": "c15f347efd1e38b88b3044fd917574753395043bff46ff3b4bc947406991339d",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_denoise.comp": "98454b0d53d91f7c33432a45d7a24f877ca87f4b74d5a6caa7c209567286fe46",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_depth.comp": "1917a6f4eda20ad451ee70cb814c17c084d865b078178da67059907f06b2bbef",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_main.comp": "b1a5b898912858abbfb6a17f0e31fc601358bc9e20f92c5042e9cf969a761b99",
+    "servers/rendering/renderer_rd/kiln/sources/xegtao_temporal.comp": "06dd709dbd95343fae76ab7f50bd3c3268f55f0d31a5eeff1fbaa13c172c15be",
+    "servers/rendering/renderer_rd/kiln/sources/bvh.inc": "dea4826059a7f35e25f952aca5cdfc20195ee81a9f2b926a792755dfd8b6362f",
+    "servers/rendering/renderer_rd/kiln/sources/gi_common.inc": "cf46658d4a2de451bfda6e220552438e0f21a5a868d3fb4b372504d7fd033140",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_data.inc": "8bd67fdd48ca93bbca564c72d58f1c7477dd9c9c3cce83c7dea20accd6558ece",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_receiver.inc": "efd36cb94580be5602162c2042d172c916add1b1fd65efd53c6af9e4881c4330",
+    "servers/rendering/renderer_rd/shaders/kiln_gi.glsl": "c3bf01fefeddc46e45debe699c3dbe591ec45faf9828b69b424255156de578c6",
+    "servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl": "0e40b6f4c7c8e240621a569e4221b9eaa5f03c4c03b55d6a27a4963c5547c299",
+    "servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl": "e2476a444ce82c76b674bf6dd9d091f1d33e1d33ca46419a601b90be5c97626f",
+    "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp": "14095077496598633a97df903bf75f81eecccf9661293f6b94adb1038f7b4e96",
+    "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h": "0fefe564d5285d89da283ab95a5fc85403c7d9fc3524e746c1aa39e88f83046e",
+    "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.cpp": "eb0226bd47bd08ddb250a7bfb6087e0ce4443eb08cbfd528f32f4061224ff80f",
+    "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h": "f37c6a84943b7bc157da35e31e95be694d51a1a48376dc3d34e9b6c18e7c1dad",
+    "kiln/sponza/sponza.gd": "a6b92afe6879c3dd5448e78a38f8142afb1adc1caa25c3dc2c0569ec0274be13"
+  },
+  "equal_quality_forward_deferred": {
+    "resolution": [
+      960,
+      540
+    ],
+    "diffuse_quality": 2,
+    "specular_rays": 2,
+    "taa": true,
+    "frames": 160,
+    "still": true,
+    "display_rgb_mae": 0.003164740175905753,
+    "interpretation": "Descriptive image comparison; not a timing/performance result."
+  },
+  "material_contract": {
+    "display_rgb_mae": 0.00015246510126684412,
+    "kiln_deferred_clean": true,
+    "forward_plus_clean": true
+  }
+}

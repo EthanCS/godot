@@ -1,0 +1,831 @@
+{
+  "date": "2026-09-17",
+  "host": {
+    "platform": "Windows x86_64",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "driver_api": "Vulkan 1.4.341"
+  },
+  "base_commit": "5f29819c278714f627fc27f53646ab08f9ea3bd7",
+  "working_tree": "Uncommitted migration; source hashes below identify the implementation.",
+  "algorithm": "Surfel GI (SurfelPlus adaptation)",
+  "visibility": "RGBA32_UINT identities + geometric normal; material geometry replay; temporary material buffers retained",
+  "ray_geometry": "Original scene triangles; simplified proxy resource and import generation removed.",
+  "compiled": [
+    "Windows editor / Mono / production",
+    "Windows release export template / Mono / production",
+    "GodotSharp Debug and Release; obsolete proxy binding removed",
+    "16 native GLSL/SPIR-V variants"
+  ],
+  "binaries_sha256": {
+    "G:\\ClayGames\\GodotKiln\\bin\\godot.windows.editor.x86_64.mono.exe": "580fc2f412151a9b88b9d541652ef64879724fb064100877c762eaa8509349d6",
+    "G:\\ClayGames\\GodotKiln\\bin\\godot.windows.template_release.x86_64.mono.exe": "abd8b249ddb911f798110dc2ac6e79a8f4bb475c3156be3dafb2974ac30b4caa",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\export\\KilnSurfel.exe": "ad4908832015d68dffba10a4968684b49bc6332fa3e542698bc5cce7f0b30d8e",
+    "G:\\ClayGames\\GodotKiln\\bin\\GodotSharp\\Api\\Release\\GodotSharp.dll": "af80b421955efbe3319c18dc5359ca9d5c82fee16d263f7ca4982b5fe4a30b2f"
+  },
+  "source_sha256": {
+    "editor/import/3d/resource_importer_obj.cpp": "9fb22979277188f8e4c3fe8e3509193b23cda6d8b21ccca384db316009d35372",
+    "editor/import/3d/resource_importer_obj.h": "7f6d8e15b298ea6cec1c0d3a75f57e5736d08804e637f420b99dfa4406ff4b2e",
+    "editor/import/3d/resource_importer_scene.cpp": "01bde861b9288774c866489b6a6dcaf4dfcc3638cb5c21eb64c536888bc889fa",
+    "editor/import/3d/resource_importer_scene.h": "49da89a63203f8d6da8f588fc2bfc5edbc58e818644323d99735794eb74da459",
+    "kiln/sponza/export_presets.cfg": "7acdfed3f2cd4a533e280b95ad6f1a47e2b0d4dc29d7d66681e21e956a6895e9",
+    "kiln/sponza/run.ps1": "08dbb81d222e5e92c9d6d814763b1c7a860c40147f3a62ff65cab2591d8be3d5",
+    "kiln/sponza/scene_geometry_lifecycle.gd": "0b8c80db9919f4a40f2f23c33e9ee838e840e68dee42d5557e344eb48fb847c5",
+    "kiln/sponza/scene_geometry_lifecycle.gd.uid": "17c3d05f85ca6e87603432251920081484934eb17d00b9990fab43ca3aacab6f",
+    "kiln/sponza/scene_geometry_lifecycle.tscn": "107ae416cf04efcb598d3c3b426a2af211d359a3adc021c22a13cff66aa6df69",
+    "kiln/sponza/sponza.gd": "634f94a32db40d82cac6330aea7aa1bcd9e775892f3f72050dc122fc8ecd3db8",
+    "kiln/sponza/tests/import_geometry.gd": "8ae4c94cd1b5ae634a805a59b4ad98542fa9bc1ee3ef5e6470566659e6bece65",
+    "kiln/sponza/tests/import_geometry.gd.uid": "5a4b49dc6ae9fb82d297c7dcf2febc3abdee3bceea454a7fb8b6136d0f9a4516",
+    "kiln/tools/build_gi_shaders.py": "ef908fadfafed07dbab017721b2ae40169d7c2c05df39e8ca0004000a79718b3",
+    "kiln/tools/check_sponza.py": "9c3c64de4f9c7ee7e674b2e1850a5bdb4e9c2080d561f9d82044efc42d2c244b",
+    "kiln/tools/check_surfel.py": "0dc7e4834ca01c21a7b3a8419b7a433c71ad44f88f9465a3d4c6c2c659a3ae0a",
+    "kiln/tools/check_surfel_shaders.py": "8f1a938da78bf78275b9a0d2d50bc93e448d580c8325aabba410b6d87dc1c151",
+    "kiln/tools/check_tod.py": "fab80a5bf4eb969c0ccb259321a8a4c7109eba28434fd461157d8aea9298567f",
+    "kiln/tools/validate_sponza.py": "ec101f34e905ac416ec11393386707fa3035ec3127428e94e1a77019ca9bc6e5",
+    "scene/3d/kiln_gi_scene.cpp": "d6d1e4b83ba64b8a8d508b918ac0d8ab15bd851029107db59839ed8122d4f6a2",
+    "scene/3d/kiln_gi_world.cpp": "a7bf661860280f73b7d7442193a848e78528ca7f8e0bab9295edd534bc9fb4ad",
+    "scene/3d/kiln_gi_world.h": "da7727dc57a363ee306b814d6bd8e64341a31c654a02be19009b5bf40c125bd7",
+    "scene/register_scene_types.cpp": "54091c0c9533d2fd43f13bd26eaec64c1d458e9d7db47b8a5612b34167a97b2f",
+    "scene/resources/3d/SCsub": "24243ca8a423ed8edbea81df82aa5344b95b0a6d472ae1fb1477ca987a1c60f2",
+    "scene/resources/mesh.cpp": "e5a631fae6d1e7560da4c10aa4ac419aa109df1160fb8c1094b6c9e7e330afa9",
+    "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp": "fce5240258f7b4044f3a41f3aa12f5ebecf4e91d640d28cfd2264dd8e8dbc2c1",
+    "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h": "7df24938e6f4f0803126ff9ba94e24e9c7f6cc9a0ebdeeeaeba28a281eeeb8fb",
+    "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.cpp": "39316111f3e196064490fb2d4adbc073dc218e466f5b391541d8cb4b0dbaeabe",
+    "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h": "071b6c2e3e3d76828360efec28e84ffd00f0c3e48f44466ffdd25ee5f7362a05",
+    "servers/rendering/renderer_rd/kiln/SCsub": "d56020285bb0f5ab42c253a17f55e4be36fe8feb8a7d396d9af324908ca29bb1",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.cpp": "80c917486cb47c0c7f51a3942fb7ab0e9f02c9e4112b84728affb40c0cf72c55",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.h": "fa3a3e2228d0053838e5042aa6a84a570f4e603eda07d7e0c4ee2b39d7afe6f0",
+    "servers/rendering/renderer_rd/kiln/kiln_world.h": "5deefac89ba75ba71d19437b82d1bb0d250b3076d0b731067293ddc4e13fcc73",
+    "servers/rendering/renderer_rd/kiln/sources/bvh.inc": "51e88583f83ff715babe89d6b984c7a80d92623df027a93295b646e1176de506",
+    "servers/rendering/renderer_rd/kiln/sources/gi_common.inc": "d97f97d8560101370a2320a574bf74ce5f44675256fb1d7f6788b2619622f904",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_data.inc": "8bd67fdd48ca93bbca564c72d58f1c7477dd9c9c3cce83c7dea20accd6558ece",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_evaluate.comp": "7e60c1f4e2298fadb39b195264f4917274ab3921795b8c8ddce8bfc0a97a0439",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_generate.comp": "17f07408c2fa515047f67491ff4b37bc9ea9ee253385345950bed6973bcea251",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_grid.comp": "815a2533e7989ca1cc440a9b7ca7011bfc984d5a14e662c4af06b3b75a2ec61e",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_integrate.comp": "9fd3f53fd871df2e907c6915acc588353e117acf0124034b8046deaeb6e37388",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_publish.comp": "2310ecb0ce603caef85c39c1cbb22bc90ca5012b29a0e31d10a81191d798557c",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_receiver.inc": "80b4c75011d2dd997b9f8491f0b132447476f895d5f6aed17a676690cb064db1",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_trace.comp": "2cf135068c1af5fc0c5d7eaab56a40bad4c3c33afb99cd564dc7d2bc010d65b6",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_update.comp": "c15f347efd1e38b88b3044fd917574753395043bff46ff3b4bc947406991339d",
+    "servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl": "7add6712a0b983d389e83e69594110e49c868ec3455fffb0069badabcf2f7620",
+    "servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl": "6dc2173c6c9c2dc5d8d9cabaf3c26a93a28cba878083d29d1aefe458381199cb",
+    "servers/rendering/renderer_rd/shaders/kiln_gi.glsl": "c0ca8c3efe924ae5c16adf83f5ff7ba730253db9f1132ec1297bb293409c8192",
+    "thirdparty/surfelplus/LICENSE": "9264a6b3c134511ccfcae48ed3808320688ae6933ec4fc547476a005095fc1ef",
+    "thirdparty/surfelplus/MSME-LICENSE.txt": "a3083feefdef107d776b3f814feee0d4578a85cac934ec60f0a94074350b6338",
+    "thirdparty/surfelplus/NOTICE": "20acd4ba4ae50b2b904f874e891ee42d83b836388496e1227073bcb18d3a6c88",
+    "thirdparty/surfelplus/upstream.json": "75e89639cd2bc3dc3ce9521fdb3a26b8e906fe8f14ef78cd04a81ed34a1f1e55",
+    "thirdparty/surfelplus/upstream/gbuffer.frag": "613ee6bf201e8690b157cdd92a0677c84b16ff13bf4e5a6dc3230ddfc43478ff",
+    "thirdparty/surfelplus/upstream/host_device.h": "e1703e36e924afcef5ac171bbeb6877125ff6dc5492591050ea2a457713cc789",
+    "thirdparty/surfelplus/upstream/msme.glsl": "4b82b28fbb33565a14b9088e8a41557b7ac25a0c52d50ab2f3b71ebd4b2ecc33",
+    "thirdparty/surfelplus/upstream/shaderUtils_surfel_cell.glsl": "fa8f0c92d3628568e0f6b3a99ec1aaffa3bcc215fa543a38a3e12e0701369ffb",
+    "thirdparty/surfelplus/upstream/surfel_generation_pass.comp": "c42b2821b2b38355cc61c2e10ed0db8f5523c7ecdb448b8c38ef9e94da1e4776",
+    "thirdparty/surfelplus/upstream/surfel_integrate.comp": "998ecc0eaa7b7e194fdf1e85018d54c41f0b76281437044b2ad6763458cfb9c6",
+    "thirdparty/surfelplus/upstream/surfel_raytrace.comp": "035f90a686f4fa36f8dd0566240743d5bc3171026dfce2b3fde08a15bd70d0bd",
+    "thirdparty/surfelplus/upstream/surfel_update.comp": "58b8f947a628022fbff0500a92ea3564a56947b557d72f1d911e2c51c995535e"
+  },
+  "numerical_runs": {
+    "final-editor/comparison": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\comparison\\checks.json",
+      "checks_sha256": "77d40e87c718c09f8b528d7fd1bcc5fead3c957d0f2f9c92c07b68681ec2342a",
+      "assertions": 105,
+      "measurements": {
+        "debug_0": {
+          "mean_rgb": [
+            0.021875372156500816,
+            0.017558017745614052,
+            0.01908118836581707
+          ],
+          "coverage": 0.9999824409087805,
+          "surfels": 22393,
+          "rays": 44920
+        },
+        "debug_13": {
+          "mean_rgb": [
+            0.021818796172738075,
+            0.01751820743083954,
+            0.01906128041446209
+          ],
+          "coverage": 0.9999843940806749,
+          "surfels": 22395,
+          "rays": 44792
+        },
+        "debug_14": {
+          "mean_rgb": [
+            0.021833734586834908,
+            0.017530109733343124,
+            0.019064243882894516
+          ],
+          "coverage": 0.9999785412330208,
+          "surfels": 22393,
+          "rays": 44920
+        },
+        "debug_7": {
+          "mean_rgb": [
+            0.021848099306225777,
+            0.017535103484988213,
+            0.019072404131293297
+          ],
+          "coverage": 0.9999863442345358,
+          "surfels": 22398,
+          "rays": 44816
+        },
+        "multibounce": {
+          "mean_rgb": [
+            0.021790724247694016,
+            0.01748739555478096,
+            0.019033821299672127
+          ],
+          "coverage": 0.9999902454821951,
+          "surfels": 22525,
+          "rays": 45208
+        },
+        "odd_resize": {
+          "mean_rgb": [
+            0.021796083077788353,
+            0.01753831095993519,
+            0.019103815779089928
+          ],
+          "coverage": 0.9999883293458598,
+          "surfels": 22609,
+          "rays": 180872
+        },
+        "resize_restored": {
+          "mean_rgb": [
+            0.02175035886466503,
+            0.017468417063355446,
+            0.019014419987797737
+          ],
+          "coverage": 0.9999902454821951,
+          "surfels": 22525,
+          "rays": 45200
+        },
+        "restored": {
+          "mean_rgb": [
+            0.02181793935596943,
+            0.017521867528557777,
+            0.01906011998653412
+          ],
+          "coverage": 0.9999843935935702,
+          "surfels": 22397,
+          "rays": 44952
+        },
+        "two_bounce": {
+          "mean_rgb": [
+            0.020547334104776382,
+            0.016705717891454697,
+            0.018514500930905342
+          ],
+          "coverage": 0.9999882950581735,
+          "surfels": 22510,
+          "rays": 45184
+        }
+      }
+    },
+    "final-editor/suite": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\suite\\checks.json",
+      "checks_sha256": "30e9ec05f99b47ef2eee149ee27921b99434258d4c3c668b14f5668183f05093",
+      "assertions": 276,
+      "measurements": {
+        "00_dark": {
+          "mean_rgb": [
+            7.910683962109033e-06,
+            2.6686579985835124e-06,
+            1.6132879636643338e-06
+          ],
+          "coverage": 0.999982442827017,
+          "surfels": 21856,
+          "rays": 43848
+        },
+        "01_day": {
+          "mean_rgb": [
+            0.020476683974266052,
+            0.016333775594830513,
+            0.017485152930021286
+          ],
+          "coverage": 0.9999882955376738,
+          "surfels": 21857,
+          "rays": 43672
+        },
+        "02_sunset": {
+          "mean_rgb": [
+            0.00103010144084692,
+            0.0011761505156755447,
+            0.0024525779299438
+          ],
+          "coverage": 0.9999863443943738,
+          "surfels": 21861,
+          "rays": 43888
+        },
+        "03_local": {
+          "mean_rgb": [
+            0.02134319767355919,
+            0.016430169343948364,
+            0.006161958444863558
+          ],
+          "coverage": 0.9999921957006115,
+          "surfels": 21861,
+          "rays": 43704
+        },
+        "04_emission_red": {
+          "mean_rgb": [
+            0.1143939271569252,
+            0.0001777920260792598,
+            8.883592818165198e-05
+          ],
+          "coverage": 0.999982442827017,
+          "surfels": 21856,
+          "rays": 43848
+        },
+        "05_emission_blue": {
+          "mean_rgb": [
+            0.00010791107342811301,
+            0.00017513772763777524,
+            0.11141156405210495
+          ],
+          "coverage": 0.9999882955376738,
+          "surfels": 21857,
+          "rays": 43672
+        },
+        "06_off_32": {
+          "mean_rgb": [
+            8.302704301854646e-09,
+            1.5888137028241545e-08,
+            2.496319211786613e-05
+          ],
+          "coverage": 0.9999902449493225,
+          "surfels": 21855,
+          "rays": 43840
+        },
+        "07_settled": {
+          "mean_rgb": [
+            0.19613882899284363,
+            0.03489459678530693,
+            0.18335363268852234
+          ],
+          "coverage": 0.9999922839506172,
+          "surfels": 13554,
+          "rays": 27136
+        },
+        "motion_000": {
+          "mean_rgb": [
+            0.017931021749973297,
+            0.03558139130473137,
+            0.08281326293945312
+          ],
+          "coverage": 0.9976605380177206,
+          "surfels": 27041,
+          "rays": 432656
+        },
+        "motion_030": {
+          "mean_rgb": [
+            0.033359136432409286,
+            0.07419609278440475,
+            0.09855186194181442
+          ],
+          "coverage": 0.9999903549382716,
+          "surfels": 15094,
+          "rays": 241504
+        },
+        "motion_060": {
+          "mean_rgb": [
+            0.01687523163855076,
+            0.08756831288337708,
+            0.22433285415172577
+          ],
+          "coverage": 0.9998861882716049,
+          "surfels": 8371,
+          "rays": 133936
+        },
+        "motion_090": {
+          "mean_rgb": [
+            0.016070164740085602,
+            0.08293750882148743,
+            0.08288869261741638
+          ],
+          "coverage": 0.9996547067901235,
+          "surfels": 23666,
+          "rays": 378656
+        },
+        "motion_120": {
+          "mean_rgb": [
+            0.015236536040902138,
+            0.13131141662597656,
+            0.08437393605709076
+          ],
+          "coverage": 0.9996141975308642,
+          "surfels": 40354,
+          "rays": 645664
+        },
+        "motion_150": {
+          "mean_rgb": [
+            0.043122608214616776,
+            0.09525296837091446,
+            0.20358632504940033
+          ],
+          "coverage": 0.9999845679012346,
+          "surfels": 29569,
+          "rays": 473104
+        },
+        "motion_end": {
+          "mean_rgb": [
+            0.19433395564556122,
+            0.034861840307712555,
+            0.1847897619009018
+          ],
+          "coverage": 0.9998861882716049,
+          "surfels": 16682,
+          "rays": 266912
+        },
+        "motion_settled_32": {
+          "mean_rgb": [
+            0.19614295661449432,
+            0.034983932971954346,
+            0.1827678084373474
+          ],
+          "coverage": 0.9999807098765432,
+          "surfels": 13544,
+          "rays": 102504
+        },
+        "noise_00": {
+          "mean_rgb": [
+            0.02048320695757866,
+            0.01634187065064907,
+            0.017488744109869003
+          ],
+          "coverage": 0.9999902460340374,
+          "surfels": 21855,
+          "rays": 43576
+        },
+        "noise_01": {
+          "mean_rgb": [
+            0.02050163224339485,
+            0.016356293112039566,
+            0.017507601529359818
+          ],
+          "coverage": 0.9999921963857561,
+          "surfels": 21860,
+          "rays": 43880
+        },
+        "noise_02": {
+          "mean_rgb": [
+            0.020489459857344627,
+            0.016344206407666206,
+            0.01749388873577118
+          ],
+          "coverage": 0.9999863428491158,
+          "surfels": 21860,
+          "rays": 43904
+        },
+        "noise_03": {
+          "mean_rgb": [
+            0.020494617521762848,
+            0.01634911634027958,
+            0.01749514974653721
+          ],
+          "coverage": 0.9999921957006115,
+          "surfels": 21861,
+          "rays": 43704
+        },
+        "noise_04": {
+          "mean_rgb": [
+            0.020493268966674805,
+            0.016353486105799675,
+            0.017505399882793427
+          ],
+          "coverage": 0.9999804904695944,
+          "surfels": 21856,
+          "rays": 43584
+        },
+        "noise_05": {
+          "mean_rgb": [
+            0.02050916478037834,
+            0.01636730320751667,
+            0.017513323575258255
+          ],
+          "coverage": 0.9999902449493225,
+          "surfels": 21855,
+          "rays": 43840
+        },
+        "noise_06": {
+          "mean_rgb": [
+            0.020504260435700417,
+            0.016365699470043182,
+            0.01751773990690708
+          ],
+          "coverage": 0.9999882951723439,
+          "surfels": 21859,
+          "rays": 43896
+        },
+        "noise_07": {
+          "mean_rgb": [
+            0.020520150661468506,
+            0.016376495361328125,
+            0.017529891803860664
+          ],
+          "coverage": 0.9999882950581735,
+          "surfels": 21862,
+          "rays": 43712
+        },
+        "stationary_display_rgb_std": 0.0015728631420441333,
+        "motion_settled32_mae": 0.00327636316872428
+      }
+    },
+    "final-editor/tod": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\tod\\checks.json",
+      "checks_sha256": "a74d9bac0a45a39a0447e34d9c7b166b477b98aa9762a129e63c3d1881c0cb93",
+      "assertions": 25,
+      "measurements": {
+        "0650_raw_mean": [
+          0.0003149103431496769,
+          0.0005784296081401408,
+          0.0015879719285294414
+        ],
+        "0650_gi_display_gain": 0.0014877097958524972,
+        "0900_raw_mean": [
+          0.007779575418680906,
+          0.0065642413683235645,
+          0.008456854149699211
+        ],
+        "0900_gi_display_gain": 0.015032551137739044,
+        "1200_raw_mean": [
+          0.02181841805577278,
+          0.01751452498137951,
+          0.019037004560232162
+        ],
+        "1200_gi_display_gain": 0.029719289619139836,
+        "1750_raw_mean": [
+          0.000428014958743006,
+          0.0006542762275785208,
+          0.001547573134303093
+        ],
+        "1750_gi_display_gain": 0.0016390326192205276,
+        "2100_raw_mean": [
+          5.810862057842314e-05,
+          0.0001613405329408124,
+          0.0004899432533420622
+        ],
+        "2100_gi_display_gain": 0.0002863990760913419,
+        "stationary_rgb_std": 0.0016949859075476173,
+        "settled32_mae": 2.8123234890664084e-05
+      }
+    },
+    "final-editor/geometry_import": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\geometry_import\\checks.json",
+      "checks_sha256": "33af751bb76fb7f4abe480fdd100b4e6b15498fee83fef9cf813fa791be233fd"
+    },
+    "final-editor/lifecycle": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\lifecycle\\checks.json",
+      "checks_sha256": "56393460b4bd6f3fe869cbcd8434350474b76b9790cbd6e14d97e6e7a368ffe8"
+    },
+    "release-1080": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\release-1080\\checks.json",
+      "checks_sha256": "ef909f02b06ca54a6d57e341b8354cb50bf9d7dfbd5e13b5ecbc69c518ef8fe7",
+      "assertions": 276,
+      "measurements": {
+        "00_dark": {
+          "mean_rgb": [
+            7.896012903074734e-06,
+            2.6541172246652422e-06,
+            1.6058232858995325e-06
+          ],
+          "coverage": 0.9999878071441356,
+          "surfels": 55584,
+          "rays": 111368
+        },
+        "01_day": {
+          "mean_rgb": [
+            0.02049340307712555,
+            0.016366295516490936,
+            0.017546098679304123
+          ],
+          "coverage": 0.9999926844898505,
+          "surfels": 55584,
+          "rays": 111144
+        },
+        "02_sunset": {
+          "mean_rgb": [
+            0.0010334828402847052,
+            0.0011825759429484606,
+            0.0024624362122267485
+          ],
+          "coverage": 0.9999917090601927,
+          "surfels": 55585,
+          "rays": 111376
+        },
+        "03_local": {
+          "mean_rgb": [
+            0.02137059159576893,
+            0.016350286081433296,
+            0.00612826831638813
+          ],
+          "coverage": 0.9999912206299588,
+          "surfels": 55585,
+          "rays": 111152
+        },
+        "04_emission_red": {
+          "mean_rgb": [
+            0.11442767083644867,
+            0.00017640758596826345,
+            8.817073830869049e-05
+          ],
+          "coverage": 0.9999878071441356,
+          "surfels": 55583,
+          "rays": 111360
+        },
+        "05_emission_blue": {
+          "mean_rgb": [
+            0.00010756140545709059,
+            0.0001750166848069057,
+            0.11173895746469498
+          ],
+          "coverage": 0.9999926844898505,
+          "surfels": 55584,
+          "rays": 111144
+        },
+        "06_off_32": {
+          "mean_rgb": [
+            7.97295207632942e-09,
+            1.5879301429322368e-08,
+            2.4655577362864278e-05
+          ],
+          "coverage": 0.9999912206941894,
+          "surfels": 55583,
+          "rays": 111360
+        },
+        "07_settled": {
+          "mean_rgb": [
+            0.19643765687942505,
+            0.03498118743300438,
+            0.18375957012176514
+          ],
+          "coverage": 0.9999821566358025,
+          "surfels": 36788,
+          "rays": 73912
+        },
+        "motion_000": {
+          "mean_rgb": [
+            0.016878025606274605,
+            0.033645037561655045,
+            0.07477004081010818
+          ],
+          "coverage": 0.9992819694329704,
+          "surfels": 65446,
+          "rays": 1047136
+        },
+        "motion_030": {
+          "mean_rgb": [
+            0.03330010920763016,
+            0.0740363821387291,
+            0.10086030513048172
+          ],
+          "coverage": 0.9999927662037037,
+          "surfels": 31936,
+          "rays": 510976
+        },
+        "motion_060": {
+          "mean_rgb": [
+            0.01681748777627945,
+            0.08723819255828857,
+            0.2226109802722931
+          ],
+          "coverage": 0.9999937307098765,
+          "surfels": 14889,
+          "rays": 238224
+        },
+        "motion_090": {
+          "mean_rgb": [
+            0.015926631167531013,
+            0.08219508826732635,
+            0.08408676832914352
+          ],
+          "coverage": 0.9999609375,
+          "surfels": 58244,
+          "rays": 931904
+        },
+        "motion_120": {
+          "mean_rgb": [
+            0.015153395012021065,
+            0.13111987709999084,
+            0.08445458859205246
+          ],
+          "coverage": 0.9997222222222222,
+          "surfels": 103866,
+          "rays": 1661856
+        },
+        "motion_150": {
+          "mean_rgb": [
+            0.043002650141716,
+            0.09492602944374084,
+            0.20096316933631897
+          ],
+          "coverage": 0.9999913194444444,
+          "surfels": 82494,
+          "rays": 1319904
+        },
+        "motion_end": {
+          "mean_rgb": [
+            0.1943567395210266,
+            0.03486845642328262,
+            0.1829417198896408
+          ],
+          "coverage": 0.999966724537037,
+          "surfels": 45609,
+          "rays": 729744
+        },
+        "motion_settled_32": {
+          "mean_rgb": [
+            0.1965104341506958,
+            0.035015493631362915,
+            0.1838967502117157
+          ],
+          "coverage": 0.9999807098765432,
+          "surfels": 36788,
+          "rays": 277008
+        },
+        "noise_00": {
+          "mean_rgb": [
+            0.020493801683187485,
+            0.016373036429286003,
+            0.017554642632603645
+          ],
+          "coverage": 0.9999829302265696,
+          "surfels": 55585,
+          "rays": 111080
+        },
+        "noise_01": {
+          "mean_rgb": [
+            0.020497608929872513,
+            0.01637699082493782,
+            0.01755712553858757
+          ],
+          "coverage": 0.9999892698734137,
+          "surfels": 55586,
+          "rays": 111384
+        },
+        "noise_02": {
+          "mean_rgb": [
+            0.020491130650043488,
+            0.016371071338653564,
+            0.01755405403673649
+          ],
+          "coverage": 0.9999902452395549,
+          "surfels": 55585,
+          "rays": 111240
+        },
+        "noise_03": {
+          "mean_rgb": [
+            0.02050100825726986,
+            0.016377054154872894,
+            0.01755630411207676
+          ],
+          "coverage": 0.9999912206299588,
+          "surfels": 55585,
+          "rays": 111152
+        },
+        "noise_04": {
+          "mean_rgb": [
+            0.020506735891103745,
+            0.016386883333325386,
+            0.01757035031914711
+          ],
+          "coverage": 0.9999912207969566,
+          "surfels": 55585,
+          "rays": 111080
+        },
+        "noise_05": {
+          "mean_rgb": [
+            0.02050788328051567,
+            0.016387609764933586,
+            0.017566539347171783
+          ],
+          "coverage": 0.9999912206941894,
+          "surfels": 55583,
+          "rays": 111360
+        },
+        "noise_06": {
+          "mean_rgb": [
+            0.020500950515270233,
+            0.016380421817302704,
+            0.017565114423632622
+          ],
+          "coverage": 0.9999868318312679,
+          "surfels": 55585,
+          "rays": 111240
+        },
+        "noise_07": {
+          "mean_rgb": [
+            0.020504135638475418,
+            0.01638113521039486,
+            0.017562592402100563
+          ],
+          "coverage": 0.9999882947841559,
+          "surfels": 55585,
+          "rays": 111152
+        },
+        "stationary_display_rgb_std": 0.0011238902556771058,
+        "motion_settled32_mae": 0.0022877090393770678
+      }
+    },
+    "final-software": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-software\\checks.json",
+      "checks_sha256": "e5ae680f81a8087ec0be8a7665b88433e50e882f666b0ead515234cfe7553e6d",
+      "assertions": 10,
+      "measurements": {
+        "final": {
+          "mean_rgb": [
+            0.02179204672574997,
+            0.01749969832599163,
+            0.019054658710956573
+          ],
+          "coverage": 0.9999882951723439,
+          "surfels": 22524,
+          "rays": 45184
+        }
+      }
+    },
+    "final-forward": {
+      "passed": true,
+      "checks_file": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-forward\\checks.json",
+      "checks_sha256": "00271ac70a965919eb635565aabaee3f6f9d79bf91ea865a421e60c39449d840",
+      "assertions": 9,
+      "measurements": {
+        "final": {
+          "mean_rgb": [
+            0.0217145849019289,
+            0.017562013119459152,
+            0.01934022270143032
+          ],
+          "coverage": 0.9871643518518518,
+          "surfels": 34229,
+          "rays": 69664
+        }
+      }
+    }
+  },
+  "gpu_logs_sha256": {
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\geometry_import.log": "521415a850164f9b4fde37ef282f1d95ed7ec04e7ed0295112eb4983820126f3",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\comparison.log": "46167fcdc023756ca7950b91de446af8c0fac5706ee1a35425498478dea8855c",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\suite.log": "6e47209593628e79fa5ef1ee3400e69417a29ce0add104ab33fea0a0f046d39b",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\lifecycle.log": "b78f60a217aef976a489cab56671958bfb0263ff2bde8f730838dbf6c349a0e5",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-editor\\tod.log": "7cd23df07819cc07ca6f4547acb715378386a21e86358f62c138d387ba5e9047",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\release-1080.log": "c37c7f03eacaaced99a387297fdc9cc5690d9fb7ada27d4d61fa360c82836fcd",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-software.log": "e7892897e7b103729681ad92542e40f18107dcdba1c6bdd405296020050ce94c",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\final-forward.log": "ec33dab7b81a36538284f9c83ce2443025e9000d314bdbf14bf03a1281733570",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\material-chart-kiln.log": "5626ffdf2051fe4b60aaa06a5a2a19b41693566a3e31d6e42110c5ea6ecabd6d",
+    "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review\\material-chart-forward.log": "80b908a4408b89e158968d739a3e2c8da200f67c0405f4a0020035d59116cff0"
+  },
+  "visually_inspected": [
+    "final-editor/comparison/debug_0/color.png",
+    "final-editor/comparison/debug_13/color.png",
+    "release-comparison/debug_14/color.png",
+    "release-comparison/debug_7/color.png",
+    "release-1080/motion_120/color.png",
+    "final-software/final/color.png",
+    "accepted-forward/final/color.png",
+    "accepted-tod/tod_2100_on/color.png",
+    "material-chart-kiln_deferred/chart.png",
+    "material-chart-forward_plus/chart.png",
+    "final-forward/final/color.png"
+  ],
+  "visual_paths_relative_to": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\kiln-surfel-review",
+  "performance_validated": false,
+  "not_implemented_or_not_validated": [
+    "Bindless vertex/material reconstruction without geometry replay",
+    "Directional radiance/depth atlas, ray guiding and glossy GI",
+    "Per-hit texture and alpha sampling; arbitrary shader transport; skinned/blend-shape/MultiMesh ray geometry",
+    "Non-Windows/Vulkan platforms, other GPU vendors, XR and deferred MSAA",
+    "1080p/60 FPS or performance improvement over Forward+"
+  ],
+  "removed_sources": [
+    "doc/classes/KilnGIProxy.xml",
+    "kiln/sponza/proxy_lifecycle.gd",
+    "kiln/sponza/proxy_lifecycle.gd.uid",
+    "kiln/sponza/proxy_lifecycle.tscn",
+    "kiln/sponza/tests/import_proxy.gd",
+    "kiln/sponza/tests/import_proxy.gd.uid",
+    "scene/3d/kiln_gi_proxy.cpp",
+    "scene/resources/3d/kiln_gi_proxy.cpp",
+    "scene/resources/3d/kiln_gi_proxy.h",
+    "servers/rendering/renderer_rd/kiln/sources/brdf_lut.comp",
+    "servers/rendering/renderer_rd/kiln/sources/gi_dirty.inc",
+    "servers/rendering/renderer_rd/kiln/sources/gi_receiver.inc",
+    "servers/rendering/renderer_rd/kiln/sources/gi_receiver_data.inc",
+    "servers/rendering/renderer_rd/kiln/sources/gi_reprojection.inc",
+    "servers/rendering/renderer_rd/kiln/sources/gi_sequence.inc",
+    "servers/rendering/renderer_rd/kiln/sources/gi_world_cache.inc",
+    "servers/rendering/renderer_rd/kiln/sources/integrate.comp",
+    "servers/rendering/renderer_rd/kiln/sources/prepare_receivers.comp",
+    "servers/rendering/renderer_rd/kiln/sources/publish.comp",
+    "servers/rendering/renderer_rd/kiln/sources/sh_decode.comp",
+    "servers/rendering/renderer_rd/kiln/sources/sh_filter.comp",
+    "servers/rendering/renderer_rd/kiln/sources/sh_temporal.comp",
+    "servers/rendering/renderer_rd/kiln/sources/trace_primary.comp",
+    "servers/rendering/renderer_rd/kiln/sources/update_world_cache.comp"
+  ]
+}

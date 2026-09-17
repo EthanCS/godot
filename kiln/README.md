@@ -6,7 +6,7 @@ Engine development branch based on Godot **4.7.2-stable**, pinned in
 ## Phase 1
 
 Implement an engine-level hybrid deferred rendering path and integrate Kiln GI.
-Opaque and cutout geometry use a real G-buffer and clustered deferred lighting;
+Opaque and cutout geometry write a standard G-buffer for clustered deferred lighting;
 transparency, additive effects, and refraction use an explicit forward stage.
 Retain a working Forward+ path for controlled comparisons.
 
@@ -35,13 +35,29 @@ ray tracing and MegaLights/ReSTIR remain later work.
 
 ## Current status
 
-GI uses automatically imported, persistent geometry/material proxies, live material
-updates, Vulkan hardware ray queries, a compute software-BVH fallback and temporal
-denoising. **Sponza is
-the active GI benchmark**, with GI enabled by default. Start with
-[the Sponza instructions](sponza/README.md) and
-[the implementation/validation record](docs/GI-PROXY.md).
+The active path is **standard G-buffer deferred rendering with Surfel GI**.
+The visibility-ID pass and geometry material replay have been removed. A single
+opaque/cutout material raster pass writes albedo/metallic, shading normal/roughness,
+emission, material response, geometric normal/instance metadata and motion.
+Native fullscreen clustered lighting resolves those attributes.
 
-The prior non-GI delivery and its macOS evidence remain in [STATUS.md](docs/STATUS.md).
-They do not validate the new GI on Mac. The existing native G-buffer, deferred
-lighting, forward transparency and other renderers are preserved.
+GI uses original scene triangles, persistent surfels, Vulkan hardware ray queries
+or a compute BVH fallback, MSME integration and diffuse multibounce. Independent
+GGX reflection rays evaluate sun/local light, emission, sky and the diffuse surfel
+cache at world-space hits. Reflection histories track roughness, normals, depth
+and hit distance; primary materials supply Fresnel and metallic response.
+Opaque BaseMaterial3D albedo textures are sampled at ray-hit UVs from 512x512
+pages. Sponza defaults to a wet dielectric floor (roughness 0.18); `--dry-floor`
+uses 0.85 and `--no-specular` isolates indirect diffuse.
+See [run instructions](sponza/README.md) and
+[implementation, validation and limits](docs/SURFEL-GI.md).
+
+The optimized 1080p release on RTX 5070 Ti measures **157–159 FPS with full GI**
+in the repeated static Sponza benchmark (previously 10.1 FPS). Compact overlap
+lists, world-space allocation deduplication and rough reflection sample reuse
+remove the main costs. See the [optimization report](docs/GI-OPTIMIZATION-2026-09-17.md)
+for GPU-pass timings, full-rate quality comparisons, the extended moving test,
+builds and visual validation. These results apply to the documented hardware and workload.
+
+Historical proxy/SH and Mac non-GI measurements remain as historical records.
+They do not validate this implementation or establish a performance improvement.

@@ -52,7 +52,10 @@ func _ready() -> void:
 	add_child(floor_mesh)
 	await get_tree().create_timer(5).timeout
 	await RenderingServer.frame_post_draw
-	var directory := "/tmp/kiln-material-contract-" + RenderingServer.get_current_rendering_method()
+	var temporary := OS.get_environment("TEMP") if OS.has_environment("TEMP") else "/tmp"
+	var directory := temporary.path_join("kiln-material-contract-" + RenderingServer.get_current_rendering_method())
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--output="): directory = arg.trim_prefix("--output=")
 	DirAccess.make_dir_recursive_absolute(directory)
 	get_viewport().get_texture().get_image().save_png(directory.path_join("chart.png"))
 	get_tree().quit()

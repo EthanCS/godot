@@ -10,27 +10,31 @@
 
 namespace RendererRD {
 class KilnGI {
-	enum Stage { PREPARE,
-		TRACE,
-		INTEGRATE,
-		TEMPORAL,
-		WORLD_CACHE,
-		FILTER,
-		DECODE,
-		BRDF,
+	enum Stage { SURFEL_UPDATE,
+		SURFEL_GRID,
+		SURFEL_GENERATE,
+		SURFEL_TRACE,
+		SURFEL_INTEGRATE,
+		SURFEL_EVALUATE,
+		SURFEL_PUBLISH,
+		SURFEL_SPECULAR,
+		SURFEL_SPECULAR_FILTER,
+		SURFEL_DEBUG,
 		SEQUENCE,
-		PUBLISH,
 		AO_DEPTH,
 		AO_MAIN,
 		AO_DENOISE,
 		AO_TEMPORAL,
 		BVH_REFIT,
+		SURFEL_GRID_PREFIX,
+		SURFEL_GRID_PREFIX_SUMS,
+		SURFEL_GRID_SCATTER,
 		STAGE_COUNT,
 		QUERY_VALIDATE = STAGE_COUNT };
 	KilnGiShaderRD shader, hardware_shader;
-	RID hardware_version, hardware_pipelines[3];
+	RID hardware_version, hardware_pipelines[4];
 	bool hardware_available = false;
-	RID version, pipelines[STAGE_COUNT], sampler, linear_sampler, brdf, sequence, hilbert;
+	RID version, pipelines[STAGE_COUNT], sampler, linear_sampler, sequence, hilbert, empty_surface;
 	struct Binding {
 		int binding;
 		RD::UniformType type;
@@ -50,18 +54,20 @@ public:
 		Vector<RID> owned;
 		HashMap<String, RID> storage;
 		HashMap<String, uint32_t> capacities;
-		Size2i size, half;
-		int resolution_divisor = 0;
+		Size2i size;
 		uint64_t geometry_version = 0, dynamic_version = 0, light_version = 0, material_version = 0;
+		uint64_t texture_version = 0;
 		uint64_t static_material_version = 0, dynamic_material_version = 0;
 		uint64_t capture_request = 0, history_version = 0;
 		int frames = 0, index = 0, stationary_samples = 0, motion_remaining = 0, lighting_remaining = 0, epoch = 1;
-		uint32_t slots = 65536, dirty_bytes = 0;
+		uint32_t slots = 65536;
+		bool multibounce = true;
 		Projection previous_vp, previous_projection;
 		Transform3D previous_camera;
 		bool ready = false, tracing = false;
 		int ao_frames = 0, ao_quality = -1;
 		RID parameters;
+		RID ray_albedo;
 		RID environment;
 		RID hardware_vertices[2], hardware_blas[2], hardware_tlas;
 		bool hardware_active = false, hardware_failed = false;

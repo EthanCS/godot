@@ -1,0 +1,25 @@
+#version 450
+// @GI_COMMON@
+// @SURFEL_DATA@
+layout(local_size_x = 8, local_size_y = 8) in;
+shared uint scan[64];
+void main() {
+	uint lane = gl_LocalInvocationIndex;
+	uint first = lane * 64u;
+	uint total = 0u;
+	for (uint i = 0u; i < 64u; i++) total += grid_sums[first + i];
+	scan[lane] = total;
+	barrier();
+	for (uint step = 1u; step < 64u; step <<= 1u) {
+		uint addend = lane >= step ? scan[lane - step] : 0u;
+		barrier();
+		scan[lane] += addend;
+		barrier();
+	}
+	uint offset = scan[lane] - total;
+	for (uint i = 0u; i < 64u; i++) {
+		uint count = grid_sums[first + i];
+		grid_sums[first + i] = offset;
+		offset += count;
+	}
+}

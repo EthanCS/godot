@@ -15,18 +15,23 @@ class KilnGIWorld : public Node3D {
 	GDCLASS(KilnGIWorld, Node3D);
 	struct Triangle {
 		Vector3 a, b, c, normal, albedo, emission;
+		Vector2 uv_a, uv_b, uv_c;
+		int texture_page = -1;
+		bool texture_repeat = true;
 		int source = 0;
 		Vector3 center() const { return (a + b + c) / 3; }
 	};
 	struct MeshData {
 		PackedVector3Array positions, normals;
 		PackedInt32Array indices;
-		Vector3 vertex_color = Vector3(1, 1, 1);
+		PackedColorArray colors;
+		PackedVector2Array uvs;
 		uint32_t source_triangles = 0;
 		uint64_t revision = 0;
 	};
 	struct Transport {
 		Vector3 albedo = Vector3(1, 1, 1), emission;
+		int texture_page = -1;
 		bool supported = false;
 	};
 	Ref<Environment> environment;
@@ -36,18 +41,20 @@ class KilnGIWorld : public Node3D {
 	HashMap<ObjectID, Dictionary> shader_defaults;
 	HashMap<ObjectID, Transport> material_cache;
 	HashMap<ObjectID, Color> texture_cache;
+	HashMap<ObjectID, int> texture_pages;
+	HashSet<ObjectID> dirty_textures;
+	Vector<int> free_texture_pages;
 	HashMap<ObjectID, Ref<Resource>> watched_resources;
 	HashSet<ObjectID> used_resources;
 	uint32_t static_hash = 0, dynamic_hash = 0, local_light_hash = 0;
 	uint32_t static_material_hash = 0, dynamic_material_hash = 0;
-	uint64_t proxy_builds = 0, material_updates = 0;
-	uint64_t imported_proxy_hits = 0, runtime_proxy_builds = 0;
-	float proxy_ratio = 0.12f, proxy_error = 0.001f;
+	uint64_t mesh_uploads = 0, material_updates = 0;
 	void watch(const Ref<Resource> &p_resource);
 	void resource_changed(ObjectID p_id);
 	Color texture_average(const Ref<Texture2D> &p_texture);
+	int capture_texture(const Ref<Texture2D> &p_texture);
 	Transport transport(const Ref<Material> &p_material);
-	MeshData make_proxy(const Ref<Mesh> &p_mesh, int p_surface);
+	MeshData capture_mesh(const Ref<Mesh> &p_mesh, int p_surface);
 	void collect_lights(Node *p_node, Vector<Vector4> &r_lights, uint32_t &r_hash);
 	void update_lights();
 	bool rebuild_pending = true;
@@ -68,9 +75,12 @@ public:
 		shader_defaults.clear();
 		material_cache.clear();
 		texture_cache.clear();
+		texture_pages.clear();
+		dirty_textures.clear();
+		free_texture_pages.clear();
+		snapshot.texture_pixels.clear();
+		snapshot.texture_version++;
 	}
-	void set_proxy_quality(float p_ratio, float p_error);
-	void set_resolution_divisor(int p_divisor);
 	void set_query_backend(int p_backend);
 	void set_lighting(Vector3 p_direction, Vector3 p_color, float p_sun_energy, float p_sky_energy, float p_time_of_day);
 	void set_enabled(bool p_enabled) { snapshot.enabled = p_enabled; }

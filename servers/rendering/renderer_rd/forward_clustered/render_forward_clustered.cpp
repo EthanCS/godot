@@ -160,9 +160,10 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::configure(RenderS
 	cluster_builder->setup(p_render_buffers->get_internal_size(), p_render_buffers->get_max_cluster_elements(), p_render_buffers->get_depth_texture(), sampler, p_render_buffers->get_internal_texture());
 }
 
-RID RenderForwardClustered::RenderBufferDataForwardClustered::get_kiln_gbuffer_fb() {
-	const StringName names[] = { SNAME("albedo_metallic"), SNAME("normal_roughness"), SNAME("emission"), SNAME("material"), SNAME("instance") };
-	const RD::DataFormat formats[] = { RD::DATA_FORMAT_R8G8B8A8_UNORM, RD::DATA_FORMAT_R16G16B16A16_SFLOAT, RD::DATA_FORMAT_R16G16B16A16_SFLOAT, RD::DATA_FORMAT_R8G8B8A8_UNORM, RD::DATA_FORMAT_R32_UINT };
+// Opaque and cutout materials write the G-buffer in one depth-tested raster pass.
+RID RenderForwardClustered::RenderBufferDataForwardClustered::get_kiln_material_fb() {
+	const StringName names[] = { SNAME("albedo_metallic"), SNAME("normal_roughness"), SNAME("emission"), SNAME("material"), SNAME("surface") };
+	const RD::DataFormat formats[] = { RD::DATA_FORMAT_R8G8B8A8_UNORM, RD::DATA_FORMAT_R16G16B16A16_SFLOAT, RD::DATA_FORMAT_R16G16B16A16_SFLOAT, RD::DATA_FORMAT_R8G8B8A8_UNORM, RD::DATA_FORMAT_R32G32_UINT };
 	Vector<RID> attachments;
 	for (int i = 0; i < 5; i++) {
 		if (!render_buffers->has_texture(RB_SCOPE_KILN, names[i])) {
@@ -203,7 +204,7 @@ void RenderForwardClustered::_kiln_resolve(Ref<RenderSceneBuffersRD> p_buffers, 
 		ERR_FAIL_COND(pipeline.is_null());
 		kiln_resolve_pipelines.insert(key, pipeline);
 	}
-	const StringName names[] = { SNAME("albedo_metallic"), SNAME("normal_roughness"), SNAME("emission"), SNAME("material"), SNAME("instance") };
+	const StringName names[] = { SNAME("albedo_metallic"), SNAME("normal_roughness"), SNAME("emission"), SNAME("material"), SNAME("surface") };
 	LocalVector<RD::Uniform> uniforms;
 	RID sampler = RendererRD::MaterialStorage::get_singleton()->sampler_rd_get_default(RSE::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RSE::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 	for (int i = 0; i < 6; i++) {
@@ -234,6 +235,22 @@ void RenderForwardClustered::_kiln_resolve(Ref<RenderSceneBuffersRD> p_buffers, 
 		u.binding = 9 + i;
 		u.append_id(sampler);
 		u.append_id(i == 0 ? p_buffers->get_velocity_buffer(false) : (p_gi ? gi_view->t("confidence", 1 - gi_view->index) : RendererRD::TextureStorage::get_singleton()->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK)));
+		uniforms.push_back(u);
+	}
+	{
+		RD::Uniform u;
+		u.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		u.binding = 11;
+		u.append_id(sampler);
+		u.append_id(p_gi && gi_view->textures.has("debug0") ? gi_view->t("debug") : RendererRD::TextureStorage::get_singleton()->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
+		uniforms.push_back(u);
+	}
+	{
+		RD::Uniform u;
+		u.uniform_type = RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		u.binding = 12;
+		u.append_id(sampler);
+		u.append_id(p_gi ? gi_view->t("fresnel") : RendererRD::TextureStorage::get_singleton()->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
 		uniforms.push_back(u);
 	}
 	RID gbuffer_set = UniformSetCacheRD::get_singleton()->get_cache_vec(shader, MATERIAL_UNIFORM_SET, uniforms);
@@ -550,8 +567,8 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 
 				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_COLOR_PASS;
 			} break;
-			case PASS_MODE_KILN_GBUFFER: {
-				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_KILN_GBUFFER;
+			case PASS_MODE_KILN_MATERIAL: {
+				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_KILN_MATERIAL;
 				pipeline_key.color_pass_flags = SceneShaderForwardClustered::PIPELINE_COLOR_PASS_FLAG_MOTION_VECTORS;
 			} break;
 			case PASS_MODE_SHADOW:
@@ -748,8 +765,8 @@ void RenderForwardClustered::_render_list(RenderingDevice::DrawListID p_draw_lis
 			}
 
 		} break;
-		case PASS_MODE_KILN_GBUFFER: {
-			_render_list_template<PASS_MODE_KILN_GBUFFER>(p_draw_list, p_framebuffer_Format, p_params, p_from_element, p_to_element);
+		case PASS_MODE_KILN_MATERIAL: {
+			_render_list_template<PASS_MODE_KILN_MATERIAL>(p_draw_list, p_framebuffer_Format, p_params, p_from_element, p_to_element);
 		} break;
 		case PASS_MODE_SHADOW: {
 			_render_list_template<PASS_MODE_SHADOW>(p_draw_list, p_framebuffer_Format, p_params, p_from_element, p_to_element);
@@ -2328,13 +2345,13 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 	if (kiln_deferred) {
 		RENDER_TIMESTAMP("Kiln G-buffer");
-		RID gbuffer = rb_data->get_kiln_gbuffer_fb();
+		RID gbuffer = rb_data->get_kiln_material_fb();
 		Vector<Color> clears;
 		for (int i = 0; i < 6; i++) {
 			clears.push_back(Color(0, 0, 0, 0));
 		}
-		RenderListParameters params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_KILN_GBUFFER, 0, false, false, rp_uniform_set, false, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, 1, 0, base_specialization);
-		_render_list_with_draw_list(&params, gbuffer, RD::DRAW_CLEAR_COLOR_ALL | (depth_pre_pass ? RD::DRAW_DEFAULT_ALL : RD::DRAW_CLEAR_DEPTH), clears, 0.0f);
+		RenderListParameters params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_KILN_MATERIAL, 0, false, false, rp_uniform_set, false, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, 1, 0, base_specialization);
+		_render_list_with_draw_list(&params, gbuffer, RD::DRAW_CLEAR_COLOR_ALL | RD::DRAW_CLEAR_DEPTH, clears, 0.0f);
 		bool gi_ready = false;
 		RendererRD::KilnWorld world;
 		if (RendererRD::KilnWorld::read(p_render_data->environment, world) && (world.enabled || world.ao_quality > 0)) {
@@ -3918,12 +3935,13 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 	if (kiln_forward_gi_ready && rb.is_valid() && rb->has_custom_data(SNAME("kiln_gi"))) {
 		kiln_view = rb->get_custom_data(SNAME("kiln_gi"));
 	}
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		RD::Uniform u;
 		u.binding = 37 + i;
 		u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
 		u.append_id(kiln_view.is_valid() ? kiln_view->t(i == 0 ? "diffuse" : i == 1 ? "specular"
-																					: "ao")
+														   : i == 2					? "ao"
+																					: "fresnel")
 										 : texture_storage->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
 		uniforms.push_back(u);
 	}
@@ -4141,7 +4159,7 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 		ERR_FAIL_COND_V(scene_shader.default_shader_sdfgi_rd.is_null(), RID());
 	}
 
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		RD::Uniform u;
 		u.binding = 37 + i;
 		u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
@@ -5276,7 +5294,13 @@ void RenderForwardClustered::_update_shader_quality_settings() {
 RenderForwardClustered::RenderForwardClustered(bool p_kiln_deferred) :
 		kiln_deferred(p_kiln_deferred) {
 	singleton = this;
-	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/debug_view", PROPERTY_HINT_ENUM, "Lit,Albedo,Normal,Roughness,Emission,Material,Depth,Indirect,AO,Motion,Direct,ClusterCount,History"), 0);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/debug_view", PROPERTY_HINT_ENUM, "Lit,Albedo,Normal,Roughness,Emission,Material,Depth,Indirect,AO,Motion,Direct,ClusterCount,History,Instance,Geometric Normal,Surfel IDs,Surfel Irradiance,Surfel Normals,Surfel Radius,Surfel Age,Surfel Samples,Surfel Updates,Surfel Coverage,Surfel Contributors,Surfel Variance,Surfel Raw GI,Surfel Grid,Surfel Anchors,Indirect Specular"), 0);
+	GLOBAL_DEF("rendering/kiln/surfel_multibounce", true);
+	GLOBAL_DEF("rendering/kiln/surfel_specular", true);
+	GLOBAL_DEF("rendering/kiln/specular_checkerboard", true);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/specular_rays", PROPERTY_HINT_RANGE, "1,8,1"), 2);
+	GLOBAL_DEF(PropertyInfo(Variant::FLOAT, "rendering/kiln/surfel_debug_radius", PROPERTY_HINT_RANGE, "0.15,1,0.05"), 0.45);
+	GLOBAL_DEF(PropertyInfo(Variant::FLOAT, "rendering/kiln/surfel_debug_gain", PROPERTY_HINT_RANGE, "0.1,32,0.1"), 4.0);
 
 	/* SCENE SHADER */
 

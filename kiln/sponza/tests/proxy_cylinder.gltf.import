@@ -5,9 +5,7 @@ importer_version=2
 type="PackedScene"
 uid="uid://d1bl2gcsqngxn"
 path="res://.godot/imported/proxy_cylinder.gltf-9b935bcdf4d85101fac7d6dcd0a8d15f.scn"
-metadata={
-"kiln_gi_proxy_version": 1
-}
+metadata={}
 
 [deps]
 

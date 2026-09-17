@@ -25,17 +25,17 @@ def image(name, base=root):
 def raw(name):
     folder = root / name
     meta = json.loads((folder / 'metadata.json').read_text())
-    h, w = meta['half_height'], meta['half_width']
-    position = np.fromfile(folder / 'position.bin', '<f4').reshape(h,w,4)
-    rgb = np.fromfile(folder / 'decoded.bin', '<f2').reshape(h,w,4)[...,:3].astype('f4')
-    checks[name+'_finite'] = bool(np.isfinite(rgb).all() and np.isfinite(position).all())
+    h, w = meta['height'], meta['width']
+    rgb = np.fromfile(folder / 'diffuse.bin', '<f2').reshape(h,w,4)[...,:3].astype('f4')
+    valid = np.fromfile(folder / 'surface.bin', '<u4').reshape(h,w,2)[...,0] > 0
+    checks[name+'_finite'] = bool(np.isfinite(rgb).all())
     if meta['backend'] == 'hardware_ray_query':
         checks[name+'_hardware_queries'] = meta['hardware_query_rays'] == 2048 and meta['hardware_query_hit_rays'] > 100 and meta['hardware_query_mismatches'] == 0 and meta['hardware_query_maximum_error'] < .003
     world = json.loads((folder / 'world.json').read_text())
     lighting = json.loads((folder / 'lighting.json').read_text())
     checks[name+'_sun_sky_isolation'] = world['local_lights'] == 0 and world['dynamic_triangles'] == 0 and not lighting['local_mode']
-    checks[name+'_imported_proxy'] = world['imported_proxy_surfaces'] == 25 and world['runtime_proxy_builds'] == 0
-    return rgb[position[...,3] > .5].mean(0)
+    checks[name+'_original_scene_geometry'] = world['ray_geometry'] == 'original_scene_meshes' and world['source_triangles_unique'] > 250000
+    return rgb[valid].mean(0)
 
 for hour in ['0650','0900','1200','1750','2100']:
     name = 'tod_'+hour+'_on'

@@ -1,7 +1,13 @@
-param([switch]$ForwardPlus, [switch]$NoGI, [switch]$MultiLight)
+param([switch]$ForwardPlus, [switch]$NoGI, [switch]$MultiLight, [switch]$TwoBounce, [switch]$DryFloor, [switch]$NoSpecular, [switch]$FullSpecularRate, [switch]$Still, [ValidateRange(0, 28)][int]$DebugView = 0)
 $engine = Join-Path $PSScriptRoot '../../bin/godot.windows.editor.x86_64.mono.console.exe'
 $method = if ($ForwardPlus) { 'forward_plus' } else { 'kiln_deferred' }
 $demoArgs = @('--path', $PSScriptRoot, '--rendering-driver', 'vulkan', '--rendering-method', $method, '--')
 if ($MultiLight) { $demoArgs += '--multi-light' }
 if ($NoGI) { $demoArgs += '--no-gi' }
+if ($TwoBounce) { $demoArgs += '--surfel-two-bounce' }
+if ($DryFloor) { $demoArgs += '--dry-floor' }
+if ($NoSpecular) { $demoArgs += '--no-specular' }
+if ($FullSpecularRate) { $demoArgs += '--full-specular-rate' }
+if ($Still) { $demoArgs += '--still' }
+if ($DebugView -ne 0) { $demoArgs += "--debug-view=$DebugView" }
 & $engine @demoArgs

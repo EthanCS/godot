@@ -1,13 +1,16 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
+// SurfelPlus adaptation: thirdparty/surfelplus/NOTICE and kiln/docs/SURFEL-GI.md.
 
 #include "kiln_gi.h"
 
+#include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "servers/rendering/renderer_rd/storage_rd/material_storage.h"
 #include "servers/rendering/renderer_rd/uniform_set_cache_rd.h"
+#include "servers/rendering/rendering_server_globals.h"
+#include "servers/rendering/storage/utilities.h"
 
 using namespace RendererRD;
 #define kiln_scope SNAME("kiln_gi")
@@ -23,7 +26,7 @@ RID KilnGI::texture(Size2i size, RD::DataFormat format) {
 }
 KilnGI::KilnGI() {
 	Vector<String> defines;
-	const char *stages[] = { "PREPARE_RECEIVERS", "TRACE_PRIMARY", "INTEGRATE", "SH_TEMPORAL", "UPDATE_WORLD_CACHE", "SH_FILTER", "SH_DECODE", "BRDF_LUT", "SEQUENCE_LUT", "PUBLISH", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT" };
+	const char *stages[] = { "SURFEL_UPDATE", "SURFEL_GRID", "SURFEL_GENERATE", "SURFEL_TRACE", "SURFEL_INTEGRATE", "SURFEL_EVALUATE", "SURFEL_PUBLISH", "SURFEL_SPECULAR", "SURFEL_SPECULAR_FILTER", "SURFEL_DEBUG", "SEQUENCE_LUT", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT", "SURFEL_GRID_PREFIX", "SURFEL_GRID_PREFIX_SUMS", "SURFEL_GRID_SCATTER" };
 	for (int i = 0; i < STAGE_COUNT; i++) {
 		defines.push_back(String("\n#define STAGE_") + stages[i] + "\n");
 	}
@@ -36,13 +39,13 @@ KilnGI::KilnGI() {
 	hardware_available = RD::get_singleton()->has_feature(RD::SUPPORTS_RAY_QUERY);
 	if (hardware_available) {
 		Vector<String> hardware_defines;
-		for (const char *stage : { "TRACE_PRIMARY", "INTEGRATE", "QUERY_VALIDATE" }) {
+		for (const char *stage : { "SURFEL_GENERATE", "SURFEL_TRACE", "QUERY_VALIDATE", "SURFEL_SPECULAR" }) {
 			hardware_defines.push_back(String("\n#define KILN_HARDWARE_RAY_QUERY\n#define STAGE_") + stage + "\n");
 		}
 		hardware_shader.initialize(hardware_defines);
 		hardware_version = hardware_shader.version_create();
 		hardware_shader.version_set_compute_code(hardware_version, HashMap<String, String>(), "", "", Vector<String>());
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 4; i++) {
 			RID code = hardware_shader.version_get_shader(hardware_version, i);
 			if (code.is_valid()) {
 				hardware_pipelines[i] = RD::get_singleton()->compute_pipeline_create(code);
@@ -53,11 +56,11 @@ KilnGI::KilnGI() {
 	RD::SamplerState state;
 	sampler = RD::get_singleton()->sampler_create(state);
 	state.min_filter = state.mag_filter = RD::SAMPLER_FILTER_LINEAR;
+	state.repeat_u = state.repeat_v = RD::SAMPLER_REPEAT_MODE_REPEAT;
 	linear_sampler = RD::get_singleton()->sampler_create(state);
-	brdf = texture(Size2i(64, 64), RD::DATA_FORMAT_R16G16_SFLOAT);
 	sequence = texture(Size2i(128, 128), RD::DATA_FORMAT_R32G32B32A32_SFLOAT);
 	hilbert = texture(Size2i(64, 64), RD::DATA_FORMAT_R16_UINT);
-	dispatch(BRDF, Size2i(64, 64), { { 14, RD::UNIFORM_TYPE_IMAGE, brdf } });
+	empty_surface = texture(Size2i(1, 1), RD::DATA_FORMAT_R32G32_UINT);
 	print_line(vformat("[KILN_GI] hardware ray query=%s; compute software BVH fallback available", hardware_available));
 }
 KilnGI::~KilnGI() {
@@ -65,7 +68,7 @@ KilnGI::~KilnGI() {
 	if (hardware_version.is_valid()) {
 		hardware_shader.version_free(hardware_version);
 	}
-	for (RID rid : { sampler, linear_sampler, brdf, sequence, hilbert }) {
+	for (RID rid : { sampler, linear_sampler, sequence, hilbert, empty_surface }) {
 		RD::get_singleton()->free_rid(rid);
 	}
 }
@@ -89,6 +92,10 @@ void KilnGI::View::free_hardware() {
 }
 void KilnGI::View::free_data() {
 	free_hardware();
+	if (ray_albedo.is_valid()) {
+		RD::get_singleton()->free_rid(ray_albedo);
+		ray_albedo = RID();
+	}
 	hardware_failed = false;
 	hardware_builds = tlas_builds = 0;
 	for (RID rid : owned) {
@@ -104,14 +111,47 @@ void KilnGI::View::free_data() {
 	capacities.clear();
 	textures.clear();
 	frames = index = stationary_samples = 0;
-	geometry_version = dynamic_version = light_version = material_version = 0;
+	geometry_version = dynamic_version = light_version = material_version = texture_version = 0;
 	static_material_version = dynamic_material_version = 0;
 	ready = false;
 }
 void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z, RID tlas) {
 	RD *rd = RD::get_singleton();
+	static const char *stage_names[] = { "Update", "Grid", "Generate", "Trace diffuse", "Integrate", "Evaluate", "Publish diffuse", "Trace specular", "Filter specular", "Debug", "Sequence", "AO depth", "AO main", "AO denoise", "AO temporal", "BVH refit", "Grid prefix", "Grid prefix sums", "Grid scatter", "Query validation" };
+	RENDER_TIMESTAMP(String("Kiln / ") + stage_names[stage]);
 	LocalVector<RD::Uniform> uniforms;
+	const uint64_t surfel_data = (1ull << 0) | (31ull << 20) | (1ull << 35);
+	const uint64_t bvh_data = (1ull << 4) | (1ull << 5) | (7ull << 16) | (3ull << 25) | (7ull << 32);
+	uint64_t stage_mask = ~0ull;
+	switch (stage) {
+		case SURFEL_UPDATE:
+			stage_mask = surfel_data | bvh_data | (1ull << 1);
+			break;
+		case SURFEL_GRID:
+		case SURFEL_GRID_PREFIX:
+		case SURFEL_GRID_PREFIX_SUMS:
+		case SURFEL_GRID_SCATTER:
+			stage_mask = surfel_data;
+			break;
+		case SURFEL_GENERATE:
+			stage_mask = surfel_data | bvh_data | (3ull << 1) | (1ull << 31);
+			break;
+		case SURFEL_TRACE:
+			stage_mask = surfel_data | bvh_data | (1ull << 28);
+			break;
+		case SURFEL_INTEGRATE:
+			stage_mask = surfel_data | (1ull << 28);
+			break;
+		case SURFEL_EVALUATE:
+			stage_mask = surfel_data | (3ull << 1) | (1ull << 6) | (1ull << 8) | (1ull << 31);
+			break;
+		default:
+			break;
+	}
 	for (const Binding &b : bindings) {
+		if (!(stage_mask & (1ull << b.binding))) {
+			continue;
+		}
 		RD::Uniform u;
 		u.binding = b.binding;
 		u.uniform_type = b.type;
@@ -123,7 +163,7 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 	}
 	RID code, pipeline;
 	if (tlas.is_valid()) {
-		int variant = stage == TRACE ? 0 : (stage == INTEGRATE ? 1 : 2);
+		int variant = stage == SURFEL_GENERATE ? 0 : (stage == SURFEL_TRACE ? 1 : (stage == SURFEL_SPECULAR ? 3 : 2));
 		RD::Uniform u;
 		u.binding = 27;
 		u.uniform_type = RD::UNIFORM_TYPE_ACCELERATION_STRUCTURE;
@@ -139,12 +179,13 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 	RD::ComputeListID list = rd->compute_list_begin();
 	rd->compute_list_bind_compute_pipeline(list, pipeline);
 	rd->compute_list_bind_uniform_set(list, set, 0);
-	if (stage == BVH_REFIT || stage == FILTER || stage == AO_DEPTH || stage == AO_DENOISE || stage == AO_TEMPORAL) {
+	if (stage == BVH_REFIT || stage == AO_DEPTH || stage == AO_DENOISE || stage == AO_TEMPORAL) {
 		int push[4] = { stride, size.x, 0, 0 };
-		rd->compute_list_set_push_constant(list, push, (stage == FILTER || stage == BVH_REFIT) ? sizeof(push) : sizeof(int));
+		rd->compute_list_set_push_constant(list, push, (stage == BVH_REFIT) ? sizeof(push) : sizeof(int));
 	}
 	rd->compute_list_dispatch(list, (size.x + 7) / 8, (size.y + 7) / 8, z);
 	rd->compute_list_end();
+	RENDER_TIMESTAMP("Kiln / between passes");
 }
 bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene, RID environment, RID full_normal, bool signed_normal) {
 	KilnWorld world;
@@ -158,10 +199,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		buffers->set_custom_data(kiln_scope, data);
 	}
 	Ref<View> state = buffers->get_custom_data(kiln_scope);
-	if (state->resolution_divisor != world.resolution_divisor) {
-		state->free_data();
-		state->resolution_divisor = world.resolution_divisor;
-	}
 	if (state->environment != environment) {
 		state->free_data();
 		state->environment = environment;
@@ -181,42 +218,30 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	bool initialize = !state->ready;
 	if (initialize) {
 		state->size = buffers->get_internal_size();
-		state->half = (state->size + Size2i(world.resolution_divisor - 1, world.resolution_divisor - 1)) / world.resolution_divisor;
+		// Keep the cache density consistent as the full-resolution receiver count
+		// grows. Workgroups address rows of 256 slots; bound memory at 32 MiB.
+		uint32_t requested_slots = ((uint64_t(state->size.x) * state->size.y + 2047) / 2048) * 256;
+		state->slots = CLAMP(requested_slots, 65536u, 262144u);
 		state->parameters = own(rd->uniform_buffer_create(704));
-		const char *names[] = { "position", "normal", "moments", "confidence", "age", "visibility", "sh", "raw", "visibility_raw", "sh_raw", "sh_filter_first", "sh_filter_work", "sh_filtered", "decoded", "diffuse", "specular", "display_diffuse", "display_specular", "publication_key" };
-		for (String name : names) {
-			RD::DataFormat format = RD::DATA_FORMAT_R16G16B16A16_SFLOAT;
-			if (name == "position" || name == "sh" || name == "sh_raw" || name.begins_with("display_")) {
-				format = RD::DATA_FORMAT_R32G32B32A32_SFLOAT;
-			}
-			if (name == "confidence" || name == "age" || name == "visibility" || name == "visibility_raw") {
-				format = RD::DATA_FORMAT_R16_SFLOAT;
-			}
-			if (name == "moments") {
-				format = RD::DATA_FORMAT_R32G32_SFLOAT;
-			}
-			if (name == "publication_key") {
-				format = RD::DATA_FORMAT_R32G32_UINT;
-			}
-			Size2i size = name.begins_with("sh") ? Size2i(state->half.x * 3, state->half.y) : state->half;
-			if (name == "diffuse" || name == "specular" || name.begins_with("display_") || name == "publication_key") {
-				size = state->size;
-			}
-			int count = name == "moments" || name == "position" || name == "normal" || name == "confidence" || name == "age" || name == "visibility" || name == "sh" || name.begins_with("display_") ? 2 : 1;
+		// Persistent world-space surfels. Screen textures contain only the resolve
+		// and geometry history; there are no screen probes or legacy SH caches.
+		for (const char *name : { "raw", "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "reflection_base", "reflection_fresnel", "reflection_geometry", "confidence", "display_diffuse", "display_specular" }) {
+			String key(name);
+			RD::DataFormat format = key == "confidence" ? RD::DATA_FORMAT_R16_SFLOAT : (key.begins_with("display_") ? RD::DATA_FORMAT_R32G32B32A32_SFLOAT : RD::DATA_FORMAT_R16G16B16A16_SFLOAT);
+			int count = key.begins_with("display_") || key.begins_with("reflection_") || key == "confidence" ? 2 : 1;
 			for (int i = 0; i < count; i++) {
-				state->textures[name + itos(i)] = own(texture(size, format));
+				state->textures[key + itos(i)] = own(texture(state->size, format));
 			}
 		}
-		while (state->slots < MIN(uint32_t(state->size.x * state->size.y), 1048576u)) {
-			state->slots *= 2;
-		}
-		allocate("world_lights", state->slots * 96);
-		allocate("world_owners", state->slots * 4);
-		rd->buffer_clear(state->storage["world_lights"], 0, state->slots * 96);
-		state->dirty_bytes = ((state->half.x + 15) / 16) * ((state->half.y + 15) / 16) * 4;
-		allocate("dirty", state->dirty_bytes);
-		allocate("receivers", state->half.x * state->half.y * 32);
-		allocate("hits", state->half.x * state->half.y * MAX(4, world.rays) * 8);
+		allocate("surfels", state->slots * 128);
+		allocate("cell_heads", 262144 * 8);
+		allocate("cell_links", state->slots * 27 * 4);
+		allocate("grid_sums", 4096 * 4);
+		allocate("free_slots", state->slots * 4);
+		allocate("counters", 16 + 262144 * 4);
+		rd->buffer_clear(state->storage["counters"], 0, 16 + 262144 * 4);
+		allocate("ray_results", state->slots * 16);
+		rd->buffer_clear(state->storage["surfels"], 0, state->slots * 128);
 		Size2i ao_size = state->size;
 		for (int i = 0; i < 5; i++) {
 			state->textures["ao_depth" + itos(i) + "0"] = own(texture(ao_size, RD::DATA_FORMAT_R32_SFLOAT));
@@ -229,7 +254,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		state->textures["ao_edges0"] = own(texture(state->size, RD::DATA_FORMAT_R8G8B8A8_UNORM));
 		state->ready = true;
 	}
-	allocate("hits", state->half.x * state->half.y * MAX(4, world.rays) * 8);
 	if (state->history_version != world.history_version) {
 		state->frames = 0;
 		state->stationary_samples = 0;
@@ -239,6 +263,11 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	if (state->tracing != world.enabled) {
 		state->frames = 0;
 		state->tracing = world.enabled;
+	}
+	bool multibounce = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_multibounce", true);
+	if (multibounce != state->multibounce) {
+		state->frames = 0;
+		state->multibounce = multibounce;
 	}
 	bool changed_world = state->geometry_version != world.geometry_version;
 	bool changed_dynamic = state->dynamic_version != world.dynamic_version;
@@ -252,6 +281,39 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	if (changed_dynamic) {
 		upload("dynamic_nodes", world.dynamic.nodes);
 		upload("dynamic_triangles", world.dynamic.triangles);
+	}
+	if (initialize || state->texture_version != world.texture_version) {
+		if (state->ray_albedo.is_valid()) {
+			rd->free_rid(state->ray_albedo);
+		}
+		// Let the texture units perform sRGB decoding before bilinear filtering.
+		// The source pages and UV contract are unchanged; this replaces four
+		// scattered SSBO loads and twelve pow() evaluations at every ray hit.
+		RD::TextureFormat format;
+		format.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
+		format.width = format.height = 512;
+		format.array_layers = MAX(1, world.texture_pixels.size() / (512 * 512 * 4));
+		format.format = RD::DATA_FORMAT_R8G8B8A8_SRGB;
+		format.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT;
+		Vector<Vector<uint8_t>> pages;
+		for (uint32_t page = 0; page < format.array_layers; page++) {
+			Vector<uint8_t> pixels;
+			pixels.resize(512 * 512 * 4);
+			if (world.texture_pixels.is_empty()) {
+				memset(pixels.ptrw(), 255, pixels.size());
+			} else {
+				memcpy(pixels.ptrw(), world.texture_pixels.ptr() + page * pixels.size(), pixels.size());
+			}
+			pages.push_back(pixels);
+		}
+		state->ray_albedo = rd->texture_create(format, RD::TextureView(), pages);
+		state->texture_version = world.texture_version;
+	}
+	if (changed_world || state->static_material_version != world.static_material_version) {
+		upload("texture_coordinates", world.world.texture_coordinates);
+	}
+	if (changed_dynamic || state->dynamic_material_version != world.dynamic_material_version) {
+		upload("dynamic_texture_coordinates", world.dynamic.texture_coordinates);
 	}
 	// Rebuild bounds on the compute queue before any ray query consumes them.
 	for (bool dynamic : { false, true }) {
@@ -387,10 +449,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	} else if (state->lighting_remaining) {
 		state->lighting_remaining--;
 	}
-	if (state->epoch > 1048576) {
-		state->epoch = 1;
-		rd->buffer_clear(state->storage["world_lights"], 0, state->slots * 96);
-	}
 	bool camera_moved = state->frames > 0 && (scene->cam_transform != state->previous_camera || scene->cam_projection != state->previous_projection);
 	if (camera_moved) {
 		state->motion_remaining = 8;
@@ -420,11 +478,16 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	v(state->lighting_remaining ? MAX(4, world.rays) : world.rays, reproject, world.ao_quality, 0.22);
 	vec(world.world.bounds.position, 0.025);
 	vec(world.world.bounds.size, state->slots);
-	v(world.world.triangle_count, 1, 0, state->epoch);
+	bool specular_checkerboard = ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_checkerboard", true);
+	v(world.world.triangle_count, specular_checkerboard, 0, state->epoch);
 	vec(world.sun_direction, world.sun_energy * Math::PI);
 	vec(world.sun_color, world.sky_energy);
 	vec(world.sky_horizon, 0);
-	v(0, state->half.x, state->half.y, 1);
+	int debug_mode = ProjectSettings::get_singleton()->get_setting("rendering/kiln/debug_view", 0);
+	float debug_radius = CLAMP(float(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_debug_radius", 0.45)), 0.15f, 1.0f);
+	float debug_gain = CLAMP(float(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_debug_gain", 4.0)), 0.1f, 32.0f);
+	int specular_rays = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_specular", true) ? CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_rays", 2)), 1, 8) : 0;
+	v(debug_mode, debug_radius, debug_gain, specular_rays);
 	v(0, 0, 0, 1);
 	vec(world.sky_zenith, world.procedural_sky ? 2 : 1);
 	vec(world.procedural_sky ? Vector3() : Vector3(0.554, 0.464, 0.304), world.procedural_sky ? 0.035 * world.sun_energy : 0);
@@ -436,7 +499,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	v(world.dynamic.node_count, world.dynamic.triangle_count, emitter_count, world.world.power + world.dynamic.power);
 	MaterialStorage::store_camera(state->previous_vp.inverse(), params + at);
 	at += 16;
-	v(signed_normal, world.resolution_divisor, 0, 0);
+	bool has_surface = buffers->has_texture(SNAME("kiln_deferred"), SNAME("surface"));
+	RID surface_input = has_surface ? buffers->get_texture(SNAME("kiln_deferred"), SNAME("surface")) : empty_surface;
+	v(signed_normal, has_surface, multibounce, changed_dynamic);
 	ERR_FAIL_COND_V(at != 176, false);
 	rd->buffer_update(state->parameters, 0, sizeof(params), params);
 	auto U = [&]() { return Binding{ 0, RD::UNIFORM_TYPE_UNIFORM_BUFFER, state->parameters }; };
@@ -448,27 +513,50 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	int current = state->index, previous = 1 - current;
 	auto T = [&](String name, int i = 0) { return state->t(name, i); };
-	RID depth = buffers->get_depth_texture(), normal = full_normal, pos = T("position", current), norm = T("normal", current);
-	rd->buffer_clear(state->storage["dirty"], 0, state->dirty_bytes);
-	if (!moving) {
-		rd->buffer_clear(state->storage["world_owners"], 0, state->slots * 4);
+	RID depth = buffers->get_depth_texture(), normal = full_normal;
+	if (state->frames == 0 || changed_world) {
+		rd->buffer_clear(state->storage["surfels"], 0, state->slots * 128);
 	}
 	if (world.enabled) {
-		dispatch(PREPARE, state->half, { U(), S(1, depth), S(2, normal), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), B(21, "receivers"), B(24, "dirty"), B(22, "world_lights"), B(23, "world_owners") });
-		dispatch(TRACE, state->half, { U(), S(1, depth), S(2, normal), B(4, "nodes"), B(5, "triangles"), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(19, sequence), B(20, "hits"), B(21, "receivers") }, 0, MAX(4, world.rays), query_tlas);
-		dispatch(INTEGRATE, state->half, { U(), S(1, depth), S(2, normal), B(4, "nodes"), B(5, "triangles"), I(6, T("raw")), I(7, pos), I(8, norm), I(9, T("sh_raw")), I(10, T("visibility_raw")), S(11, T("position", previous)), S(12, T("normal", previous)), S(13, T("confidence", previous)), S(14, T("sh", previous)), S(15, T("visibility", previous)), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(19, sequence), B(20, "hits"), B(21, "receivers"), B(22, "world_lights"), B(23, "world_owners") }, 0, 1, query_tlas);
-		dispatch(TEMPORAL, state->half, { U(), S(1, T("sh_raw")), S(2, pos), S(3, norm), S(4, T("sh", previous)), S(5, T("position", previous)), S(6, T("normal", previous)), S(7, T("confidence", previous)), I(8, T("sh", current)), I(9, T("confidence", current)), S(10, T("visibility_raw")), S(11, T("visibility", previous)), I(12, T("visibility", current)), S(13, T("raw")), S(14, T("age", previous)), I(15, T("age", current)), S(16, T("moments", previous)), I(17, T("moments", current)) });
-		if (!moving) {
-			dispatch(WORLD_CACHE, state->half, { U(), S(1, pos), S(2, norm), S(3, T("sh", current)), S(4, T("confidence", current)), S(5, T("visibility", current)), S(6, T("raw")), B(22, "world_lights"), B(23, "world_owners") });
-		}
-		RID filter_input = T("sh", current);
-		const char *filter_names[] = { "sh_filter_first", "sh_filter_work", "sh_filtered" };
-		for (int pass = 0; pass < 3; pass++) {
-			RID output = T(filter_names[pass]);
-			dispatch(FILTER, state->half, { U(), S(1, filter_input), S(2, pos), S(3, norm), S(4, T("visibility", current)), S(5, T("confidence", current)), I(6, output), B(7, "dirty"), S(8, T("moments", current)) }, 1 << pass);
-			filter_input = output;
-		}
-		dispatch(DECODE, state->half, { U(), S(1, T("sh_filtered")), S(2, norm), S(3, T("visibility", current)), I(4, T("decoded")), B(5, "dirty") });
+		const Size2i surfel_dispatch(256, state->slots / 256);
+		auto surfel_pass = [&](Stage stage, bool geometry, bool screen, RID tlas = RID()) {
+			Size2i work = screen ? state->size : surfel_dispatch;
+			if (stage == SURFEL_GRID_PREFIX) work = Size2i(256, 1024);
+			if (stage == SURFEL_GRID_PREFIX_SUMS) work = Size2i(8, 8);
+			// Fixed descriptors are shared by the stages; ShaderRD retains the
+			// declared binding contract even for helpers eliminated by glslang.
+			if (geometry) {
+				dispatch(stage, work,
+						{ U(), S(1, depth), S(2, normal), S(31, surface_input), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"),
+								B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(28, "ray_results"), B(35, "grid_sums") },
+						0, 1, tlas);
+			} else {
+				dispatch(stage, work,
+						{ U(), S(1, depth), S(2, normal), S(31, surface_input), I(6, T("raw")), I(8, T("confidence", current)),
+								B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(28, "ray_results"), B(35, "grid_sums") });
+			}
+		};
+		auto build_grid = [&]() {
+			rd->buffer_clear(state->storage["cell_heads"], 0, 262144 * 8);
+			surfel_pass(SURFEL_GRID, false, false);
+			surfel_pass(SURFEL_GRID_PREFIX, false, false);
+			surfel_pass(SURFEL_GRID_PREFIX_SUMS, false, false);
+			surfel_pass(SURFEL_GRID_SCATTER, false, false);
+		};
+		rd->buffer_clear(state->storage["counters"], 0, 16 + 262144 * 4);
+		surfel_pass(SURFEL_UPDATE, true, false);
+		build_grid();
+		surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
+		build_grid();
+		surfel_pass(SURFEL_TRACE, true, false, query_tlas);
+		surfel_pass(SURFEL_INTEGRATE, false, false);
+		surfel_pass(SURFEL_EVALUATE, false, true);
+		dispatch(SURFEL_SPECULAR, state->size,
+				{ U(), S(1, depth), S(2, normal), S(31, surface_input), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"),
+						B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(35, "grid_sums"), I(6, T("specular_raw")), I(7, T("fresnel_raw")) },
+				0, 1, query_tlas);
+	} else {
+		rd->texture_clear(T("raw"), Color(0, 0, 0, 0), 0, 1, 0, 1);
 	}
 	if (state->ao_quality != world.ao_quality || state->frames == 0) {
 		state->ao_frames = 0;
@@ -488,16 +576,74 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		dispatch(AO_TEMPORAL, state->size, { U(), S(1, T("ao_spatial")), S(2, depth), S(3, full_normal), S(4, T("ao_history", previous)), S(5, T("display_diffuse", previous)), S(6, T("display_specular", previous)), I(7, T("ao_history", current)), I(8, T("ao")) }, state->ao_frames);
 		state->ao_frames = MIN(state->ao_frames + 1, 32);
 	}
-	dispatch(PUBLISH, state->size, { U(), I(1, T("diffuse")), S(2, depth), S(3, full_normal), S(7, T("decoded")), S(8, pos), S(9, norm), S(10, T("confidence", current)), S(11, T("sh_filtered")), I(12, T("specular")), S(13, brdf, true), S(14, T("display_diffuse", previous)), I(15, T("display_diffuse", current)), S(16, T("display_specular", previous)), I(17, T("display_specular", current)), I(18, T("publication_key")), B(19, "dirty") });
+	dispatch(SURFEL_PUBLISH, state->size, { U(), S(1, depth), S(2, normal), S(31, surface_input), S(3, T("raw")), I(6, T("diffuse")), I(9, T("display_diffuse", current)), I(10, T("display_specular", current)), S(11, T("display_diffuse", previous)), S(12, T("display_specular", previous)) });
+	dispatch(SURFEL_SPECULAR_FILTER, state->size,
+			{ U(), S(1, depth), S(2, normal), S(3, T("specular_raw")), S(4, T("fresnel_raw")), S(5, T("reflection_base", previous)), S(6, T("reflection_fresnel", previous)), S(7, T("reflection_geometry", previous)), S(8, T("display_diffuse", previous)),
+					I(9, T("reflection_base", current)), I(10, T("reflection_fresnel", current)), I(11, T("reflection_geometry", current)), I(12, T("specular")), I(13, T("fresnel")) });
 	if (!world.enabled) {
 		rd->texture_clear(T("diffuse"), Color(0, 0, 0, 0), 0, 1, 0, 1);
 		rd->texture_clear(T("specular"), Color(0, 0, 0, 0), 0, 1, 0, 1);
+	}
+	bool surfel_debug = debug_mode >= 15 && debug_mode <= 27 && has_surface;
+	if (surfel_debug) {
+		if (!state->textures.has("debug0")) {
+			state->textures["debug0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+			state->textures["debug_metrics0"] = own(texture(state->size, RD::DATA_FORMAT_R32G32B32A32_SFLOAT));
+		}
+		dispatch(SURFEL_DEBUG, state->size,
+				{ U(), S(1, depth), S(2, normal), S(3, T("raw")), S(31, surface_input),
+						B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(28, "ray_results"), B(35, "grid_sums"),
+						I(29, T("debug")), I(30, T("debug_metrics")) });
 	}
 	// Explicit diagnostics only: this synchronous readback is never used for timing.
 	if (world.capture_request != state->capture_request && !world.capture_directory.is_empty()) {
 		state->capture_request = world.capture_request;
 		if (DirAccess::make_dir_recursive_absolute(world.capture_directory) == OK) {
 			Dictionary metadata;
+			metadata["gi_algorithm"] = "Surfel GI (SurfelPlus adaptation)";
+			metadata["surfel_multibounce"] = multibounce;
+			metadata["surfel_specular"] = specular_rays > 0;
+			metadata["specular_rays"] = specular_rays;
+			metadata["specular_checkerboard"] = specular_checkerboard;
+			metadata["texture_pages"] = world.texture_pixels.size() / (512 * 512 * 4);
+			metadata["texture_version"] = world.texture_version;
+			metadata["renderer_path"] = has_surface ? "G-buffer deferred" : "Forward+";
+			metadata["surfel_capacity"] = state->slots;
+			metadata["surfel_debug_mode"] = surfel_debug ? debug_mode : 0;
+			metadata["surfel_debug_radius_scale"] = debug_radius;
+			metadata["surfel_debug_gain"] = debug_gain;
+			if (surfel_debug) {
+				for (const char *name : { "debug", "debug_metrics", "raw" }) {
+					Ref<FileAccess> dump = FileAccess::open(world.capture_directory.path_join(String(name) + ".bin"), FileAccess::WRITE);
+					if (dump.is_valid()) {
+						dump->store_buffer(rd->texture_get_data(T(name), 0));
+					}
+				}
+			}
+			PackedByteArray counters = rd->buffer_get_data(state->storage["counters"]);
+			const uint32_t *counts = reinterpret_cast<const uint32_t *>(counters.ptr());
+			metadata["surfel_alive"] = counts[2] + MIN(counts[0], counts[1]);
+			metadata["surfel_spawned"] = MIN(counts[0], counts[1]);
+			metadata["surfel_rays"] = counts[3];
+			for (const char *name : { "surfels", "ray_results", "counters", "cell_heads", "cell_links", "grid_sums" }) {
+				Ref<FileAccess> dump = FileAccess::open(world.capture_directory.path_join(String(name) + ".bin"), FileAccess::WRITE);
+				if (dump.is_valid()) {
+					dump->store_buffer(rd->buffer_get_data(state->storage[name]));
+				}
+			}
+			if (buffers->has_texture(SNAME("kiln_deferred"), SNAME("surface"))) {
+				Ref<FileAccess> dump = FileAccess::open(world.capture_directory.path_join("surface.bin"), FileAccess::WRITE);
+				if (dump.is_valid()) {
+					dump->store_buffer(rd->texture_get_data(buffers->get_texture(SNAME("kiln_deferred"), SNAME("surface")), 0));
+				}
+				for (const char *name : { "albedo_metallic", "normal_roughness", "material", "emission" }) {
+					Ref<FileAccess> attribute = FileAccess::open(world.capture_directory.path_join(String(name) + ".bin"), FileAccess::WRITE);
+					if (attribute.is_valid()) {
+						attribute->store_buffer(rd->texture_get_data(buffers->get_texture(SNAME("kiln_deferred"), StringName(name)), 0));
+					}
+				}
+				metadata["surface_format"] = "RG32_UINT: draw instance/BRDF flag, octahedral geometric normal";
+			}
 			float maximum_bounds_error = 0;
 			for (bool dynamic : { false, true }) {
 				const auto &geometry = dynamic ? world.dynamic : world.world;
@@ -513,7 +659,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["hardware_tlas_builds"] = state->tlas_builds;
 			if (state->hardware_active) {
 				RID validation = allocate("query_validation", 2048 * 16);
-				dispatch(QUERY_VALIDATE, Size2i(2048, 1), { U(), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), { 28, RD::UNIFORM_TYPE_STORAGE_BUFFER, validation } }, 0, 1, query_tlas);
+				dispatch(QUERY_VALIDATE, Size2i(2048, 1), { U(), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"), { 28, RD::UNIFORM_TYPE_STORAGE_BUFFER, validation } }, 0, 1, query_tlas);
 				PackedByteArray values = rd->buffer_get_data(validation);
 				const float *r = reinterpret_cast<const float *>(values.ptr());
 				int mismatches = 0, hits = 0;
@@ -530,19 +676,16 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			}
 			metadata["compute_bvh_maximum_error"] = maximum_bounds_error;
 			metadata["width"] = state->size.x;
-			metadata["resolution_divisor"] = world.resolution_divisor;
 			metadata["height"] = state->size.y;
-			metadata["half_width"] = state->half.x;
-			metadata["half_height"] = state->half.y;
 			metadata["frame"] = state->frames;
 			metadata["moving"] = moving;
 			metadata["stationary_samples"] = state->stationary_samples;
 			metadata["geometry_version"] = world.geometry_version;
 			metadata["dynamic_version"] = world.dynamic_version;
 			metadata["light_version"] = world.light_version;
-			for (const char *name : { "diffuse", "specular", "ao", "confidence", "position", "normal", "sh", "decoded" }) {
+			for (const char *name : { "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "ao", "confidence" }) {
 				String key(name);
-				RID rid = T(key, key == "diffuse" || key == "specular" || key == "ao" || key == "decoded" ? 0 : current);
+				RID rid = T(key, key == "confidence" ? current : 0);
 				Ref<FileAccess> file = FileAccess::open(world.capture_directory.path_join(key + ".bin"), FileAccess::WRITE);
 				if (file.is_valid()) {
 					file->store_buffer(rd->texture_get_data(rid, 0));
@@ -555,6 +698,12 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		}
 	}
 	Dictionary statistics;
+	statistics["gi_algorithm"] = "Surfel GI (SurfelPlus adaptation)";
+	statistics["surfel_capacity"] = state->slots;
+	statistics["surfel_multibounce"] = multibounce;
+	statistics["specular_rays"] = specular_rays;
+	statistics["specular_checkerboard"] = specular_checkerboard;
+	statistics["surfel_grid"] = "compact_overlap_lists";
 	statistics["backend"] = state->hardware_active ? "hardware_ray_query" : "compute_software_bvh";
 	statistics["hardware_ray_query_available"] = hardware_available;
 	statistics["hardware_blas_builds"] = state->hardware_builds;

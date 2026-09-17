@@ -29,9 +29,6 @@
 /**************************************************************************/
 
 #include "resource_importer_scene.h"
-#ifdef RD_ENABLED
-#include "scene/resources/3d/kiln_gi_proxy.h"
-#endif
 
 #include "core/error/error_macros.h"
 #include "core/io/dir_access.h"
@@ -2235,9 +2232,6 @@ Error ResourceImporterScene::_save_scene_as_single_mesh(const String &p_source_f
 	const bool deduplicate_surfaces = p_options.has("array_mesh/deduplicate_surfaces") && p_options["array_mesh/deduplicate_surfaces"];
 	Ref<ImporterMesh> merged_mesh = ImporterMesh::merge_importer_meshes(importer_mesh_instances, relative_transforms, deduplicate_surfaces);
 	Ref<ArrayMesh> merged_array_mesh = merged_mesh->get_mesh();
-#ifdef RD_ENABLED
-	KilnGIProxy::attach(merged_array_mesh);
-#endif
 	return ResourceSaver::save(merged_array_mesh, save_file_path, p_flags);
 }
 
@@ -2860,9 +2854,6 @@ Node *ResourceImporterScene::_generate_meshes(Node *p_node, const Dictionary &p_
 						existing->reset_state();
 					}
 					mesh = importer_mesh->get_mesh(existing);
-#ifdef RD_ENABLED
-					KilnGIProxy::attach(mesh);
-#endif
 
 					Error err = ResourceSaver::save(mesh, save_res_path); //override
 					if (err != OK) {
@@ -2883,9 +2874,6 @@ Node *ResourceImporterScene::_generate_meshes(Node *p_node, const Dictionary &p_
 			}
 
 			if (mesh.is_valid()) {
-#ifdef RD_ENABLED
-				KilnGIProxy::attach(mesh);
-#endif
 				_copy_meta(importer_mesh.ptr(), mesh.ptr());
 				mesh_node->set_mesh(mesh);
 				for (int i = 0; i < mesh->get_surface_count(); i++) {
@@ -3211,12 +3199,6 @@ Error ResourceImporterScene::_check_resource_save_paths(ResourceUID::ID p_source
 }
 
 Error ResourceImporterScene::import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
-	if (r_metadata) {
-		Dictionary metadata;
-		metadata["kiln_gi_proxy_version"] = 1;
-		*r_metadata = metadata;
-	}
-
 	const String &src_path = p_source_file;
 
 	Ref<EditorSceneFormatImporter> importer;
@@ -3463,19 +3445,6 @@ Error ResourceImporterScene::import(ResourceUID::ID p_source_id, const String &p
 	for (int i = 0; i < post_importer_plugins.size(); i++) {
 		post_importer_plugins.write[i]->post_process(scene, p_options);
 	}
-
-#ifdef RD_ENABLED
-	// Post-import scripts/plugins may add or replace MeshInstance3D resources.
-	// Persist proxies for the actual final scene, including a mesh at its root.
-	TypedArray<Node> proxy_nodes = scene->find_children("*", "MeshInstance3D", true, false);
-	if (Object::cast_to<MeshInstance3D>(scene)) {
-		proxy_nodes.push_back(scene);
-	}
-	for (int i = 0; i < proxy_nodes.size(); i++) {
-		MeshInstance3D *instance = Object::cast_to<MeshInstance3D>(proxy_nodes[i]);
-		KilnGIProxy::attach(instance->get_mesh());
-	}
-#endif
 
 	progress.step(TTR("Saving..."), 104);
 

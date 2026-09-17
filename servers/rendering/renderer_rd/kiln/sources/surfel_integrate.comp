@@ -1,0 +1,57 @@
+#version 450
+// @GI_COMMON@
+// @SURFEL_DATA@
+// The upstream multiscale mean estimator, with std430 packing at this boundary.
+struct MSMEData {
+	vec3 mean;
+	vec3 shortMean;
+	float vbbr;
+	vec3 variance;
+	float inconsistency;
+};
+// @SURFEL_MSME@
+layout(set = 0, binding = 28, std430) readonly buffer RayResults {
+	vec4 ray_results[];
+};
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+	uint id = gl_GlobalInvocationID.y * 256u + gl_GlobalInvocationID.x;
+	if (id >= SURFEL_CAPACITY) {
+		return;
+	}
+	vec4 sample_value = ray_results[id];
+	if (sample_value.w == 0.0) {
+		return;
+	}
+	Surfel s = surfels[id];
+	if (s.anchor.z == 0u) {
+		return;
+	}
+	MSMEData data;
+	data.mean = s.irradiance_samples.rgb;
+	data.shortMean = s.short_mean_vbbr.rgb;
+	data.vbbr = s.short_mean_vbbr.a;
+	data.variance = s.variance_inconsistency.rgb;
+	data.inconsistency = s.variance_inconsistency.a;
+	if (s.irradiance_samples.w == 0.0) {
+		data.mean = sample_value.rgb;
+		data.shortMean = sample_value.rgb;
+		data.variance = vec3(1);
+		data.inconsistency = 0;
+		data.vbbr = 1;
+	} else {
+		MSME(sample_value.rgb, data, 0.15);
+		float blend = max(sample_value.w / max(p.gi.w, sample_value.w), sample_value.w / (s.irradiance_samples.w + sample_value.w));
+		// MSME detects lighting changes; this bound also gives newly allocated
+		// entries a conventional sample-count convergence rate.
+		data.mean = mix(data.mean, sample_value.rgb, blend);
+		// Explicit scene changes shorten the long-term estimator, including all-off.
+		if (p.source_bvh_state.w > 0.5) {
+			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 0.25);
+		}
+	}
+	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));
+	s.short_mean_vbbr = vec4(data.shortMean, data.vbbr);
+	s.variance_inconsistency = vec4(data.variance, data.inconsistency);
+	surfels[id] = s;
+}
