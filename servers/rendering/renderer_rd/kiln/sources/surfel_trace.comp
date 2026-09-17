@@ -22,9 +22,13 @@ void main() {
 	}
 	uint seed = surfel_hash(id ^ uint(p.size_frame.z) * 1664525u);
 	uint count = uint(clamp(p.quality.x * 4.0, 4.0, 32.0));
+	float rotation = random_float(seed);
 	vec3 sum = vec3(0);
 	for (uint i = 0u; i < count; i++) {
-		vec2 xi = random_pair(seed);
+		// Stratify the cosine hemisphere instead of letting a short batch
+		// cluster by chance. A fresh rotation/jitter keeps each batch unbiased
+		// and independent of the surfel layout, including non-power-of-two counts.
+		vec2 xi = vec2((float(i) + random_float(seed)) / float(count), fract(float(bitfieldReverse(i)) * (1.0 / 4294967296.0) + rotation));
 		vec3 direction = cosine_direction(s.normal_age.xyz, xi);
 		vec3 origin = s.position_radius.xyz + s.normal_age.xyz * 0.025;
 		int triangle;

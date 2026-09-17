@@ -141,6 +141,11 @@ That report records individual GI GPU passes, full-rate quality comparisons,
 extended camera/TOD movement, shader/build checks and new real-GPU acceptance.
 The earlier 10.1 FPS baseline above remains historical evidence.
 
+The [stationary smoothness revision](GI-SMOOTHNESS-2026-09-17.md) adds stratified
+diffuse sampling, corrected cache convergence and geometric spatial filtering.
+Its new GPU verification and timings supersede the earlier quality/performance
+results for this revision; unfiltered cache and filtered output remain separate.
+
 ## Unsupported or unverified
 
 - Secondary transport admits opaque BaseMaterial3D and explicit uniform custom

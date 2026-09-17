@@ -1,0 +1,481 @@
+{
+  "date": "2026-09-17",
+  "platform": "Windows x86_64 / Vulkan",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "driver": "610.88 / Vulkan 1.4.341",
+  "evidence_root": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise",
+  "implemented": [
+    "stratified diffuse ray batches",
+    "bounded startup and MSME convergence without permanent raw-batch reinjection",
+    "four geometric diffuse spatial passes before temporal/material composition",
+    "deterministic spatial-noise regression"
+  ],
+  "builds": {
+    "editor": {
+      "path": "G:\\ClayGames\\GodotKiln\\bin\\godot.windows.editor.x86_64.mono.exe",
+      "sha256": "b2f066a18c9e3ee76e8a360218220ba23885991f0529bceb693fbf1561c4842e",
+      "settings": "MSVC Mono production=yes optimize=speed"
+    },
+    "template_release": {
+      "path": "G:\\ClayGames\\GodotKiln\\bin\\godot.windows.template_release.x86_64.mono.exe",
+      "sha256": "0e46093e26e6a62c38c1385f743832eed4d1cf7c763cf56f8684023f16c77efd",
+      "settings": "MSVC Mono production=yes optimize=speed"
+    },
+    "embedded_release": {
+      "path": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+      "sha256": "20cde2fbb0562cf8a2ed28a4764fa3becda73d38053eeed1aa7dba5b34a0d36c",
+      "settings": "MSVC Mono production=yes optimize=speed"
+    }
+  },
+  "shader_validation": {
+    "compute_variants": 24,
+    "native_metal_interface": true,
+    "glslang": true,
+    "spirv_val": true,
+    "imported_source_hashes_unchanged": true
+  },
+  "static_quality": {
+    "passed": true,
+    "checks": {
+      "static_spatial_blotches_reduced": true,
+      "floor_energy_retained": true,
+      "stationary_temporal_noise": true
+    },
+    "before": {
+      "floor_pixels": 29221,
+      "floor_mean_irradiance": 0.04353816934925448,
+      "floor_spatial_residual_std": 0.0026396393131688065,
+      "floor_relative_spatial_residual": 0.06062816495553931,
+      "still_display_temporal_std": 0.0020231956150382757,
+      "tod_display_temporal_std": 0.004979750141501427
+    },
+    "after": {
+      "floor_pixels": 29221,
+      "floor_mean_irradiance": 0.04338332729199262,
+      "floor_spatial_residual_std": 0.0009778571820214875,
+      "floor_relative_spatial_residual": 0.022539930500028137,
+      "still_display_temporal_std": 0.0019521762151271105,
+      "tod_display_temporal_std": 0.004175064153969288
+    },
+    "spatial_residual_reduction": 0.6282267405494224,
+    "floor_mean_ratio": 0.9964435331210242,
+    "scope": "Same 1280x720 stationary Sponza camera; descriptive spatial residual, not reference error."
+  },
+  "acceptance": {
+    "comparison": {
+      "passed": true,
+      "checks": 115
+    },
+    "suite": {
+      "passed": true,
+      "checks": 300
+    },
+    "specular": {
+      "passed": true,
+      "checks": 223
+    },
+    "tod": {
+      "passed": true,
+      "checks": 25
+    },
+    "geometry_import": {
+      "passed": true,
+      "checks": 0
+    },
+    "lifecycle": {
+      "passed": true,
+      "checks": 0
+    }
+  },
+  "additional_captures": {
+    "software": {
+      "passed": true,
+      "checks": {
+        "final_algorithm": true,
+        "final_finite": true,
+        "final_nonnegative": true,
+        "final_capacity": true,
+        "final_allocation_count": true,
+        "final_normal": true,
+        "final_compute_bvh": true,
+        "final_gbuffer_surface": true,
+        "final_gbuffer_geometric_normal": true,
+        "final_gbuffer_normal_variation": true,
+        "final_original_scene_geometry": true
+      },
+      "measurements": {
+        "final": {
+          "mean_rgb": [
+            0.023204145953059196,
+            0.01866728812456131,
+            0.019970066845417023
+          ],
+          "coverage": 0.9999843937762379,
+          "surfels": 9274,
+          "rays": 27948
+        }
+      }
+    },
+    "forward": {
+      "passed": true,
+      "checks": {
+        "final_algorithm": true,
+        "final_finite": true,
+        "final_nonnegative": true,
+        "final_capacity": true,
+        "final_allocation_count": true,
+        "final_normal": true,
+        "final_compute_bvh": true,
+        "final_ray_query": true,
+        "final_original_scene_geometry": true
+      },
+      "measurements": {
+        "final": {
+          "mean_rgb": [
+            0.022731874138116837,
+            0.018385300412774086,
+            0.020029691979289055
+          ],
+          "coverage": 0.9871701388888889,
+          "surfels": 31802,
+          "rays": 63920
+        }
+      }
+    },
+    "release-still": {
+      "passed": true,
+      "checks": {
+        "final_algorithm": true,
+        "final_finite": true,
+        "final_nonnegative": true,
+        "final_capacity": true,
+        "final_allocation_count": true,
+        "final_normal": true,
+        "final_compute_bvh": true,
+        "final_ray_query": true,
+        "final_gbuffer_surface": true,
+        "final_gbuffer_geometric_normal": true,
+        "final_gbuffer_normal_variation": true,
+        "final_original_scene_geometry": true
+      },
+      "measurements": {
+        "final": {
+          "mean_rgb": [
+            0.023153560236096382,
+            0.018644383177161217,
+            0.020009733736515045
+          ],
+          "coverage": 0.999987319541221,
+          "surfels": 38455,
+          "rays": 76992
+        }
+      }
+    }
+  },
+  "performance": {
+    "engine": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+    "engine_sha256": "20cde2fbb0562cf8a2ed28a4764fa3becda73d38053eeed1aa7dba5b34a0d36c",
+    "driver": "vulkan",
+    "metal_specular": null,
+    "size": "1920x1080",
+    "warmup_frames": 180,
+    "results": {
+      "deferred-full": {
+        "mean_ms": 8.620533333333332,
+        "median_ms": 7.622,
+        "p95_ms": 15.405100000000001,
+        "fps": 116.00210350481024,
+        "maximum_ms": 99.325,
+        "over_16_67_ms": 7,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\deferred-full",
+          "--still"
+        ]
+      },
+      "deferred-diffuse": {
+        "mean_ms": 5.271133333333334,
+        "median_ms": 5.236000000000001,
+        "p95_ms": 5.58725,
+        "fps": 189.71252229122135,
+        "maximum_ms": 5.862,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\deferred-diffuse",
+          "--still",
+          "--no-specular"
+        ]
+      },
+      "deferred-off": {
+        "mean_ms": 2.11607,
+        "median_ms": 2.045,
+        "p95_ms": 2.4061500000000002,
+        "fps": 472.57415869985397,
+        "maximum_ms": 2.602,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\deferred-off",
+          "--still",
+          "--no-gi"
+        ]
+      },
+      "forward-full": {
+        "mean_ms": 9.590803333333334,
+        "median_ms": 9.5685,
+        "p95_ms": 10.1612,
+        "fps": 104.2665525758878,
+        "maximum_ms": 10.575,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "forward_plus",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\forward-full",
+          "--still"
+        ]
+      },
+      "forward-off": {
+        "mean_ms": 1.849943333333333,
+        "median_ms": 1.8255,
+        "p95_ms": 2.114,
+        "fps": 540.5570981453487,
+        "maximum_ms": 2.349,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "forward_plus",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\forward-off",
+          "--still",
+          "--no-gi"
+        ]
+      },
+      "moving-full": {
+        "mean_ms": 8.632773333333333,
+        "median_ms": 9.0315,
+        "p95_ms": 9.985249999999999,
+        "fps": 115.83762962230756,
+        "maximum_ms": 10.96,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\moving-full"
+        ]
+      },
+      "moving-diffuse": {
+        "mean_ms": 6.138646666666667,
+        "median_ms": 6.1815,
+        "p95_ms": 7.10445,
+        "fps": 162.90235524225207,
+        "maximum_ms": 7.606,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\moving-diffuse",
+          "--no-specular"
+        ]
+      },
+      "moving-off": {
+        "mean_ms": 2.10569,
+        "median_ms": 2.043,
+        "p95_ms": 2.389,
+        "fps": 474.90371327213404,
+        "maximum_ms": 2.534,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\moving-off",
+          "--no-gi"
+        ]
+      },
+      "deferred-full-repeat": {
+        "mean_ms": 7.73338,
+        "median_ms": 7.699,
+        "p95_ms": 8.17035,
+        "fps": 129.30956451124862,
+        "maximum_ms": 9.659,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\deferred-full-repeat",
+          "--still"
+        ]
+      },
+      "forward-full-repeat": {
+        "mean_ms": 9.678973333333333,
+        "median_ms": 9.599,
+        "p95_ms": 10.351,
+        "fps": 103.31674296034153,
+        "maximum_ms": 11.077,
+        "over_16_67_ms": 0,
+        "measured_frames": 300,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "forward_plus",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=480",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\forward-full-repeat",
+          "--still"
+        ]
+      },
+      "long-moving": {
+        "mean_ms": 8.890058771929825,
+        "median_ms": 8.8825,
+        "p95_ms": 10.572,
+        "fps": 112.48519561619538,
+        "maximum_ms": 99.372,
+        "over_16_67_ms": 13,
+        "measured_frames": 3420,
+        "command": [
+          "C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\release\\kiln-sponza.exe",
+          "--rendering-driver",
+          "vulkan",
+          "--rendering-method",
+          "kiln_deferred",
+          "--",
+          "--benchmark",
+          "--hardware",
+          "--rays=2",
+          "--specular-rays=2",
+          "--size=1920x1080",
+          "--frames=3600",
+          "--output=C:\\Users\\Administrator\\AppData\\Local\\Temp\\kiln-gi-noise\\performance\\long-moving"
+        ]
+      }
+    }
+  },
+  "visually_inspected": [
+    "1280x720 before/after isolated diffuse and final color, identical frame-240 stationary camera",
+    "cloth, wall, floor and contact boundaries",
+    "480x270 compute software BVH with quality 3 / 12 rays per updated surfel",
+    "960x540 Forward+",
+    "1920x1080 embedded release after 1600 stationary frames"
+  ],
+  "unverified": [
+    "Metal GPU",
+    "Linux",
+    "D3D12",
+    "other GPU vendors",
+    "path-traced-reference accuracy"
+  ],
+  "limits": [
+    "Spatial filtering can soften small indirect gradients.",
+    "Two-ray glossy estimator and reflection history rejection are unchanged.",
+    "Initial and extended timing runs contain ~99 ms outliers; no universally hitch-free 60 FPS claim.",
+    "Spatial residual reduction is for a fixed planar patch, not a scene-wide error metric."
+  ]
+}

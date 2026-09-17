@@ -74,6 +74,11 @@ software/hardware selection and TOD. Diagnostic readbacks compare compute BVH
 bounds and 2,048 hardware/software rays. Numerical checks and visual inspection
 are separate; inspect captured color/indirect images too.
 
+Static GI smoothness also has a dedicated test, `res://tests/gi_noise.gd`, and
+`kiln/tools/check_gi_noise.py <before> <after>`. It measures spatial blotches on
+an untextured floor patch in addition to frame-to-frame variation. See the
+[smoothness report](../docs/GI-SMOOTHNESS-2026-09-17.md) for captures and scope.
+
 For a TOD gallery, run `--tod-suite`, then `kiln/tools/check_tod.py <directory>`.
 `--tod-video` captures 480 PNG frames of a 24-hour cycle.
 `kiln/tools/build_tod_gallery.py <capture-directory> <output-directory>` builds

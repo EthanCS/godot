@@ -30,7 +30,7 @@ RID KilnGI::texture(Size2i size, RD::DataFormat format) {
 }
 KilnGI::KilnGI() {
 	Vector<String> defines;
-	const char *stages[] = { "SURFEL_UPDATE", "SURFEL_GRID", "SURFEL_GENERATE", "SURFEL_TRACE", "SURFEL_INTEGRATE", "SURFEL_EVALUATE", "SURFEL_PUBLISH", "SURFEL_SPECULAR", "SURFEL_SPECULAR_FILTER", "SURFEL_DEBUG", "SEQUENCE_LUT", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT", "SURFEL_GRID_PREFIX", "SURFEL_GRID_PREFIX_SUMS", "SURFEL_GRID_SCATTER" };
+	const char *stages[] = { "SURFEL_UPDATE", "SURFEL_GRID", "SURFEL_GENERATE", "SURFEL_TRACE", "SURFEL_INTEGRATE", "SURFEL_EVALUATE", "SURFEL_PUBLISH", "SURFEL_SPECULAR", "SURFEL_SPECULAR_FILTER", "SURFEL_DEBUG", "SEQUENCE_LUT", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT", "SURFEL_GRID_PREFIX", "SURFEL_GRID_PREFIX_SUMS", "SURFEL_GRID_SCATTER", "SURFEL_DIFFUSE_FILTER" };
 	for (int i = 0; i < STAGE_COUNT; i++) {
 		defines.push_back(String("\n#define STAGE_") + stages[i] + "\n");
 	}
@@ -141,7 +141,7 @@ void KilnGI::View::free_data() {
 }
 void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z, RID tlas, bool force_translated) {
 	RD *rd = RD::get_singleton();
-	static const char *stage_names[] = { "Update", "Grid", "Generate", "Trace diffuse", "Integrate", "Evaluate", "Publish diffuse", "Trace specular", "Filter specular", "Debug", "Sequence", "AO depth", "AO main", "AO denoise", "AO temporal", "BVH refit", "Grid prefix", "Grid prefix sums", "Grid scatter", "Query validation" };
+	static const char *stage_names[] = { "Update", "Grid", "Generate", "Trace diffuse", "Integrate", "Evaluate", "Publish diffuse", "Trace specular", "Filter specular", "Debug", "Sequence", "AO depth", "AO main", "AO denoise", "AO temporal", "BVH refit", "Grid prefix", "Grid prefix sums", "Grid scatter", "Filter diffuse", "Query validation" };
 	RENDER_TIMESTAMP(String("Kiln / ") + stage_names[stage]);
 	LocalVector<RD::Uniform> uniforms;
 	const uint64_t surfel_data = (1ull << 0) | (31ull << 20) | (1ull << 35);
@@ -222,7 +222,7 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 	RD::ComputeListID list = rd->compute_list_begin();
 	rd->compute_list_bind_compute_pipeline(list, pipeline);
 	rd->compute_list_bind_uniform_set(list, set, 0);
-	if (stage == BVH_REFIT || stage == AO_DEPTH || stage == AO_DENOISE || stage == AO_TEMPORAL) {
+	if (stage == BVH_REFIT || stage == AO_DEPTH || stage == AO_DENOISE || stage == AO_TEMPORAL || stage == SURFEL_DIFFUSE_FILTER) {
 		int push[4] = { stride, size.x, 0, 0 };
 		rd->compute_list_set_push_constant(list, push, (stage == BVH_REFIT) ? sizeof(push) : sizeof(int));
 	}
@@ -270,7 +270,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		state->parameters = own(rd->uniform_buffer_create(704));
 		// Persistent world-space surfels. Screen textures contain only the resolve
 		// and geometry history; there are no screen probes or legacy SH caches.
-		for (const char *name : { "raw", "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "reflection_base", "reflection_fresnel", "reflection_geometry", "confidence", "display_diffuse", "display_specular" }) {
+		for (const char *name : { "raw", "diffuse_work", "diffuse_spatial", "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "reflection_base", "reflection_fresnel", "reflection_geometry", "confidence", "display_diffuse", "display_specular" }) {
 			String key(name);
 			RD::DataFormat format = key == "confidence" ? RD::DATA_FORMAT_R16_SFLOAT : (key.begins_with("display_") ? RD::DATA_FORMAT_R32G32B32A32_SFLOAT : RD::DATA_FORMAT_R16G16B16A16_SFLOAT);
 			int count = key.begins_with("display_") || key.begins_with("reflection_") || key == "confidence" ? 2 : 1;
@@ -628,7 +628,15 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		dispatch(AO_TEMPORAL, state->size, { U(), S(1, T("ao_spatial")), S(2, depth), S(3, full_normal), S(4, T("ao_history", previous)), S(5, T("display_diffuse", previous)), S(6, T("display_specular", previous)), I(7, T("ao_history", current)), I(8, T("ao")) }, state->ao_frames);
 		state->ao_frames = MIN(state->ao_frames + 1, 32);
 	}
-	dispatch(SURFEL_PUBLISH, state->size, { U(), S(1, depth), S(2, normal), S(31, surface_input), S(3, T("raw")), I(6, T("diffuse")), I(9, T("display_diffuse", current)), I(10, T("display_specular", current)), S(11, T("display_diffuse", previous)), S(12, T("display_specular", previous)) });
+	RID diffuse_input = T("raw");
+	if (world.enabled) {
+		for (int pass = 0; pass < 4; pass++) {
+			RID output = T(pass % 2 == 0 ? "diffuse_work" : "diffuse_spatial");
+			dispatch(SURFEL_DIFFUSE_FILTER, state->size, { U(), S(1, depth), S(2, normal), S(31, surface_input), S(3, diffuse_input), I(6, output) }, 1 << pass);
+			diffuse_input = output;
+		}
+	}
+	dispatch(SURFEL_PUBLISH, state->size, { U(), S(1, depth), S(2, normal), S(31, surface_input), S(3, diffuse_input), I(6, T("diffuse")), I(9, T("display_diffuse", current)), I(10, T("display_specular", current)), S(11, T("display_diffuse", previous)), S(12, T("display_specular", previous)) });
 	dispatch(SURFEL_SPECULAR_FILTER, state->size,
 			{ U(), S(1, depth), S(2, normal), S(3, T("specular_raw")), S(4, T("fresnel_raw")), S(5, T("reflection_base", previous)), S(6, T("reflection_fresnel", previous)), S(7, T("reflection_geometry", previous)), S(8, T("display_diffuse", previous)),
 					I(9, T("reflection_base", current)), I(10, T("reflection_fresnel", current)), I(11, T("reflection_geometry", current)), I(12, T("specular")), I(13, T("fresnel")) });
@@ -754,7 +762,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["geometry_version"] = world.geometry_version;
 			metadata["dynamic_version"] = world.dynamic_version;
 			metadata["light_version"] = world.light_version;
-			for (const char *name : { "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "ao", "confidence" }) {
+			for (const char *name : { "raw", "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "ao", "confidence" }) {
 				String key(name);
 				RID rid = T(key, key == "confidence" ? current : 0);
 				Ref<FileAccess> file = FileAccess::open(world.capture_directory.path_join(key + ".bin"), FileAccess::WRITE);

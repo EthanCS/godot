@@ -41,10 +41,15 @@ void main() {
 		data.vbbr = 1;
 	} else {
 		MSME(sample_value.rgb, data, 0.15);
-		float blend = max(sample_value.w / max(p.gi.w, sample_value.w), sample_value.w / (s.irradiance_samples.w + sample_value.w));
-		// MSME detects lighting changes; this bound also gives newly allocated
-		// entries a conventional sample-count convergence rate.
-		data.mean = mix(data.mean, sample_value.rgb, blend);
+		// MSME already selects a variance-aware convergence rate and suppresses
+		// fireflies. Mixing the unfiltered batch in again imposed a permanent
+		// noise floor, even on a stationary surface with thousands of rays.
+		if (s.irradiance_samples.w < p.gi.w) {
+			// Bootstrap with a running mean so the first random batch does not
+			// leave a persistent bright/dark disk while MSME learns its variance.
+			vec3 bounded_sample = min(sample_value.rgb, data.shortMean + sqrt(max(data.variance, vec3(1e-5))) * 8.0 + 0.1);
+			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, sample_value.w / (s.irradiance_samples.w + sample_value.w));
+		}
 		// Explicit scene changes shorten the long-term estimator, including all-off.
 		if (p.source_bvh_state.w > 0.5) {
 			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 0.25);

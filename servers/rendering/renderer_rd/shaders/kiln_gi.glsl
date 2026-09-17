@@ -2111,9 +2111,13 @@ void main() {
 	}
 	uint seed = surfel_hash(id ^ uint(p.size_frame.z) * 1664525u);
 	uint count = uint(clamp(p.quality.x * 4.0, 4.0, 32.0));
+	float rotation = random_float(seed);
 	vec3 sum = vec3(0);
 	for (uint i = 0u; i < count; i++) {
-		vec2 xi = random_pair(seed);
+		// Stratify the cosine hemisphere instead of letting a short batch
+		// cluster by chance. A fresh rotation/jitter keeps each batch unbiased
+		// and independent of the surfel layout, including non-power-of-two counts.
+		vec2 xi = vec2((float(i) + random_float(seed)) / float(count), fract(float(bitfieldReverse(i)) * (1.0 / 4294967296.0) + rotation));
 		vec3 direction = cosine_direction(s.normal_age.xyz, xi);
 		vec3 origin = s.position_radius.xyz + s.normal_age.xyz * 0.025;
 		int triangle;
@@ -2535,10 +2539,15 @@ void main() {
 		data.vbbr = 1;
 	} else {
 		MSME(sample_value.rgb, data, 0.15);
-		float blend = max(sample_value.w / max(p.gi.w, sample_value.w), sample_value.w / (s.irradiance_samples.w + sample_value.w));
-		// MSME detects lighting changes; this bound also gives newly allocated
-		// entries a conventional sample-count convergence rate.
-		data.mean = mix(data.mean, sample_value.rgb, blend);
+		// MSME already selects a variance-aware convergence rate and suppresses
+		// fireflies. Mixing the unfiltered batch in again imposed a permanent
+		// noise floor, even on a stationary surface with thousands of rays.
+		if (s.irradiance_samples.w < p.gi.w) {
+			// Bootstrap with a running mean so the first random batch does not
+			// leave a persistent bright/dark disk while MSME learns its variance.
+			vec3 bounded_sample = min(sample_value.rgb, data.shortMean + sqrt(max(data.variance, vec3(1e-5))) * 8.0 + 0.1);
+			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, sample_value.w / (s.irradiance_samples.w + sample_value.w));
+		}
 		// Explicit scene changes shorten the long-term estimator, including all-off.
 		if (p.source_bvh_state.w > 0.5) {
 			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 0.25);
@@ -6298,6 +6307,220 @@ void main() {
 		}
 	}
 
+}
+
+#endif
+
+#ifdef STAGE_SURFEL_DIFFUSE_FILTER
+
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
+    vec4 voxel_min;        // source scene bounds minimum xyz (query diagnostics)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, fallback receiver albedo
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// The cache follows the original geometric surface. Shading-normal maps remain
+// in the deferred material buffer and must not fragment world-space coverage.
+layout(set = 0, binding = 31) uniform usampler2D surface_geometry;
+vec3 surfel_view_normal(sampler2D normals, sampler2D depths, ivec2 pixel) {
+	if (p.engine_state.y < 0.5) {
+		return receiver_view_normal(normals, depths, pixel);
+	}
+	uint packed = texelFetch(surface_geometry, pixel, 0).g;
+	vec2 oct = unpackSnorm2x16(packed);
+	vec3 n = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
+	n.xy += mix(vec2(1), vec2(-1), greaterThanEqual(n.xy, vec2(0))) * max(-n.z, 0.0);
+	return safe_normalize(n);
+}
+
+layout(set = 0, binding = 1) uniform sampler2D depth;
+layout(set = 0, binding = 2) uniform sampler2D normals;
+layout(set = 0, binding = 3) uniform sampler2D input_diffuse;
+layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D output_diffuse;
+layout(push_constant, std430) uniform FilterSettings {
+	int step_size;
+} settings;
+layout(local_size_x = 8, local_size_y = 8) in;
+
+void main() {
+	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+	if (any(greaterThanEqual(pixel, size))) return;
+	float d = texelFetch(depth, pixel, 0).r;
+	vec3 center = texelFetch(input_diffuse, pixel, 0).rgb;
+	if (d <= 1e-7 || p.source_bvh_state.z < 0.5) {
+		imageStore(output_diffuse, pixel, vec4(0));
+		return;
+	}
+	vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
+	vec3 n = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
+	// Match the cache's world-space support scale. Filtering irradiance before
+	// material composition preserves albedo/normal-map detail. Geometric plane
+	// tests keep thin walls, silhouettes and separate receivers apart.
+	float radius = clamp(length((p.view * vec4(position, 1)).xyz) * 20.0 / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
+	float plane_limit = max(0.012, radius * 0.06);
+	float center_luma = luminance(center);
+	vec3 sum = vec3(0);
+	float weights = 0.0;
+	const float kernel[5] = float[5](1.0, 4.0, 6.0, 4.0, 1.0);
+	for (int y = -2; y <= 2; y++) {
+		for (int x = -2; x <= 2; x++) {
+			ivec2 q = pixel + ivec2(x, y) * settings.step_size;
+			if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, size))) continue;
+			float qd = texelFetch(depth, q, 0).r;
+			if (qd <= 1e-7) continue;
+			vec3 qn = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, q));
+			float alignment = dot(n, qn);
+			if (alignment < 0.9) continue;
+			vec3 delta = world_position((vec2(q) + 0.5) / vec2(size), qd) - position;
+			if (max(abs(dot(delta, n)), abs(dot(delta, qn))) > plane_limit || length(delta) > radius * 2.0) continue;
+			vec3 value = texelFetch(input_diffuse, q, 0).rgb;
+			float ql = luminance(value);
+			float w = kernel[x + 2] * kernel[y + 2] * pow(max(alignment, 0.0), 16.0);
+			// A broad radiance gate removes stochastic cache blotches while
+			// limiting diffusion across high-contrast indirect-light boundaries.
+			w *= exp(-abs(ql - center_luma) / max(0.01, max(ql, center_luma) * 0.75));
+			sum += value * w;
+			weights += w;
+		}
+	}
+	imageStore(output_diffuse, pixel, vec4(sum / max(weights, 1e-6), 1));
 }
 
 #endif

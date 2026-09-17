@@ -1,0 +1,55 @@
+#version 450
+// @GI_COMMON@
+// @SURFEL_RECEIVER@
+layout(set = 0, binding = 1) uniform sampler2D depth;
+layout(set = 0, binding = 2) uniform sampler2D normals;
+layout(set = 0, binding = 3) uniform sampler2D input_diffuse;
+layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D output_diffuse;
+layout(push_constant, std430) uniform FilterSettings {
+	int step_size;
+} settings;
+layout(local_size_x = 8, local_size_y = 8) in;
+
+void main() {
+	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+	if (any(greaterThanEqual(pixel, size))) return;
+	float d = texelFetch(depth, pixel, 0).r;
+	vec3 center = texelFetch(input_diffuse, pixel, 0).rgb;
+	if (d <= 1e-7 || p.source_bvh_state.z < 0.5) {
+		imageStore(output_diffuse, pixel, vec4(0));
+		return;
+	}
+	vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
+	vec3 n = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
+	// Match the cache's world-space support scale. Filtering irradiance before
+	// material composition preserves albedo/normal-map detail. Geometric plane
+	// tests keep thin walls, silhouettes and separate receivers apart.
+	float radius = clamp(length((p.view * vec4(position, 1)).xyz) * 20.0 / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
+	float plane_limit = max(0.012, radius * 0.06);
+	float center_luma = luminance(center);
+	vec3 sum = vec3(0);
+	float weights = 0.0;
+	const float kernel[5] = float[5](1.0, 4.0, 6.0, 4.0, 1.0);
+	for (int y = -2; y <= 2; y++) {
+		for (int x = -2; x <= 2; x++) {
+			ivec2 q = pixel + ivec2(x, y) * settings.step_size;
+			if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, size))) continue;
+			float qd = texelFetch(depth, q, 0).r;
+			if (qd <= 1e-7) continue;
+			vec3 qn = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, q));
+			float alignment = dot(n, qn);
+			if (alignment < 0.9) continue;
+			vec3 delta = world_position((vec2(q) + 0.5) / vec2(size), qd) - position;
+			if (max(abs(dot(delta, n)), abs(dot(delta, qn))) > plane_limit || length(delta) > radius * 2.0) continue;
+			vec3 value = texelFetch(input_diffuse, q, 0).rgb;
+			float ql = luminance(value);
+			float w = kernel[x + 2] * kernel[y + 2] * pow(max(alignment, 0.0), 16.0);
+			// A broad radiance gate removes stochastic cache blotches while
+			// limiting diffusion across high-contrast indirect-light boundaries.
+			w *= exp(-abs(ql - center_luma) / max(0.01, max(ql, center_luma) * 0.75));
+			sum += value * w;
+			weights += w;
+		}
+	}
+	imageStore(output_diffuse, pixel, vec4(sum / max(weights, 1e-6), 1));
+}

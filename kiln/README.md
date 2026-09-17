@@ -62,6 +62,10 @@ lists, world-space allocation deduplication and rough reflection sample reuse
 remove the main costs. See the [optimization report](docs/GI-OPTIMIZATION-2026-09-17.md)
 for GPU-pass timings, full-rate quality comparisons, the extended moving test,
 builds and visual validation. These results apply to the documented hardware and workload.
+The subsequent [stationary GI smoothness fix](docs/GI-SMOOTHNESS-2026-09-17.md)
+adds geometric diffuse filtering and improves cache convergence. Its static
+1080p release repeat measures 129 FPS on the same GPU; the earlier timing above
+is historical. Spatial blotches and temporal flicker are now checked separately.
 
 Historical proxy/SH and Mac non-GI measurements remain as historical records.
 They do not validate this implementation or establish a performance improvement.
