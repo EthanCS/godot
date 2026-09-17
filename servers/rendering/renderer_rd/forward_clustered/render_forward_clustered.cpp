@@ -5297,6 +5297,7 @@ RenderForwardClustered::RenderForwardClustered(bool p_kiln_deferred) :
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/debug_view", PROPERTY_HINT_ENUM, "Lit,Albedo,Normal,Roughness,Emission,Material,Depth,Indirect,AO,Motion,Direct,ClusterCount,History,Instance,Geometric Normal,Surfel IDs,Surfel Irradiance,Surfel Normals,Surfel Radius,Surfel Age,Surfel Samples,Surfel Updates,Surfel Coverage,Surfel Contributors,Surfel Variance,Surfel Raw GI,Surfel Grid,Surfel Anchors,Indirect Specular"), 0);
 	GLOBAL_DEF("rendering/kiln/surfel_multibounce", true);
 	GLOBAL_DEF("rendering/kiln/surfel_specular", true);
+	GLOBAL_DEF("rendering/kiln/nrd", true);
 	GLOBAL_DEF("rendering/kiln/specular_checkerboard", true);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/specular_rays", PROPERTY_HINT_RANGE, "1,8,1"), 2);
 	GLOBAL_DEF(PropertyInfo(Variant::FLOAT, "rendering/kiln/surfel_debug_radius", PROPERTY_HINT_RANGE, "0.15,1,0.05"), 0.45);

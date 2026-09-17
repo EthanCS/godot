@@ -1,0 +1,35 @@
+#version 450
+// @GI_COMMON@
+// @BVH@
+// @SURFEL_DATA@
+// @SURFEL_RECEIVER@
+// @SECONDARY_RADIANCE@
+layout(set=0,binding=1) uniform sampler2D depth;
+layout(set=0,binding=2) uniform sampler2D normals;
+layout(set=0,binding=6,rgba16f) uniform writeonly image2D diffuse;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.size_frame.xy);
+    if(any(greaterThanEqual(pixel,size)))return;
+    float d=texelFetch(depth,pixel,0).r;
+    vec4 result=vec4(0);
+    if(d>1e-7 && p.source_bvh_state.z>0.5) {
+        vec3 position=world_position((vec2(pixel)+0.5)/vec2(size),d);
+        vec3 n=safe_normalize(mat3(p.inv_view)*surfel_view_normal(normals,depth,pixel));
+        uint seed=surfel_hash(uint(pixel.x+pixel.y*size.x)^uint(p.size_frame.z)*1664525u^0xb5297a4du);
+        // Two cosine samples estimate irradiance/pi, matching Kiln composition.
+        // The receiver has no cached first bounce: its hit distance is physical.
+        for(uint i=0u;i<2u;i++) {
+            vec2 xi=random_pair(seed);
+            xi.x=(float(i)+xi.x)*0.5;
+            vec3 direction=cosine_direction(n,xi);
+            float hit_distance;
+            vec3 light=reflected_radiance(position+n*0.025,direction,seed,hit_distance);
+            vec3 emitter_direction;
+            vec3 ex=vec3(random_pair(seed),random_float(seed));
+            light+=emitter_sample(position,n,ex,emitter_direction)*max(dot(n,emitter_direction),0.0)/PI;
+            result+=vec4(clamp(light,vec3(0),vec3(256)),hit_distance)*0.5;
+        }
+    }
+    imageStore(diffuse,pixel,result);
+}

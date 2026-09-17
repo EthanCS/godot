@@ -2,6 +2,7 @@
 // Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
 
 #pragma once
+#include "kiln_nrd.h"
 #include "kiln_world.h"
 
 #include "servers/rendering/renderer_rd/shaders/kiln_gi.glsl.gen.h"
@@ -31,10 +32,13 @@ class KilnGI {
 		SURFEL_GRID_PREFIX_SUMS,
 		SURFEL_GRID_SCATTER,
 		SURFEL_DIFFUSE_FILTER,
+		NRD_PREPARE,
+		NRD_DIFFUSE,
+		NRD_RESOLVE,
 		STAGE_COUNT,
 		QUERY_VALIDATE = STAGE_COUNT };
 	KilnGiShaderRD shader, hardware_shader;
-	RID hardware_version, hardware_pipelines[4];
+	RID hardware_version, hardware_pipelines[5];
 	KilnSpecularNativeShaderRD native_specular_shader;
 	RID native_specular_version;
 	RID specular_pipelines[3][8];
@@ -46,7 +50,7 @@ class KilnGI {
 		RID resource;
 		bool linear = false;
 	};
-	void dispatch(Stage p_stage, Size2i p_size, std::initializer_list<Binding> p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID(), bool p_force_translated = false);
+	void dispatch(Stage p_stage, Size2i p_size, std::initializer_list<Binding> p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID(), bool p_force_translated = false, Vector2 p_jitter_delta = Vector2());
 	RID texture(Size2i p_size, RD::DataFormat p_format);
 
 public:
@@ -72,6 +76,8 @@ public:
 		bool ready = false, tracing = false;
 		int ao_frames = 0, ao_quality = -1;
 		RID parameters;
+		KilnNRD *nrd = nullptr;
+		bool nrd_active = false;
 		RID ray_albedo;
 		RID environment;
 		RID hardware_vertices[2], hardware_blas[2], hardware_tlas;

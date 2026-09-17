@@ -83,6 +83,8 @@ func _ready() -> void:
 		if arg == "--metal-native-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", true)
 		if arg == "--metal-translated-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", false)
 		if arg == "--no-specular": ProjectSettings.set_setting("rendering/kiln/surfel_specular", false)
+		if arg == "--no-nrd": ProjectSettings.set_setting("rendering/kiln/nrd", false)
+		if arg == "--nrd": ProjectSettings.set_setting("rendering/kiln/nrd", true)
 		if arg == "--full-specular-rate": ProjectSettings.set_setting("rendering/kiln/specular_checkerboard", false)
 		if arg.begins_with("--specular-rays="): ProjectSettings.set_setting("rendering/kiln/specular_rays", int(arg.get_slice("=", 1)))
 		if arg == "--suite": suite = true
@@ -378,6 +380,7 @@ func _process(_delta: float) -> void:
 		var s := gi.get_statistics()
 		var hour := fposmod(tod_phase * 24.0 + 6.0, 24.0)
 		var algorithm := "Surfel GI / multi bounce" if s.get("surfel_multibounce", false) else "Surfel GI / two bounce"
+		if s.get("nrd_active", false): algorithm += " / NRD 4.17.3"
 		if not gi.is_enabled(): algorithm = "GI OFF"
 		hud.text = "SPONZA | %02d:%02d | %s | %d FPS\nG GI   B multi bounce   Space pause   RMB + WASD fly\n%s | Cache %d slots | %s" % [int(hour), int(fmod(hour, 1.0) * 60), algorithm, Engine.get_frames_per_second(), DEBUG_VIEWS[debug_mode][0], s.get("surfel_capacity", 0), "SUN + SKY + LOCAL" if local_mode else "SUN + SKY ONLY"]
 	if not specular_suite and not suite and not surfel_suite and not surfel_debug_suite and not tod_suite and not tod_video and duration > 0 and ticks == duration:

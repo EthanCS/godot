@@ -11,7 +11,7 @@ source=(ROOT/'servers/rendering/renderer_rd/shaders/kiln_gi.glsl').read_text().r
 import re
 stages=list(dict.fromkeys(re.findall(r'^#ifdef STAGE_(\w+)',source,re.M)))
 for stage in stages:
-    for hardware in ([False,True] if stage in ['SURFEL_GENERATE','SURFEL_TRACE','SURFEL_SPECULAR','QUERY_VALIDATE'] else [False]):
+    for hardware in ([False,True] if stage in ['SURFEL_GENERATE','SURFEL_TRACE','SURFEL_SPECULAR','NRD_DIFFUSE','QUERY_VALIDATE'] else [False]):
         if stage=='QUERY_VALIDATE' and not hardware: continue
         name=stage.lower()+('_hardware' if hardware else '')
         glsl=args.output/(name+'.comp');spv=args.output/(name+'.spv')

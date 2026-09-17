@@ -3702,7 +3702,11 @@ vec3 reflected_radiance(vec3 origin, vec3 direction, inout uint seed, out float 
 	}
 	incident += local_light_sample(hit, normal, random_float(seed));
 	vec4 cached = surfel_gather(hit, normal, false);
-	if (cached.a > 0.1) {
+	if (cached.a > 0.1
+#ifdef STAGE_NRD_DIFFUSE
+			&& p.engine_state.z > 0.5
+#endif
+	) {
 		incident += cached.rgb;
 	} else {
 		// Offscreen, newly exposed surfaces have no camera-generated surfels yet.
@@ -3714,8 +3718,14 @@ vec3 reflected_radiance(vec3 origin, vec3 direction, inout uint seed, out float 
 	}
 	// Unlike diffuse cache rays, these BRDF samples include hit emission directly.
 	// There is no second emitter estimator at the receiver to double count it.
+#ifdef STAGE_NRD_DIFFUSE
+	// Primary diffuse estimates emission with explicit emitter sampling.
+	return clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
+#else
 	return t.emission.rgb + clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
+#endif
 }
+
 void trace_pixel(ivec2 pixel, uint lane, out vec4 output_base, out vec4 output_fresnel) {
 	ivec2 size = ivec2(p.size_frame.xy);
 	output_base = vec4(0);
@@ -3746,7 +3756,7 @@ void trace_pixel(ivec2 pixel, uint lane, out vec4 output_base, out vec4 output_f
 		}
 	}
 	vec3 base = vec3(0), fresnel = vec3(0);
-	float mean_distance = 0.0;
+	float mean_distance = p.voxel_state.z > 0.5 ? 65504.0 : 0.0;
 	if (d > 1e-7 && p.source_bvh_state.z > 0.5 && p.debug.w > 0.5) {
 		vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
 		vec3 n = safe_normalize(mat3(p.inv_view) * receiver_view_normal(normals, depth, pixel));
@@ -3775,11 +3785,12 @@ void trace_pixel(ivec2 pixel, uint lane, out vec4 output_base, out vec4 output_f
 			vec3 radiance = min(reflected_radiance(position + geometric * 0.025, direction, seed, hit_distance), vec3(256));
 			base += radiance * weight * (1.0 - schlick);
 			fresnel += radiance * weight * schlick;
-			mean_distance += hit_distance;
+			if (p.voxel_state.z > 0.5) { mean_distance = min(mean_distance, hit_distance); } else { mean_distance += hit_distance; }
 		}
 		base /= float(count);
 		fresnel /= float(count);
-		mean_distance /= float(count);
+		if (p.voxel_state.z < 0.5) { mean_distance /= float(count); }
+		else if (mean_distance == 65504.0) { mean_distance = 0.0; }
 	}
 	output_base = vec4(base, mean_distance);
 	output_fresnel = vec4(fresnel, 0);
@@ -3799,7 +3810,9 @@ void main() {
 	if (lane == 0u && all(lessThan(pixel, ivec2(p.size_frame.xy)))) {
 		// The missing-sample marker is shared by both lanes, not accumulated.
 		if (a.a >= 0.0) {
+			float hit_a = a.a, hit_b = sample_base[index + 1u].a;
 			a += sample_base[index + 1u];
+			if (p.voxel_state.z > 0.5) { a.a = hit_a == 0.0 ? hit_b : (hit_b == 0.0 ? hit_a : min(hit_a, hit_b)); }
 			b += sample_fresnel[index + 1u];
 		}
 		imageStore(specular_base, pixel, a);
@@ -6521,6 +6534,973 @@ void main() {
 		}
 	}
 	imageStore(output_diffuse, pixel, vec4(sum / max(weights, 1e-6), 1));
+}
+
+#endif
+
+#ifdef STAGE_NRD_PREPARE
+
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
+    vec4 voxel_min;        // source scene bounds minimum xyz (query diagnostics)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, fallback receiver albedo
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+layout(set=0,binding=1) uniform sampler2D depth;
+layout(set=0,binding=2) uniform sampler2D normals;
+layout(set=0,binding=3) uniform sampler2D motion;
+layout(set=0,binding=4) uniform sampler2D base;
+layout(set=0,binding=5) uniform sampler2D fresnel;
+layout(set=0,binding=6,rgb10_a2) uniform writeonly image2D nrd_normal;
+layout(set=0,binding=7,r32f) uniform writeonly image2D nrd_depth;
+layout(set=0,binding=8,rgba16f) uniform writeonly image2D nrd_motion;
+layout(set=0,binding=9,rgba16f) uniform writeonly image2D nrd_base;
+layout(set=0,binding=10,rgba16f) uniform writeonly image2D nrd_fresnel;
+layout(push_constant,std430) uniform MotionCorrection { vec2 jitter_delta; } correction;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy), size=ivec2(p.size_frame.xy);
+    if(any(greaterThanEqual(pixel,size)))return;
+    vec2 uv=(vec2(pixel)+0.5)/vec2(size);
+    float d=texelFetch(depth,pixel,0).r;
+    vec3 n=safe_normalize(mat3(p.inv_view)*receiver_view_normal(normals,depth,pixel));
+    // NRD's rotated octahedral encoding: xy stores the diamond, z stores
+    // linear roughness and hemisphere sign. No primary material factors.
+    n/=max(dot(abs(n),vec3(1)),1e-8);
+    float roughness=max(receiver_roughness(normals,pixel),1.5/512.0);
+    vec3 packed=vec3((n.x+n.y)*0.5+0.5,(n.y-n.x)*0.5+0.5,(n.z<0.0?-roughness:roughness)*0.5+0.5);
+    imageStore(nrd_normal,pixel,vec4(packed,0));
+    imageStore(nrd_depth,pixel,vec4(d>1e-7?-view_position(uv,d).z:100000.0));
+    vec2 mv=texelFetch(motion,pixel,0).xy;
+    if(p.engine_state.y<0.5) {
+        vec4 previous=p.previous_view_projection*vec4(world_position(uv,d),1);
+        mv=previous.xy/max(previous.w,1e-6)*0.5+0.5-uv+correction.jitter_delta;
+    }
+    imageStore(nrd_motion,pixel,vec4(mv,0,0));
+    vec4 a=texelFetch(base,pixel,0);
+    imageStore(nrd_base,pixel,vec4(max(a.rgb,vec3(0)),max(a.a,0.0)));
+    imageStore(nrd_fresnel,pixel,vec4(max(texelFetch(fresnel,pixel,0).rgb,vec3(0)),max(a.a,0.0)));
+}
+
+#endif
+
+#ifdef STAGE_NRD_DIFFUSE
+
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
+    vec4 voxel_min;        // source scene bounds minimum xyz (query diagnostics)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, fallback receiver albedo
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// Threaded SAH BVH. Internal: lo.w=-1, hi.w=escape node after subtree.
+// Leaf: lo.w=first triangle, hi.w=-triangle count-1. Children follow their parent.
+// Escape links identify the right child for near-first traversal; depth < 32 is
+// validated when building/loading the hierarchy. Triangle p1/p2 are cached edges.
+struct BvhNode { vec4 lo; vec4 hi; };
+struct Triangle { vec4 p0; vec4 p1; vec4 p2; vec4 albedo; vec4 emission; };
+layout(set=0,binding=4,std430) readonly buffer Nodes { BvhNode nodes[]; };
+layout(set=0,binding=5,std430) readonly buffer Triangles { Triangle triangles[]; };
+layout(set=0,binding=16,std430) readonly buffer DynamicNodes { BvhNode dynamic_nodes[]; };
+layout(set=0,binding=17,std430) readonly buffer DynamicTriangles { Triangle dynamic_triangles[]; };
+layout(set=0,binding=18,std430) readonly buffer Emitters { vec4 emitters[]; };
+struct TextureCoordinates { vec4 ab; vec4 c_page_repeat; };
+layout(set=0,binding=32) uniform sampler2DArray ray_albedo;
+layout(set=0,binding=33,std430) readonly buffer StaticUVs { TextureCoordinates static_uvs[]; };
+layout(set=0,binding=34,std430) readonly buffer DynamicUVs { TextureCoordinates dynamic_uvs[]; };
+Triangle world_triangle(int id){return id<int(p.source_bvh_state.y)?triangles[id]:dynamic_triangles[id-int(p.source_bvh_state.y)];}
+vec3 hit_albedo(int id, vec3 position) {
+    Triangle t = world_triangle(id);
+    TextureCoordinates record = id < int(p.source_bvh_state.y) ? static_uvs[id] : dynamic_uvs[id-int(p.source_bvh_state.y)];
+    if (record.c_page_repeat.z < 0.5) return t.albedo.rgb;
+    vec3 delta = position - t.p0.xyz;
+    float aa = dot(t.p1.xyz,t.p1.xyz), ab = dot(t.p1.xyz,t.p2.xyz), bb = dot(t.p2.xyz,t.p2.xyz);
+    float da = dot(delta,t.p1.xyz), db = dot(delta,t.p2.xyz), denominator = max(aa*bb-ab*ab,1e-20);
+    vec2 bary = vec2(da*bb-db*ab, db*aa-da*ab)/denominator;
+    vec2 uv = record.ab.xy*(1.0-bary.x-bary.y)+record.ab.zw*bary.x+record.c_page_repeat.xy*bary.y;
+    // The sampler repeats; clamping to texel centers gives clamp-to-edge pages
+    // without a second sampler or an extra fetch. sRGB is decoded by hardware
+    // before filtering, matching the original four-tap linear-light estimator.
+    uv = record.c_page_repeat.w > 0.5 ? fract(uv) : clamp(uv, vec2(0.5/512.0), vec2(511.5/512.0));
+    vec3 color = textureLod(ray_albedo, vec3(uv, record.c_page_repeat.z - 1.0), 0.0).rgb;
+    return t.albedo.rgb*color;
+}
+BvhNode world_node(int id,bool dynamic){return dynamic?dynamic_nodes[id]:nodes[id];}
+float box_near(vec3 origin,vec3 inverse_ray,BvhNode node,float maximum){
+    vec3 a=(node.lo.xyz-origin)*inverse_ray,b=(node.hi.xyz-origin)*inverse_ray;
+    vec3 lo=min(a,b),hi=max(a,b);
+    float near_distance=max(0.0,max(lo.x,max(lo.y,lo.z)));
+    return near_distance<=min(maximum,min(hi.x,min(hi.y,hi.z)))?near_distance:-1.0;
+}
+// Visibility rays need only the first blocker. Escape links let them walk
+// without a per-ray stack or sorting/loading both children at every branch.
+bool trace_blocker(vec3 origin,vec3 ray,float maximum,bool dynamic,out int triangle_id,out float distance){
+    triangle_id=-1;distance=maximum;
+    int node_count=int(dynamic?p.dynamic_scene.x:p.source_bvh_state.x);
+    vec3 inverse_ray=1.0/(mix(vec3(1e-8),vec3(-1e-8),lessThan(ray,vec3(0)))+ray);
+    int index=0;
+    while(index<node_count){
+        BvhNode node=world_node(index,dynamic);
+        bool leaf=node.hi.w<0.0;
+        if(box_near(origin,inverse_ray,node,maximum)<0.0){index=leaf?index+1:int(node.hi.w);continue;}
+        if(!leaf){index++;continue;}
+        int first=int(node.lo.w),end=first-int(node.hi.w)-1;
+        for(int i=first;i<end;i++){
+            Triangle tri=dynamic?dynamic_triangles[i]:triangles[i];
+            vec3 h=cross(ray,tri.p2.xyz);float det=dot(tri.p1.xyz,h);if(abs(det)<1e-9)continue;
+            float inv=1.0/det;vec3 s=origin-tri.p0.xyz;float u=dot(s,h)*inv;
+            if(u<0.0||u>1.0)continue;
+            vec3 q=cross(s,tri.p1.xyz);float v=dot(ray,q)*inv;if(v<0.0||u+v>1.0)continue;
+            float t=dot(tri.p2.xyz,q)*inv;if(t<=.006||t>=maximum)continue;
+            distance=t;triangle_id=i+(dynamic?int(p.source_bvh_state.y):0);return true;
+        }
+        index++;
+    }
+    return false;
+}
+#ifndef GI_VISIBILITY_ONLY
+bool trace_hierarchy(vec3 origin,vec3 ray,float maximum,bool any_hit,bool dynamic,out int triangle_id,out float distance){
+    if(any_hit)return trace_blocker(origin,ray,maximum,dynamic,triangle_id,distance);
+    triangle_id=-1;distance=maximum;
+    vec3 inverse_ray=1.0/(mix(vec3(1e-8),vec3(-1e-8),lessThan(ray,vec3(0)))+ray);
+    // Visit the near child first so a nearby hit prunes the far subtree.
+    // Fixed preorder walked distant geometry before finding the nearest hit,
+    // allowing a few grazing rays to monopolize an entire GPU workgroup.
+    int pending[32];int count=0,index=(dynamic?p.dynamic_scene.x:p.source_bvh_state.x)>0.0?0:-1;
+    while(index>=0){
+        BvhNode node=world_node(index,dynamic);
+        bool leaf=node.hi.w<0.0;
+        if(box_near(origin,inverse_ray,node,distance)<0.0){
+            index=count>0?pending[--count]:-1;continue;
+        }
+        if(!leaf){
+            int left=index+1;
+            BvhNode left_node=world_node(left,dynamic);
+            int right=left_node.hi.w<0.0?left+1:int(left_node.hi.w);
+            float a=box_near(origin,inverse_ray,left_node,distance);
+            float b=box_near(origin,inverse_ray,world_node(right,dynamic),distance);
+            if(a>=0.0&&b>=0.0){pending[count++]=a<=b?right:left;index=a<=b?left:right;}
+            else if(a>=0.0)index=left;
+            else if(b>=0.0)index=right;
+            else index=count>0?pending[--count]:-1;
+            continue;
+        }
+        int first=int(node.lo.w),end=first-int(node.hi.w)-1;
+        for(int i=first;i<end;i++){
+            Triangle tri=dynamic?dynamic_triangles[i]:triangles[i];vec3 e1=tri.p1.xyz,e2=tri.p2.xyz;
+            vec3 h=cross(ray,e2);float det=dot(e1,h);if(abs(det)<1e-9)continue;
+            float inv=1.0/det;vec3 s=origin-tri.p0.xyz;float u=dot(s,h)*inv;
+            if(u<0.0||u>1.0)continue;
+            vec3 q=cross(s,e1);float v=dot(ray,q)*inv;if(v<0.0||u+v>1.0)continue;
+            float t=dot(e2,q)*inv;if(t<=.006||t>=distance)continue;
+            distance=t;triangle_id=i+(dynamic?int(p.source_bvh_state.y):0);
+            if(any_hit)return true;
+        }
+        index=count>0?pending[--count]:-1;
+    }
+    return triangle_id>=0;
+}
+#endif
+bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+    normal=vec3(0);
+#ifdef GI_VISIBILITY_ONLY
+    // The lighting stage issues only visibility segments. Keep the nearest-hit
+    // stack out of this kernel entirely, even on compilers without call-site
+    // specialization of the any_hit argument.
+    if(trace_blocker(origin,ray,maximum,false,triangle_id,distance))return true;
+    return trace_blocker(origin,ray,maximum,true,triangle_id,distance);
+#else
+    bool hit=trace_hierarchy(origin,ray,maximum,any_hit,false,triangle_id,distance);
+    if(hit&&any_hit)return true;
+    int dynamic_id;float dynamic_distance;
+    if(trace_hierarchy(origin,ray,distance,any_hit,true,dynamic_id,dynamic_distance)){
+        triangle_id=dynamic_id;distance=dynamic_distance;hit=true;
+    }
+    if(hit){
+        Triangle tri=world_triangle(triangle_id);
+        normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
+        if(dot(normal,ray)>0.0)normal=-normal;
+    }
+    return hit;
+#endif
+}
+#ifdef KILN_HARDWARE_RAY_QUERY
+layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+    triangle_id=-1;distance=maximum;normal=vec3(0);
+    rayQueryEXT query;
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
+    int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
+    triangle_id=int(rayQueryGetIntersectionPrimitiveIndexEXT(query,true))+(instance==1?int(p.source_bvh_state.y):0);
+    distance=rayQueryGetIntersectionTEXT(query,true);
+    Triangle tri=world_triangle(triangle_id);
+    normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
+    if(dot(normal,direction)>0.0)normal=-normal;
+    return true;
+}
+#endif
+bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    return world_trace_hardware(origin,ray,maximum,any_hit,triangle_id,distance,normal);
+#else
+    return world_trace_software(origin,ray,maximum,any_hit,triangle_id,distance,normal);
+#endif
+}
+bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
+    int id;float distance;vec3 normal;
+    return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
+}
+bool occluded(vec3 origin,vec3 direction){
+    return visibility_blocked(origin,direction,1000.0);
+}
+vec3 sky_at_surface(vec3 position,vec3 normal,vec2 xi){
+    vec3 ray=cosine_direction(normal,xi);
+    if(p.sun_color.w<=0.0||ray.y<=0.0)return vec3(0);
+    return occluded(position+normal*.025,ray)?vec3(0):environment_radiance(ray);
+}
+// Area-weighted next-event sampling makes a small crystal useful at the
+// production ray budget. This is surface emission with world-space visibility,
+// not an unshadowed point light or a screen-space bloom approximation.
+vec3 emitter_sample(vec3 position,vec3 normal,vec3 xi,out vec3 direction){
+    direction=normal;
+    int count=int(p.dynamic_scene.z);if(count==0)return vec3(0);
+    float target=xi.x*p.dynamic_scene.w;int lo=0,hi=count-1;
+    while(lo<hi){int mid=(lo+hi)/2;if(emitters[mid].y<target)lo=mid+1;else hi=mid;}
+    vec4 entry=emitters[lo];Triangle tri=world_triangle(int(entry.x));
+    float u=sqrt(xi.y);vec3 point=tri.p0.xyz+tri.p1.xyz*(u*(1.0-xi.z))+tri.p2.xyz*(u*xi.z);
+    vec3 origin=position+normal*.012,delta=point-origin;float squared=dot(delta,delta);
+    if(squared<.0004)return vec3(0);
+    float distance=sqrt(squared);direction=delta/distance;
+    if(dot(normal,direction)<=0.0)return vec3(0);
+    vec3 source_normal=safe_normalize(cross(tri.p1.xyz,tri.p2.xyz));
+    float cosine=abs(dot(source_normal,-direction));
+    if(cosine<.0001)return vec3(0);
+    int id;float hit_distance;vec3 n;
+    if(visibility_blocked(origin,direction,distance-.008))return vec3(0);
+    return tri.emission.rgb*(entry.z*cosine*p.dynamic_scene.w/(squared*entry.w));
+}
+// World-space light grid: each cell stores a complete, dynamically sized list.
+// One uniformly sampled overlapping analytic light per bounce is unbiased; the
+// sample weight includes list length. Visibility uses the same software BVH.
+layout(set=0,binding=25,std430) readonly buffer LocalLights { vec4 local_lights[]; };
+layout(set=0,binding=26,std430) readonly buffer LightGrid { uint light_grid[]; };
+vec3 local_light_unoccluded(uint id,vec3 position,vec3 normal,out vec3 direction,out float distance){
+    vec4 pr=local_lights[2u+id*4u],color=local_lights[3u+id*4u],cone=local_lights[4u+id*4u];
+    vec3 delta=pr.xyz-position;distance=length(delta);direction=delta/max(distance,.0001);
+    if(distance>=pr.w||distance<.001)return vec3(0);
+    float nl=max(0.0,dot(normal,direction));if(nl<=0.0)return vec3(0);
+    float window=max(1.0-pow(distance/pr.w,4.0),0.0);
+    float attenuation=window*window*pow(max(distance,.0001),-color.w);
+    if(cone.w>=-1.0){
+        float scos=max(dot(-direction,cone.xyz),cone.w);
+        float rim=max(1e-4,(1.0-scos)/(1.0-cone.w));
+        attenuation*=1.0-pow(rim,local_lights[5u+id*4u].x);
+    }
+    return max(vec3(0),color.rgb*(attenuation*nl/PI));
+}
+vec3 local_light_sample(vec3 position,vec3 normal,float xi){
+    vec4 origin=local_lights[0];ivec3 dims=ivec3(local_lights[1].xyz);
+    ivec3 cell=ivec3(floor((position-origin.xyz)/origin.w));
+    if(any(lessThan(cell,ivec3(0)))||any(greaterThanEqual(cell,dims)))return vec3(0);
+    int cell_id=(cell.z*dims.y+cell.y)*dims.x+cell.x;
+    uint count=light_grid[cell_id*2+1],start=light_grid[cell_id*2];
+    // Importance-sample actual incident power, including range and spot cone.
+    // A uniform light index spent most samples on irrelevant lamps in Sponza.
+    // The CDF uses cheap unoccluded weights, then traces ONE visibility ray.
+    float total=0.0,distance;vec3 direction;
+    for(uint i=0u;i<count;i++)total+=luminance(local_light_unoccluded(light_grid[start+i],position,normal,direction,distance));
+    if(total<=1e-10)return vec3(0);
+    float target=xi*total,accum=0.0;
+    for(uint i=0u;i<count;i++){
+        vec3 value=local_light_unoccluded(light_grid[start+i],position,normal,direction,distance);
+        float weight=luminance(value);accum+=weight;
+        if(weight>0.0 && (accum>=target || i+1u==count)){
+            if(visibility_blocked(position+normal*.025,direction,distance-.03))return vec3(0);
+            return value*(total/weight);
+        }
+    }
+    return vec3(0);
+}
+
+// Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
+// Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
+// Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
+// Attribution and original sources: thirdparty/surfelplus/.
+// The viewport supplies a bounded capacity, rounded to a complete dispatch row.
+#define SURFEL_CAPACITY uint(p.voxel_size.w)
+const uint CELL_CAPACITY = 262144u;
+const float CELL_SIZE = 0.25;
+const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+struct Surfel {
+	vec4 position_radius;
+	vec4 normal_age;
+	vec4 irradiance_samples;
+	vec4 short_mean_vbbr;
+	vec4 variance_inconsistency;
+	uvec4 anchor; // source triangle + 1, last seen frame, alive, reserved
+	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
+	vec4 local_normal; // original raster normal in the source triangle frame
+};
+// Reflect actual stage access into RD/Metal resource dependencies. Readers must
+// not advertise writes, which unnecessarily serialize independent GI passes.
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
+#define SURFEL_ACCESS
+#else
+#define SURFEL_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID) || defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_SCATTER)
+#define CELL_HEAD_ACCESS
+#else
+#define CELL_HEAD_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_GRID_SCATTER
+#define CELL_LINK_ACCESS
+#else
+#define CELL_LINK_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_GRID_PREFIX) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
+#define GRID_SUM_ACCESS
+#else
+#define GRID_SUM_ACCESS readonly
+#endif
+#ifdef STAGE_SURFEL_UPDATE
+#define FREE_SLOT_ACCESS
+#else
+#define FREE_SLOT_ACCESS readonly
+#endif
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#define COUNTER_ACCESS
+#else
+#define COUNTER_ACCESS readonly
+#endif
+layout(set = 0, binding = 20, std430) SURFEL_ACCESS buffer Surfels {
+	Surfel surfels[];
+};
+layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
+	uvec2 cell_heads[]; // count, block-local exclusive offset
+};
+layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
+	uint cell_links[]; // compact indices, at most 27 references per surfel
+};
+layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
+	uint grid_sums[];
+};
+layout(set = 0, binding = 23, std430) FREE_SLOT_ACCESS buffer FreeSlots {
+	uint free_slots[];
+};
+layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
+	uint free_count;
+	uint spawn_count;
+	uint alive_count;
+	uint traced_count;
+	uint spawn_claims[]; // per-frame world-space allocation deduplication
+};
+#undef SURFEL_ACCESS
+#undef CELL_HEAD_ACCESS
+#undef CELL_LINK_ACCESS
+#undef GRID_SUM_ACCESS
+#undef FREE_SLOT_ACCESS
+#undef COUNTER_ACCESS
+uint surfel_hash(uint x) {
+	x ^= x >> 16;
+	x *= 0x7feb352du;
+	x ^= x >> 15;
+	x *= 0x846ca68bu;
+	return x ^ (x >> 16);
+}
+uint surfel_level(float radius) {
+	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
+}
+float cell_size(uint level) {
+	return CELL_SIZE * float(1u << level);
+}
+uint cell_hash(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+}
+float random_float(inout uint seed) {
+	seed = surfel_hash(seed + 0x9e3779b9u);
+	return float(seed >> 8) * (1.0 / 16777216.0);
+}
+vec2 random_pair(inout uint seed) {
+	float x = random_float(seed);
+	return vec2(x, random_float(seed));
+}
+float surfel_weight(Surfel s, vec3 position, vec3 normal) {
+	vec3 delta = position - s.position_radius.xyz;
+	float radius = s.position_radius.w;
+	float alignment = dot(normal, s.normal_age.xyz);
+	// Surface-plane rejection is deliberately much tighter than radial support.
+	// Opposite sides of a thin wall must never share an irradiance cache entry.
+	if (alignment < 0.85 || abs(dot(delta, s.normal_age.xyz)) > max(0.012, radius * 0.06)) {
+		return 0.0;
+	}
+	float w = max(0.0, 1.0 - length(delta) / radius) * max(0.0, alignment);
+	return w * w * (3.0 - 2.0 * w);
+}
+vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only) {
+	vec3 sum = vec3(0);
+	float weight = 0.0, coverage = 0.0;
+	for (uint level = 0u; level < 3u; level++) {
+		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		uvec2 cell = cell_heads[key];
+		uint offset = cell.y + grid_sums[key / 64u];
+		// Every overlapping surfel is indexed here. No neighbor traversal and no
+		// truncation: hash collisions only add candidates, never drop coverage.
+		for (uint i = 0u; i < cell.x; i++) {
+			uint id = cell_links[offset + i];
+			vec4 sphere = surfels[id].position_radius;
+			vec3 delta = position - sphere.xyz;
+			float distance_squared = dot(delta, delta);
+			if (surfel_level(sphere.w) != level || distance_squared >= sphere.w * sphere.w) continue;
+			vec3 sn = surfels[id].normal_age.xyz;
+			float alignment = dot(normal, sn);
+			if (alignment < 0.85 || abs(dot(delta, sn)) > max(0.012, sphere.w * 0.06)) continue;
+			float w = (1.0 - sqrt(distance_squared) / sphere.w) * max(0.0, alignment);
+			w = w * w * (3.0 - 2.0 * w);
+			coverage += w;
+			if (!coverage_only) {
+				vec4 irradiance = surfels[id].irradiance_samples;
+				float confidence = min(1.0, irradiance.w / 16.0);
+				sum += irradiance.rgb * w * confidence;
+				weight += w * confidence;
+			}
+		}
+	}
+	return vec4(weight > 1e-6 ? sum / weight : vec3(0), coverage);
+}
+
+// The cache follows the original geometric surface. Shading-normal maps remain
+// in the deferred material buffer and must not fragment world-space coverage.
+layout(set = 0, binding = 31) uniform usampler2D surface_geometry;
+vec3 surfel_view_normal(sampler2D normals, sampler2D depths, ivec2 pixel) {
+	if (p.engine_state.y < 0.5) {
+		return receiver_view_normal(normals, depths, pixel);
+	}
+	uint packed = texelFetch(surface_geometry, pixel, 0).g;
+	vec2 oct = unpackSnorm2x16(packed);
+	vec3 n = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
+	n.xy += mix(vec2(1), vec2(-1), greaterThanEqual(n.xy, vec2(0))) * max(-n.z, 0.0);
+	return safe_normalize(n);
+}
+
+vec3 reflected_radiance(vec3 origin, vec3 direction, inout uint seed, out float hit_distance) {
+	int triangle;
+	vec3 normal;
+	if (!world_trace(origin, direction, 1000.0, false, triangle, hit_distance, normal)) {
+		hit_distance = 1000.0;
+		return environment_radiance(direction);
+	}
+	Triangle t = world_triangle(triangle);
+	vec3 hit = origin + direction * hit_distance;
+	vec3 incident = vec3(0);
+	float nl = max(dot(normal, p.sun_direction.xyz), 0.0);
+	if (nl > 0.0 && p.sun_direction.w > 0.0 && !occluded(hit + normal * 0.025, p.sun_direction.xyz)) {
+		incident += p.sun_color.rgb * (p.sun_direction.w * nl / PI);
+	}
+	incident += local_light_sample(hit, normal, random_float(seed));
+	vec4 cached = surfel_gather(hit, normal, false);
+	if (cached.a > 0.1
+#ifdef STAGE_NRD_DIFFUSE
+			&& p.engine_state.z > 0.5
+#endif
+	) {
+		incident += cached.rgb;
+	} else {
+		// Offscreen, newly exposed surfaces have no camera-generated surfels yet.
+		// Trace their illumination instead of returning a black reflection.
+		incident += sky_at_surface(hit, normal, random_pair(seed));
+		vec3 emitter_direction;
+		vec3 xi = vec3(random_pair(seed), random_float(seed));
+		incident += emitter_sample(hit, normal, xi, emitter_direction) * max(dot(normal, emitter_direction), 0.0) / PI;
+	}
+	// Unlike diffuse cache rays, these BRDF samples include hit emission directly.
+	// There is no second emitter estimator at the receiver to double count it.
+#ifdef STAGE_NRD_DIFFUSE
+	// Primary diffuse estimates emission with explicit emitter sampling.
+	return clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
+#else
+	return t.emission.rgb + clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
+#endif
+}
+
+layout(set=0,binding=1) uniform sampler2D depth;
+layout(set=0,binding=2) uniform sampler2D normals;
+layout(set=0,binding=6,rgba16f) uniform writeonly image2D diffuse;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy),size=ivec2(p.size_frame.xy);
+    if(any(greaterThanEqual(pixel,size)))return;
+    float d=texelFetch(depth,pixel,0).r;
+    vec4 result=vec4(0);
+    if(d>1e-7 && p.source_bvh_state.z>0.5) {
+        vec3 position=world_position((vec2(pixel)+0.5)/vec2(size),d);
+        vec3 n=safe_normalize(mat3(p.inv_view)*surfel_view_normal(normals,depth,pixel));
+        uint seed=surfel_hash(uint(pixel.x+pixel.y*size.x)^uint(p.size_frame.z)*1664525u^0xb5297a4du);
+        // Two cosine samples estimate irradiance/pi, matching Kiln composition.
+        // The receiver has no cached first bounce: its hit distance is physical.
+        for(uint i=0u;i<2u;i++) {
+            vec2 xi=random_pair(seed);
+            xi.x=(float(i)+xi.x)*0.5;
+            vec3 direction=cosine_direction(n,xi);
+            float hit_distance;
+            vec3 light=reflected_radiance(position+n*0.025,direction,seed,hit_distance);
+            vec3 emitter_direction;
+            vec3 ex=vec3(random_pair(seed),random_float(seed));
+            light+=emitter_sample(position,n,ex,emitter_direction)*max(dot(n,emitter_direction),0.0)/PI;
+            result+=vec4(clamp(light,vec3(0),vec3(256)),hit_distance)*0.5;
+        }
+    }
+    imageStore(diffuse,pixel,result);
+}
+
+#endif
+
+#ifdef STAGE_NRD_RESOLVE
+
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
+    vec4 voxel_min;        // source scene bounds minimum xyz (query diagnostics)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, fallback receiver albedo
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+layout(set=0,binding=1) uniform sampler2D depth;
+layout(set=0,binding=6,rgba16f) uniform image2D diffuse;
+layout(set=0,binding=7,rgba16f) uniform image2D specular;
+layout(set=0,binding=8,rgba16f) uniform image2D fresnel;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(pixel,ivec2(p.size_frame.xy))))return;
+    // Reprojection filters can undershoot; transport radiance is nonnegative.
+    // NRD leaves out-of-range pixels untouched, so explicitly clear the sky.
+    bool valid=texelFetch(depth,pixel,0).r>1e-7;
+    imageStore(diffuse,pixel,vec4(valid?max(imageLoad(diffuse,pixel).rgb,vec3(0)):vec3(0),1));
+    imageStore(specular,pixel,vec4(valid && p.debug.w>0.5?max(imageLoad(specular,pixel).rgb,vec3(0)):vec3(0),1));
+    imageStore(fresnel,pixel,vec4(valid && p.debug.w>0.5?max(imageLoad(fresnel,pixel).rgb,vec3(0)):vec3(0),1));
 }
 
 #endif

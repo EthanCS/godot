@@ -4356,7 +4356,11 @@ RDD::ShaderID RenderingDeviceDriverVulkan::shader_create_from_container(const Re
 	PackedByteArray decoded_spirv;
 	// re-spirv does not implement OpTypeRayQueryKHR yet. Preserve the valid
 	// glslang SPIR-V for inline-query shaders; ordinary shaders keep optimization.
-	const bool use_respv = (RESPV_ENABLED == 1) && !shader_container_format.get_debug_info_enabled() && !(has_acceleration_structure && shader_refl.pipeline_type != PIPELINE_TYPE_RAYTRACING);
+	// NRD's externally optimized DXC modules retain SPIR-V 1.5 entry-point
+	// interface variables which re-spirv currently removes without updating
+	// OpEntryPoint. Keep those modules intact; other shaders retain optimization.
+	const bool kiln_nrd_shader = String(p_shader_container->shader_name.get_data()).begins_with("Kiln NRD / ");
+	const bool use_respv = (RESPV_ENABLED == 1) && !kiln_nrd_shader && !shader_container_format.get_debug_info_enabled() && !(has_acceleration_structure && shader_refl.pipeline_type != PIPELINE_TYPE_RAYTRACING);
 	const bool store_respv = use_respv && !shader_refl.specialization_constants.is_empty();
 	const int64_t stage_count = shader_refl.stages_vector.size();
 	shader_info.vk_stages_create_info.reserve(stage_count);

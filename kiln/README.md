@@ -69,3 +69,9 @@ is historical. Spatial blotches and temporal flicker are now checked separately.
 
 Historical proxy/SH and Mac non-GI measurements remain as historical records.
 They do not validate this implementation or establish a performance improvement.
+
+The optional [NRD 4.17.3 integration](docs/NRD.md) now denoises both indirect
+diffuse and specular on Windows/Vulkan builds with the external SDK. Diffuse uses
+fresh screen-pixel rays with the surfel cache for secondary lighting. NRD has its
+own license; its SDK source is not vendored here. The earlier performance figures
+above describe the previous cache/filter path, not NRD.

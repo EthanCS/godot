@@ -14,4 +14,13 @@ inputs = [env.File("#kiln/tools/build_gi_shaders.py")]
 inputs += [env.File(str(p)) for p in sorted((root / "servers/rendering/renderer_rd/kiln/sources").glob("*")) if p.suffix in (".comp", ".inc")]
 inputs += [env.File("#thirdparty/surfelplus/upstream/msme.glsl"), env.File("#kiln/demo/rendering/sky/sky_radiance.gdshaderinc")]
 env.CommandNoCache("#servers/rendering/renderer_rd/shaders/kiln_gi.glsl", inputs, env.Run(surfel_shader_builder))
-env.add_source_files(env.servers_sources, "*.cpp")
+kiln_env = env.Clone()
+# SDK stays outside tracked source: NVIDIA's license is not the engine MIT license.
+nrd_root = Path(ARGUMENTS.get("kiln_nrd_sdk", str(root / "bin/build_deps/NRD")))
+if ARGUMENTS.get("kiln_nrd", "yes") != "no" and env["platform"] == "windows" and (nrd_root / "_Bin/Release/NRD.lib").is_file():
+    nrd_commit = subprocess.check_output(["git", "-C", str(nrd_root), "rev-parse", "HEAD"], text=True).strip()
+    if nrd_commit != "792eff196afdd350fd9c3f862119017ccb438a0e":
+        raise RuntimeError("Kiln requires NRD v4.17.3; run kiln/tools/prepare_nrd.py with the pinned SDK")
+    kiln_env.Append(CPPPATH=[str(nrd_root / "Include")], CPPDEFINES=["KILN_NRD_ENABLED"])
+    env.Append(LIBS=[env.File(str(nrd_root / "_Bin/Release/NRD.lib")), env.File(str(nrd_root / "_Build417/_deps/shadermake-build/Release/ShaderMakeBlob.lib"))])
+kiln_env.add_source_files(env.servers_sources, "*.cpp")

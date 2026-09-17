@@ -1,5 +1,10 @@
 # Sponza Surfel GI benchmark
 
+Windows/Vulkan builds with the optional SDK use **NRD 4.17.3** for indirect
+diffuse and specular. `run.ps1 -NoNRD` / `--no-nrd` selects the prior filter for
+comparison. The HUD reports actual NRD activation. Build, license and validation
+details: [NRD integration](../docs/NRD.md).
+
 Sponza is the active acceptance scene for standard G-buffer deferred rendering and
 Surfel GI. GI uses original mesh triangles: no simplified mesh, proxy import
 metadata or manual generation step is required. See

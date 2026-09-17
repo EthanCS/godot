@@ -67,7 +67,7 @@ checks = {
 }
 record = {'passed': all(checks.values()), 'checks': checks, 'before': before, 'after': after,
           'spatial_residual_reduction': reduction, 'floor_mean_ratio': mean_ratio,
-          'scope': 'Same 1280x720 stationary Sponza camera; descriptive spatial residual, not reference error.'}
+          'scope': f"Same {before_meta['width']}x{before_meta['height']} stationary Sponza camera; descriptive spatial residual, not reference error."}
 (args.after / 'noise_checks.json').write_text(json.dumps(record, indent=2) + '\n')
 print(json.dumps(record, indent=2))
 raise SystemExit(0 if record['passed'] else 1)

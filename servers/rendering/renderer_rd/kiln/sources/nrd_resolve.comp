@@ -1,0 +1,17 @@
+#version 450
+// @GI_COMMON@
+layout(set=0,binding=1) uniform sampler2D depth;
+layout(set=0,binding=6,rgba16f) uniform image2D diffuse;
+layout(set=0,binding=7,rgba16f) uniform image2D specular;
+layout(set=0,binding=8,rgba16f) uniform image2D fresnel;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 pixel=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(pixel,ivec2(p.size_frame.xy))))return;
+    // Reprojection filters can undershoot; transport radiance is nonnegative.
+    // NRD leaves out-of-range pixels untouched, so explicitly clear the sky.
+    bool valid=texelFetch(depth,pixel,0).r>1e-7;
+    imageStore(diffuse,pixel,vec4(valid?max(imageLoad(diffuse,pixel).rgb,vec3(0)):vec3(0),1));
+    imageStore(specular,pixel,vec4(valid && p.debug.w>0.5?max(imageLoad(specular,pixel).rgb,vec3(0)):vec3(0),1));
+    imageStore(fresnel,pixel,vec4(valid && p.debug.w>0.5?max(imageLoad(fresnel,pixel).rgb,vec3(0)):vec3(0),1));
+}
