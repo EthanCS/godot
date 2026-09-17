@@ -125,12 +125,18 @@ KilnGIWorld::Transport KilnGIWorld::transport(const Ref<Material> &p_material) {
 	if (base.is_valid()) {
 		result.supported = base->get_transparency() == BaseMaterial3D::TRANSPARENCY_DISABLED;
 		result.texture_page = capture_texture(base->get_texture(BaseMaterial3D::TEXTURE_ALBEDO));
+		Color fallback = texture_average(base->get_texture(BaseMaterial3D::TEXTURE_ALBEDO));
+		result.texture_fallback = Vector3(fallback.r, fallback.g, fallback.b);
 		Color c = base->get_albedo().srgb_to_linear();
 		if (result.texture_page < 0) {
 			c *= texture_average(base->get_texture(BaseMaterial3D::TEXTURE_ALBEDO));
 		}
 		result.albedo = Vector3(c.r, c.g, c.b);
 		metal = base->get_metallic();
+		result.uv_scale = Vector2(base->get_uv1_scale().x, base->get_uv1_scale().y);
+		result.uv_offset = Vector2(base->get_uv1_offset().x, base->get_uv1_offset().y);
+		result.texture_repeat = base->get_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT);
+		result.vertex_color = base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR);
 		if (base->get_feature(BaseMaterial3D::FEATURE_EMISSION)) {
 			Color e = base->get_emission().srgb_to_linear();
 			Color tex = texture_average(base->get_texture(BaseMaterial3D::TEXTURE_EMISSION));
@@ -145,7 +151,7 @@ KilnGIWorld::Transport KilnGIWorld::transport(const Ref<Material> &p_material) {
 		watch(shader);
 		if (!shader_defaults.has(shader->get_instance_id())) {
 			Dictionary defaults;
-			for (const char *name : { "kiln_uniform_transport", "tint_linear", "authored_emission", "metalness" }) {
+			for (const char *name : { "kiln_uniform_transport", "tint_linear", "authored_emission", "metalness", "textured", "albedo_texture", "uv1_scale", "uv1_offset", "uv_scale", "world_mapping", "tile_metres", "vertex_color_albedo", "emission_textured", "emission_texture" }) {
 				defaults[name] = RenderingServer::get_singleton()->shader_get_parameter_default(shader->get_rid(), name);
 			}
 			shader_defaults.insert(shader->get_instance_id(), defaults);
@@ -160,6 +166,33 @@ KilnGIWorld::Transport KilnGIWorld::transport(const Ref<Material> &p_material) {
 			result.albedo = color;
 			result.emission = emission;
 			metal = float(parameter(SNAME("metalness")));
+			if (bool(parameter(SNAME("textured")))) {
+				result.texture_page = capture_texture(parameter(SNAME("albedo_texture")));
+				Color fallback = texture_average(parameter(SNAME("albedo_texture")));
+				result.texture_fallback = Vector3(fallback.r, fallback.g, fallback.b);
+			}
+			Variant scale = parameter(SNAME("uv1_scale")), offset = parameter(SNAME("uv1_offset"));
+			if (scale.get_type() == Variant::VECTOR3) {
+				Vector3 v = scale;
+				result.uv_scale = Vector2(v.x, v.y);
+			}
+			if (offset.get_type() == Variant::VECTOR3) {
+				Vector3 v = offset;
+				result.uv_offset = Vector2(v.x, v.y);
+			}
+			Variant uv_scale = parameter(SNAME("uv_scale"));
+			if (uv_scale.get_type() != Variant::NIL && !bool(parameter(SNAME("world_mapping")))) {
+				result.uv_scale *= float(uv_scale);
+			}
+			result.world_mapping = bool(parameter(SNAME("world_mapping")));
+			if (result.world_mapping) {
+				result.uv_scale /= MAX(float(parameter(SNAME("tile_metres"))), 0.001f);
+			}
+			result.vertex_color = bool(parameter(SNAME("vertex_color_albedo")));
+			if (bool(parameter(SNAME("emission_textured")))) {
+				Color e = texture_average(parameter(SNAME("emission_texture")));
+				result.emission *= Vector3(e.r, e.g, e.b);
+			}
 		}
 	}
 	result.albedo = result.albedo.clamp(Vector3(), Vector3(1, 1, 1)) * (1.0f - CLAMP(metal, 0.0f, 1.0f));

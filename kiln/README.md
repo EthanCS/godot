@@ -53,6 +53,7 @@ and hit distance; primary materials supply Fresnel and metallic response.
 Opaque BaseMaterial3D albedo textures are sampled at ray-hit UVs from 512x512
 pages. Sponza defaults to a wet dielectric floor (roughness 0.18); `--dry-floor`
 uses 0.85 and `--no-specular` isolates indirect diffuse.
+Host scenes can use [native GI integration APIs](docs/SCENE-GI-INTEGRATION.md) for scoped geometry, authored sky and shader-material inputs.
 See [run instructions](sponza/README.md) and
 [implementation, validation and limits](docs/SURFEL-GI.md).
 

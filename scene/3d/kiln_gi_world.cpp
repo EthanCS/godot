@@ -10,6 +10,7 @@
 #include "scene/3d/light_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/multimesh_instance_3d.h"
+#include "scene/main/viewport.h"
 #include "scene/resources/material.h"
 #include "servers/rendering/rendering_server.h"
 
@@ -17,6 +18,9 @@
 
 Dictionary KilnGIWorld::get_statistics() const {
 	Dictionary result = environment.is_valid() ? RendererRD::KilnWorld::statistics(environment->get_rid()) : Dictionary();
+	result["bounds"] = snapshot.world.bounds;
+	result["emissive_triangles"] = snapshot.world.emitters.size() + snapshot.dynamic.emitters.size();
+	result["ao_quality"] = snapshot.ao_quality;
 	result["static_triangles"] = snapshot.world.triangle_count;
 	result["dynamic_triangles"] = snapshot.dynamic.triangle_count;
 	result["geometry_version"] = snapshot.geometry_version;
@@ -69,6 +73,53 @@ void KilnGIWorld::set_sky(Vector3 p_horizon, Vector3 p_zenith, bool p_procedural
 	snapshot.procedural_sky = p_procedural;
 	snapshot.light_version++;
 }
+void KilnGIWorld::set_capture_roots(const TypedArray<NodePath> &p_roots) {
+	if (capture_roots == p_roots) {
+		return;
+	}
+	capture_roots = p_roots.duplicate();
+	// Root changes invalidate geometry, but keep shared mesh/texture uploads.
+	rebuild_pending = true;
+}
+void KilnGIWorld::set_ao_quality(int p_quality) {
+	ERR_FAIL_COND(p_quality < 0 || p_quality > 3);
+	snapshot.ao_quality = p_quality;
+}
+void KilnGIWorld::set_sky_parameters(float p_halo, float p_saturation, Vector3 p_cloud_color, float p_cloud_coverage) {
+	if (snapshot.sky_halo == p_halo && snapshot.sky_saturation == p_saturation && snapshot.cloud_color == p_cloud_color && snapshot.cloud_coverage == p_cloud_coverage) {
+		return;
+	}
+	snapshot.sky_halo = p_halo;
+	snapshot.sky_saturation = p_saturation;
+	snapshot.cloud_color = p_cloud_color;
+	snapshot.cloud_coverage = p_cloud_coverage;
+	snapshot.light_version++;
+}
+void KilnGIWorld::collect_roots(bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash, bool p_geometry) {
+	if (capture_roots.is_empty()) {
+		collect(get_parent(), false, p_dynamic_pass, r_triangles, r_hash, r_material_hash, p_geometry);
+		return;
+	}
+	HashSet<ObjectID> visited;
+	for (int i = 0; i < capture_roots.size(); i++) {
+		Node *root = get_node_or_null(capture_roots[i]);
+		if (!root || visited.has(root->get_instance_id())) {
+			continue;
+		}
+		bool covered = false;
+		for (int j = 0; j < capture_roots.size(); j++) {
+			Node *other = get_node_or_null(capture_roots[j]);
+			if (other && other != root && other->is_ancestor_of(root)) {
+				covered = true;
+				break;
+			}
+		}
+		if (!covered) {
+			visited.insert(root->get_instance_id());
+			collect(root, false, p_dynamic_pass, r_triangles, r_hash, r_material_hash, p_geometry);
+		}
+	}
+}
 void KilnGIWorld::set_quality(int p_rays, int p_samples) {
 	ERR_FAIL_COND_MSG(p_rays < 1 || p_rays > 8 || p_samples < 16 || p_samples > 1024, "Kiln Surfel GI supports quality levels 1-8 (4-32 rays per updated surfel) and 16-1024 convergence samples.");
 	if (snapshot.rays != p_rays || snapshot.samples != p_samples) {
@@ -85,6 +136,9 @@ void KilnGIWorld::set_query_backend(int p_backend) {
 	}
 }
 void KilnGIWorld::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_capture_roots", "roots"), &KilnGIWorld::set_capture_roots);
+	ClassDB::bind_method(D_METHOD("set_ao_quality", "quality"), &KilnGIWorld::set_ao_quality);
+	ClassDB::bind_method(D_METHOD("set_sky_parameters", "halo", "saturation", "cloud_color", "cloud_coverage"), &KilnGIWorld::set_sky_parameters);
 	ClassDB::bind_method(D_METHOD("set_query_backend", "backend"), &KilnGIWorld::set_query_backend);
 	ClassDB::bind_method(D_METHOD("set_quality", "rays", "samples"), &KilnGIWorld::set_quality);
 	ClassDB::bind_method(D_METHOD("validate_bvh", "rays"), &KilnGIWorld::validate_bvh, DEFVAL(64));
@@ -124,7 +178,7 @@ void KilnGIWorld::set_lighting(Vector3 p_direction, Vector3 p_color, float p_sun
 	snapshot.time_of_day = p_time_of_day;
 }
 void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash, bool p_geometry) {
-	if (p_node == this || bool(p_node->get_meta(SNAME("kiln_exclude"), false))) {
+	if (p_node == this || (Object::cast_to<Viewport>(p_node) && p_node != get_viewport()) || bool(p_node->get_meta(SNAME("kiln_exclude"), false))) {
 		return;
 	}
 	bool dynamic = p_dynamic_parent || bool(p_node->get_meta(SNAME("kiln_dynamic"), false));
@@ -168,16 +222,13 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				continue;
 			}
 			Vector3 color = response.albedo, emission = response.emission;
-			Ref<BaseMaterial3D> base = material;
 			r_material_hash = hash_murmur3_one_32(Variant(color).hash(), r_material_hash);
 			r_material_hash = hash_murmur3_one_32(Variant(emission).hash(), r_material_hash);
 			r_material_hash = hash_murmur3_one_32(response.texture_page + 1, r_material_hash);
 			r_material_hash = hash_murmur3_one_64(snapshot.texture_version, r_material_hash);
-			if (base.is_valid()) {
-				r_material_hash = hash_murmur3_one_32(Variant(base->get_uv1_scale()).hash(), r_material_hash);
-				r_material_hash = hash_murmur3_one_32(Variant(base->get_uv1_offset()).hash(), r_material_hash);
-				r_material_hash = hash_murmur3_one_32(base->get_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT), r_material_hash);
-			}
+			r_material_hash = hash_murmur3_one_32(Variant(response.uv_scale).hash(), r_material_hash);
+			r_material_hash = hash_murmur3_one_32(Variant(response.uv_offset).hash(), r_material_hash);
+			r_material_hash = hash_murmur3_one_32(response.texture_repeat | (response.world_mapping << 1) | (response.vertex_color << 2), r_material_hash);
 			if (!p_geometry) {
 				continue;
 			}
@@ -199,19 +250,21 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				}
 				tri.normal = geometry.normals.size() == geometry.positions.size() ? normal_transform.xform(geometry.normals[a] + geometry.normals[b] + geometry.normals[c]).normalized() : -face.normalized();
 				tri.albedo = color;
-				if (base.is_valid() && response.texture_page >= 0 && geometry.uvs.size() == geometry.positions.size()) {
-					Vector3 scale = base->get_uv1_scale(), offset = base->get_uv1_offset();
-					auto uv = [&](int index) { return geometry.uvs[index] * Vector2(scale.x, scale.y) + Vector2(offset.x, offset.y); };
+				if (response.texture_page >= 0 && (response.world_mapping || geometry.uvs.size() == geometry.positions.size())) {
+					auto uv = [&](int index) {
+						Vector3 point = transform.xform(geometry.positions[index]);
+						Vector2 coord = response.world_mapping ? Vector2(point.x, point.z) : geometry.uvs[index];
+						return coord * response.uv_scale + response.uv_offset;
+					};
 					tri.uv_a = uv(a);
 					tri.uv_b = uv(b);
 					tri.uv_c = uv(c);
 					tri.texture_page = response.texture_page;
-					tri.texture_repeat = base->get_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT);
-				} else if (base.is_valid() && response.texture_page >= 0) {
-					Color average = texture_average(base->get_texture(BaseMaterial3D::TEXTURE_ALBEDO));
-					tri.albedo *= Vector3(average.r, average.g, average.b);
+					tri.texture_repeat = response.texture_repeat;
+				} else if (response.texture_page >= 0) {
+					tri.albedo *= response.texture_fallback;
 				}
-				if (base.is_valid() && base->get_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR) && geometry.colors.size() == geometry.positions.size()) {
+				if (response.vertex_color && geometry.colors.size() == geometry.positions.size()) {
 					Color vertex_color = (geometry.colors[a].srgb_to_linear() + geometry.colors[b].srgb_to_linear() + geometry.colors[c].srgb_to_linear()) / 3.0;
 					tri.albedo *= Vector3(vertex_color.r, vertex_color.g, vertex_color.b);
 				}
@@ -475,6 +528,9 @@ Dictionary KilnGIWorld::validate_bvh(int p_rays) const {
 	return result;
 }
 void KilnGIWorld::collect_lights(Node *node, Vector<Vector4> &lights, uint32_t &hash) {
+	if ((Object::cast_to<Viewport>(node) && node != get_viewport()) || bool(node->get_meta(SNAME("kiln_exclude"), false))) {
+		return;
+	}
 	Light3D *light = Object::cast_to<Light3D>(node);
 	if (light && light->is_visible_in_tree() && !Object::cast_to<DirectionalLight3D>(light)) {
 		if (Object::cast_to<OmniLight3D>(light) || Object::cast_to<SpotLight3D>(light)) {
@@ -578,7 +634,7 @@ void KilnGIWorld::_notification(int p_what) {
 	for (bool dynamic_pass : { false, true }) {
 		Vector<Triangle> triangles;
 		uint32_t hash = 0, material_hash = 0;
-		collect(get_parent(), false, dynamic_pass, triangles, hash, material_hash, false);
+		collect_roots(dynamic_pass, triangles, hash, material_hash, false);
 		uint32_t &previous_hash = dynamic_pass ? dynamic_hash : static_hash;
 		uint32_t &previous_material = dynamic_pass ? dynamic_material_hash : static_material_hash;
 		uint64_t &version = dynamic_pass ? snapshot.dynamic_version : snapshot.geometry_version;
@@ -586,7 +642,7 @@ void KilnGIWorld::_notification(int p_what) {
 		bool geometry_changed = rebuild_pending || version == 0 || hash != previous_hash;
 		if (geometry_changed || material_hash != previous_material) {
 			uint32_t unused_hash = 0, unused_material = 0;
-			collect(get_parent(), false, dynamic_pass, triangles, unused_hash, unused_material, true);
+			collect_roots(dynamic_pass, triangles, unused_hash, unused_material, true);
 			if (geometry_changed) {
 				geometry = build(triangles);
 				version++;
