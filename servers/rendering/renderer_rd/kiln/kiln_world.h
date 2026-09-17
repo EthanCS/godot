@@ -43,6 +43,8 @@ struct KilnWorld {
 	float time_of_day = 0.175;
 	Vector3 sky_horizon = Vector3(0.5, 0.58, 0.7), sky_zenith = Vector3(0.18, 0.28, 0.43);
 	bool procedural_sky = true;
+	float sky_halo = 0.035, sky_saturation = 1.12, cloud_coverage = 0.4;
+	Vector3 cloud_color = Vector3(0.78, 0.81, 0.85);
 	bool enabled = true;
 	PackedByteArray local_lights, light_grid;
 	uint32_t local_light_count = 0;

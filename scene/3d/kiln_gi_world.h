@@ -32,9 +32,14 @@ class KilnGIWorld : public Node3D {
 	struct Transport {
 		Vector3 albedo = Vector3(1, 1, 1), emission;
 		int texture_page = -1;
+		Vector3 texture_fallback = Vector3(1, 1, 1);
+		Vector2 uv_scale = Vector2(1, 1), uv_offset;
+		bool texture_repeat = true, vertex_color = false, world_mapping = false;
 		bool supported = false;
 	};
 	Ref<Environment> environment;
+	TypedArray<NodePath> capture_roots;
+	void collect_roots(bool p_dynamic_pass, Vector<Triangle> &r_triangles, uint32_t &r_hash, uint32_t &r_material_hash, bool p_geometry);
 	RendererRD::KilnWorld snapshot;
 	HashMap<uint64_t, HashMap<int, MeshData>> mesh_cache;
 	HashSet<ObjectID> unsupported_materials, unsupported_geometry;
@@ -82,6 +87,9 @@ public:
 		snapshot.texture_version++;
 	}
 	void set_query_backend(int p_backend);
+	void set_capture_roots(const TypedArray<NodePath> &p_roots);
+	void set_ao_quality(int p_quality);
+	void set_sky_parameters(float p_halo, float p_saturation, Vector3 p_cloud_color, float p_cloud_coverage);
 	void set_lighting(Vector3 p_direction, Vector3 p_color, float p_sun_energy, float p_sky_energy, float p_time_of_day);
 	void set_enabled(bool p_enabled) { snapshot.enabled = p_enabled; }
 	void set_ao_enabled(bool p_enabled) { snapshot.ao_quality = p_enabled ? 3 : 0; }

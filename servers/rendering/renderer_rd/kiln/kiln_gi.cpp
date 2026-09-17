@@ -559,10 +559,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	v(debug_mode, debug_radius, debug_gain, specular_rays);
 	v(0, 0, 0, 1);
 	vec(world.sky_zenith, world.procedural_sky ? 2 : 1);
-	vec(world.procedural_sky ? Vector3() : Vector3(0.554, 0.464, 0.304), world.procedural_sky ? 0.035 * world.sun_energy : 0);
+	vec(world.procedural_sky ? Vector3() : Vector3(0.554, 0.464, 0.304), world.procedural_sky ? world.sky_halo * world.sun_energy : 0);
 	vec(world.sun_direction, world.time_of_day);
-	vec(world.procedural_sky ? Vector3(0.78, 0.81, 0.85) : Vector3(), world.procedural_sky ? 0.4 : 0);
-	v(1.12, 1, 0, 0);
+	vec(world.procedural_sky ? world.cloud_color : Vector3(), world.procedural_sky ? world.cloud_coverage : 0);
+	v(world.sky_saturation, 1, 0, 0);
 	v(0, 0, 0, 1);
 	v(world.world.node_count, world.world.triangle_count, world.enabled, state->lighting_remaining > 0);
 	v(world.dynamic.node_count, world.dynamic.triangle_count, emitter_count, world.world.power + world.dynamic.power);
@@ -831,6 +831,12 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		}
 	}
 	Dictionary statistics;
+	statistics["rendered_frames"] = state->frames + 1;
+	statistics["width"] = state->size.x;
+	statistics["height"] = state->size.y;
+	statistics["moving"] = moving;
+	statistics["stationary_samples"] = state->stationary_samples;
+	statistics["gi_enabled"] = world.enabled;
 	statistics["gi_algorithm"] = "Surfel GI (SurfelPlus adaptation)";
 	statistics["surfel_capacity"] = state->slots;
 	statistics["surfel_multibounce"] = multibounce;
