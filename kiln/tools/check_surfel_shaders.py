@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compile every native GI stage and validate SPIR-V; outputs stay in temp storage."""
 from pathlib import Path
-import argparse, subprocess, tempfile, json, hashlib, sys
+import argparse, subprocess, tempfile, sys
 ROOT = Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',type=Path,default=Path(tempfile.gettempdir())/'kiln-surfel-review'/'shaders')
@@ -25,7 +25,4 @@ glsl=args.output/'kiln_specular_native_interface.comp';spv=glsl.with_suffix('.sp
 glsl.write_text(native_interface)
 subprocess.run(['glslangValidator','-V','--target-env','vulkan1.2','-o',str(spv),str(glsl)],check=True)
 subprocess.run(['spirv-val','--target-env','vulkan1.2',str(spv)],check=True)
-manifest=json.loads((ROOT/'thirdparty/surfelplus/upstream.json').read_text())
-for name,expected in manifest['files'].items():
-    assert hashlib.sha256((ROOT/'thirdparty/surfelplus/upstream'/name).read_bytes()).hexdigest()==expected,name
-print('All native GI shader variants and imported-source hashes passed.')
+print('All native GI shader variants passed.')

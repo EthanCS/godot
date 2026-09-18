@@ -1,3 +1,0 @@
-# Preserve the verbatim upstream bytes and their original formatting.
-upstream/* -text -whitespace
-MSME-LICENSE.txt -text -whitespace

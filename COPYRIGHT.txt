@@ -201,14 +201,15 @@ Comment: AMD FidelityFX Super Resolution 2
 Copyright: 2022-2023, Advanced Micro Devices, Inc.
 License: Expat
 
-Files: thirdparty/surfelplus/*
- servers/rendering/renderer_rd/kiln/sources/surfel_*
+Files: servers/rendering/renderer_rd/kiln/sources/surfel_*
+ servers/rendering/renderer_rd/kiln/licenses/SURFELPLUS-*
 Comment: SurfelPlus and Kiln adaptations
 Copyright: Zhen Ren, Ruipeng Wang, Jinxiang Wang
  2021, NVIDIA CORPORATION
 License: Apache-2.0
 
-Files: thirdparty/surfelplus/upstream/msme.glsl
+Files: servers/rendering/renderer_rd/kiln/sources/msme.inc
+ servers/rendering/renderer_rd/kiln/licenses/MSME-LICENSE.txt
 Comment: Multiscale Mean Estimator, Ray Tracing Gems Chapter 25
 Copyright: 2019, NVIDIA
 License: Expat

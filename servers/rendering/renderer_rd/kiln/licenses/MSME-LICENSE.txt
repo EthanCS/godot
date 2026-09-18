@@ -1,4 +1,6 @@
-﻿MIT License https://opensource.org/licenses/MIT
+MSME implementation license, retained with Kiln's embedded shader source.
+
+MIT License https://opensource.org/licenses/MIT
 
 Copyright 2019 NVIDIA
 

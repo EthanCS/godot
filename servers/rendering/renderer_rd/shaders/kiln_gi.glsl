@@ -397,7 +397,7 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -764,7 +764,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -1364,7 +1364,7 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -2019,7 +2019,7 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -2490,7 +2490,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -2662,7 +2662,11 @@ struct MSMEData {
 	vec3 variance;
 	float inconsistency;
 };
-// ref: https://github.com/Apress/ray-tracing-gems/blob/master/Ch_25_Hybrid_Rendering_for_Real-Time_Ray_Tracing/MultiscaleMeanEstimator.hlsl
+// Multiscale Mean Estimator for Kiln's diffuse surfel integration.
+// Relocated from the retained SurfelPlus reference snapshot; implementation
+// derived from Ray Tracing Gems, Chapter 25. Copyright 2019 NVIDIA.
+// MIT terms: ../licenses/MSME-LICENSE.txt.
+// Reference: https://github.com/Apress/ray-tracing-gems/blob/master/Ch_25_Hybrid_Rendering_for_Real-Time_Ray_Tracing/MultiscaleMeanEstimator.hlsl
 
 
 vec3 MSME(vec3 y, inout MSMEData data, float shortWindowBlend)
@@ -2712,6 +2716,7 @@ vec3 MSME(vec3 y, inout MSMEData data, float shortWindowBlend)
 
     return mean;
 }
+
 layout(set = 0, binding = 28, std430) readonly buffer RayResults {
 	vec4 ray_results[];
 };
@@ -2977,7 +2982,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -3798,7 +3803,7 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -4556,7 +4561,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -5853,7 +5858,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -6186,7 +6191,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -6524,7 +6529,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -7585,7 +7590,7 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -8167,7 +8172,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;
@@ -8562,7 +8567,7 @@ uint hilbert_index(uvec2 pixel) {
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;

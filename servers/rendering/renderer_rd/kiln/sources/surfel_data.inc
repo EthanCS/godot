@@ -1,7 +1,7 @@
 // Kiln adaptation of the SurfelPlus persistent surface cache and cell lookup.
 // Original authors: Zhen Ren, Ruipeng Wang, Jinxiang Wang. Apache-2.0.
 // Changes: std430 storage, sparse hashed cells, triangle anchors, bounded allocation.
-// Attribution and original sources: thirdparty/surfelplus/.
+// Attribution and license: ../licenses/SURFELPLUS-NOTICE.txt.
 // The viewport supplies a bounded capacity, rounded to a complete dispatch row.
 #define SURFEL_CAPACITY uint(p.voxel_size.w)
 const uint CELL_CAPACITY = 262144u;

@@ -1,6 +1,6 @@
 // Handwritten Metal implementation of Kiln's GGX reflection pass.
 // Engine licensing: LICENSE.txt. Surfel cache adaptation attribution:
-// thirdparty/surfelplus/NOTICE. This file is embedded verbatim, not transpiled.
+// ../licenses/SURFELPLUS-NOTICE.txt. This file is embedded verbatim, not transpiled.
 #include <metal_stdlib>
 #include <metal_raytracing>
 using namespace metal;

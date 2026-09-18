@@ -47,20 +47,6 @@ Patches:
 - `0002-godot-fsr2-options.patch` ([GH-81197](https://github.com/godotengine/godot/pull/81197))
 
 
-## surfelplus
-
-- Upstream: https://github.com/WANG-Ruipeng/SurfelPlus
-- Commit: `33cdd8bb7cea486c4ef53d1c00bc04e5f9a239bf`
-- License: Apache-2.0
-
-Reference shader subset retained verbatim with SHA-256 provenance in
-`surfelplus/upstream.json`. Kiln ports persistent surface caching, coverage-driven
-generation, spatial cell queries and the MSME estimator to native RenderingDevice.
-The MSME code additionally retains NVIDIA's 2019 MIT notice in
-`surfelplus/MSME-LICENSE.txt`. See `kiln/docs/SURFEL-GI.md` for adaptations and
-separately verified scope.
-
-
 ## angle
 
 - Upstream: https://chromium.googlesource.com/angle/angle/

@@ -66,8 +66,12 @@ are recorded in [METAL-RAY-QUERY.md](METAL-RAY-QUERY.md).
 
 Diffuse cache/MSME reference: [SurfelPlus](https://github.com/WANG-Ruipeng/SurfelPlus),
 commit `33cdd8bb7cea486c4ef53d1c00bc04e5f9a239bf`, by Zhen Ren, Ruipeng Wang and
-Jinxiang Wang. The original shader subset, hashes, Apache-2.0 license and NVIDIA
-MSME MIT notice remain in `thirdparty/surfelplus/`.
+Jinxiang Wang. Kiln retains only the MSME implementation it actually compiles,
+now in `servers/rendering/renderer_rd/kiln/sources/msme.inc`. The
+SurfelPlus Apache-2.0 license, NOTICE and NVIDIA MSME MIT notice are colocated in
+`servers/rendering/renderer_rd/kiln/licenses/`. Historical validation manifests
+still record the original reference snapshot and hashes; that unused snapshot is
+no longer part of the tree.
 
 The renderer deliberately differs from that sample: standard G-buffer material
 rasterization, a sparse grid and triangle anchors, and explicit GGX reflection
@@ -80,9 +84,10 @@ in the native compute pass rather than copied from the reference renderer.
 ## Compiled
 
 Windows x86_64 Mono editor and release export template, MSVC production/speed
-builds. All 23 compute variants pass glslang and spirv-val for Vulkan 1.2, including
-hardware generation, diffuse, specular and query-diagnostic variants. Imported
-SurfelPlus source hashes remain unchanged. Existing C# API signatures are unchanged.
+builds. All generated compute variants pass glslang and spirv-val for Vulkan 1.2,
+including hardware generation, diffuse, specular and query-diagnostic variants.
+The relocated MSME source is compiled directly from Kiln's shader source
+directory. Existing C# API signatures are unchanged.
 
 ```powershell
 $deps = (Resolve-Path bin/build_deps).Path
@@ -91,6 +96,20 @@ python -m SCons platform=windows target=editor module_mono_enabled=yes arch=x86_
 
 Repeat with `target=template_release`. SCons regenerates the combined GI shader
 from stage/include changes. Headless asset import/export is not visual validation.
+
+### MSME source relocation validation (2026-09-18)
+
+- Implemented: removed the unused SurfelPlus reference snapshot and moved the
+  compiled MSME implementation plus its required notices into the Kiln renderer.
+  The MSME function body is unchanged; only attribution comments and the final
+  newline differ from the retained snapshot.
+- Compiled: every generated Vulkan compute variant passed `glslangValidator` and
+  `spirv-val`; the macOS arm64 editor built and linked successfully.
+- Visually verified: a real 960x540 Metal window rendered Sponza on Apple M5 with
+  native hardware ray queries, produced the expected lit scene, and captured
+  finite GI resources under `/tmp/kiln-msme-relocation.6cxk3A/`.
+- Unsupported/unverified: this relocation was not rebuilt on Windows/Linux and
+  makes no visual-quality or performance claim because it changes no shader logic.
 
 ## Pre-optimization real GPU validation
 

@@ -10,7 +10,6 @@ for stage in STAGES:
     for inc in SOURCE.glob('*.inc'):
         text = text.replace('// @' + inc.stem.upper() + '@', inc.read_text())
     text = text.replace('// @PROJECT_SKY@', (ROOT / 'kiln/demo/rendering/sky/sky_radiance.gdshaderinc').read_text())
-    text = text.replace('// @SURFEL_MSME@', (ROOT / 'thirdparty/surfelplus/upstream/msme.glsl').read_text())
     assert '// @' not in text, stage
     parts.append('#ifdef STAGE_' + stage.upper() + '\n' + text + '\n#endif\n')
 output = ROOT / 'servers/rendering/renderer_rd/shaders/kiln_gi.glsl'

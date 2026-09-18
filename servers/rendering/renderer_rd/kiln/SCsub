@@ -12,7 +12,7 @@ def surfel_shader_builder(target, source, env):
 root = Path(env.Dir("#").abspath)
 inputs = [env.File("#kiln/tools/build_gi_shaders.py")]
 inputs += [env.File(str(p)) for p in sorted((root / "servers/rendering/renderer_rd/kiln/sources").glob("*")) if p.suffix in (".comp", ".inc")]
-inputs += [env.File("#thirdparty/surfelplus/upstream/msme.glsl"), env.File("#kiln/demo/rendering/sky/sky_radiance.gdshaderinc")]
+inputs += [env.File("#kiln/demo/rendering/sky/sky_radiance.gdshaderinc")]
 env.CommandNoCache("#servers/rendering/renderer_rd/shaders/kiln_gi.glsl", inputs, env.Run(surfel_shader_builder))
 kiln_env = env.Clone()
 # SDK stays outside tracked source: NVIDIA's license is not the engine MIT license.

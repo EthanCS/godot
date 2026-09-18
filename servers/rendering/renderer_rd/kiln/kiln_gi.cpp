@@ -1,5 +1,5 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// SurfelPlus adaptation: thirdparty/surfelplus/NOTICE and kiln/docs/SURFEL-GI.md.
+// SurfelPlus adaptation: servers/rendering/renderer_rd/kiln/licenses/SURFELPLUS-NOTICE.txt and kiln/docs/SURFEL-GI.md.
 
 #include "kiln_gi.h"
 
