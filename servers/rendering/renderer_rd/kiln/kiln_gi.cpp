@@ -115,11 +115,25 @@ void KilnGI::View::free_hardware() {
 	hardware_active = false;
 }
 void KilnGI::View::free_data() {
+	// RenderSceneBuffersRD calls this on viewport reconfiguration, including
+	// resize. Only screen-space resources depend on that configuration.
 	if (nrd) {
 		memdelete(nrd);
 		nrd = nullptr;
 	}
 	nrd_active = false;
+	for (RID rid : owned) {
+		if (rid.is_valid()) {
+			RD::get_singleton()->free_rid(rid);
+		}
+	}
+	owned.clear();
+	textures.clear();
+	index = ao_frames = 0;
+	ready = false;
+}
+void KilnGI::View::free_cache() {
+	free_data();
 	free_hardware();
 	if (ray_albedo.is_valid()) {
 		RD::get_singleton()->free_rid(ray_albedo);
@@ -127,19 +141,19 @@ void KilnGI::View::free_data() {
 	}
 	hardware_failed = false;
 	hardware_builds = tlas_builds = 0;
-	for (RID rid : owned) {
-		if (rid.is_valid()) {
-			RD::get_singleton()->free_rid(rid);
-		}
+	if (parameters.is_valid()) {
+		RD::get_singleton()->free_rid(parameters);
+		parameters = RID();
 	}
 	for (const KeyValue<String, RID> &entry : storage) {
 		RD::get_singleton()->free_rid(entry.value);
 	}
-	owned.clear();
 	storage.clear();
 	capacities.clear();
-	textures.clear();
 	frames = index = stationary_samples = 0;
+	motion_remaining = lighting_remaining = 0;
+	lighting_response = 0;
+	previous_local_lights.clear();
 	geometry_version = dynamic_version = light_version = material_version = texture_version = 0;
 	static_material_version = dynamic_material_version = 0;
 	ready = false;
@@ -261,29 +275,43 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	Ref<View> state = buffers->get_custom_data(kiln_scope);
 	if (state->environment != environment) {
-		state->free_data();
+		state->free_cache();
 		state->environment = environment;
 	}
 	auto own = [&](RID rid) { state->owned.push_back(rid); return rid; };
-	auto allocate = [&](String name, uint32_t bytes) {
+	auto allocate = [&](String name, uint32_t bytes, bool preserve = false) {
 		if (!state->storage.has(name) || state->capacities[name] < bytes) {
-			if (state->storage.has(name)) {
-				rd->free_rid(state->storage[name]);
+			RID old = state->storage.has(name) ? state->storage[name] : RID();
+			uint32_t old_capacity = state->capacities.has(name) ? state->capacities[name] : 0;
+			state->capacities[name] = preserve ? bytes : MAX(bytes, old_capacity ? old_capacity * 2 : 16u);
+			RID buffer = rd->storage_buffer_create(state->capacities[name]);
+			if (preserve) {
+				rd->buffer_clear(buffer, old_capacity, state->capacities[name] - old_capacity);
+				if (old.is_valid()) {
+					rd->buffer_copy(old, buffer, 0, 0, old_capacity);
+				}
 			}
-			state->capacities[name] = MAX(bytes, state->capacities.has(name) ? state->capacities[name] * 2 : 16u);
-			state->storage[name] = rd->storage_buffer_create(state->capacities[name]);
+			state->storage[name] = buffer;
+			if (old.is_valid()) {
+				rd->free_rid(old);
+			}
 		}
 		return state->storage[name];
 	};
 	auto upload = [&](String name, const PackedByteArray &bytes) { RID rid = allocate(name, bytes.size()); rd->buffer_update(rid, 0, bytes.size(), bytes.ptr()); return rid; };
 	bool initialize = !state->ready;
+	bool initialize_cache = !state->parameters.is_valid();
 	if (initialize) {
 		state->size = buffers->get_internal_size();
 		// Keep the cache density consistent as the full-resolution receiver count
 		// grows. Workgroups address rows of 256 slots; bound memory at 32 MiB.
 		uint32_t requested_slots = ((uint64_t(state->size.x) * state->size.y + 2047) / 2048) * 256;
-		state->slots = CLAMP(requested_slots, 65536u, 262144u);
-		state->parameters = own(rd->uniform_buffer_create(704));
+		// Grow without replacing existing surfels; shrinking the viewport does
+		// not discard transport, sample sequences or the hardware scene.
+		state->slots = MAX(state->slots, CLAMP(requested_slots, 65536u, 262144u));
+		if (initialize_cache) {
+			state->parameters = rd->uniform_buffer_create(704);
+		}
 		// Persistent world-space surfels. Screen textures contain only the resolve
 		// and geometry history; there are no screen probes or legacy SH caches.
 		for (const char *name : { "raw", "diffuse_work", "diffuse_spatial", "diffuse", "specular", "fresnel", "specular_raw", "fresnel_raw", "reflection_base", "reflection_fresnel", "reflection_geometry", "confidence", "display_diffuse", "display_specular", "nrd_diffuse_raw", "nrd_base", "nrd_fresnel", "nrd_motion" }) {
@@ -297,7 +325,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		state->textures["nrd_normal0"] = own(texture(state->size, RD::DATA_FORMAT_A2B10G10R10_UNORM_PACK32));
 		state->textures["nrd_depth0"] = own(texture(state->size, RD::DATA_FORMAT_R32_SFLOAT));
 		state->textures["nrd_specular_basis0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16_SFLOAT));
-		allocate("surfels", state->slots * 128);
+		allocate("surfels", state->slots * 128, true);
 		allocate("cell_heads", 262144 * 8);
 		allocate("cell_links", state->slots * 27 * 4);
 		allocate("grid_sums", 4096 * 4);
@@ -305,13 +333,14 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		// Last word survives per-frame counter clearing: previous pool occupancy
 		// lets GPU retirement reserve space for newly exposed geometry.
 		allocate("counters", 20 + 262144 * 4);
-		rd->buffer_clear(state->storage["counters"], 0, 20 + 262144 * 4);
+		if (initialize_cache) {
+			rd->buffer_clear(state->storage["counters"], 0, 20 + 262144 * 4);
+		}
 		allocate("ray_results", state->slots * 16);
-		allocate("sample_history", state->slots * 16);
+		allocate("sample_history", state->slots * 16, true);
 		allocate("ray_schedule", 16 + state->slots * 8);
 		allocate("shared_samples", state->slots * 16);
-		allocate("ray_guiding", state->slots * 16 * 8);
-		rd->buffer_clear(state->storage["surfels"], 0, state->slots * 128);
+		allocate("ray_guiding", state->slots * 16 * 8, true);
 		Size2i ao_size = state->size;
 		for (int i = 0; i < 5; i++) {
 			state->textures["ao_depth" + itos(i) + "0"] = own(texture(ao_size, RD::DATA_FORMAT_R32_SFLOAT));
@@ -352,7 +381,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		upload("dynamic_nodes", world.dynamic.nodes);
 		upload("dynamic_triangles", world.dynamic.triangles);
 	}
-	if (initialize || state->texture_version != world.texture_version) {
+	if (initialize_cache || state->texture_version != world.texture_version) {
 		if (state->ray_albedo.is_valid()) {
 			rd->free_rid(state->ray_albedo);
 		}
@@ -511,19 +540,39 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		upload("light_grid", world.light_grid);
 	}
 	if (changed_light) {
-		// Keep the short lighting estimator active for a full motion window.
-		// Returning to 256-ray accumulation after only eight frames preserves
-		// a visible fraction of the previous illumination after lights turn off.
+		// Request fresh transport during changes, but let each surfel's MSME
+		// distinguish a consistent lighting change from Monte Carlo variance.
 		// An empty cache has no stale lighting to flush. Treating initial scene
 		// upload/reset as relighting kept the high-response estimator active
 		// for 32 frames, repeatedly discarding useful cold-start samples.
-		state->lighting_remaining = state->frames == 0 || changed_world ? 0 : 32;
+		state->lighting_remaining = state->frames == 0 || changed_world ? 0 : 64;
 		state->epoch++;
 	} else if (state->frames == 0) {
 		state->lighting_remaining = 0;
 	} else if (state->lighting_remaining) {
 		state->lighting_remaining--;
 	}
+	Vector3 sun_radiance = world.sun_color * world.sun_energy;
+	Vector3 sky_radiance = world.sky_horizon * world.sky_energy;
+	Vector3 sky_zenith = world.sky_zenith * world.sky_energy;
+	auto relative_change = [](Vector3 a, Vector3 b) {
+		return (a - b).length() / MAX(MAX(a.length(), b.length()), 0.001f);
+	};
+	// A light revision is not a magnitude: a continuously advancing TOD must
+	// not request the same estimator bandwidth as an instantaneous light switch.
+	float lighting_delta = MAX(relative_change(sun_radiance, state->previous_sun_radiance), MAX(relative_change(sky_radiance, state->previous_sky_radiance), relative_change(sky_zenith, state->previous_sky_zenith)));
+	if (MAX(sun_radiance.length_squared(), state->previous_sun_radiance.length_squared()) > 0.0001f) {
+		lighting_delta = MAX(lighting_delta, (world.sun_direction - state->previous_sun_direction).length());
+	}
+	if (changed_dynamic || changed_material || world.local_lights != state->previous_local_lights) {
+		lighting_delta = 1.0f;
+	}
+	state->lighting_response = state->lighting_remaining ? MAX(state->lighting_response * 0.96f, CLAMP((lighting_delta - 0.02f) / 0.18f, 0.0f, 1.0f)) : 0.0f;
+	state->previous_sun_direction = world.sun_direction;
+	state->previous_sun_radiance = sun_radiance;
+	state->previous_sky_radiance = sky_radiance;
+	state->previous_sky_zenith = sky_zenith;
+	state->previous_local_lights = world.local_lights;
 	bool camera_moved = state->frames > 0 && (scene->cam_transform != state->previous_camera || scene->cam_projection != state->previous_projection);
 	if (camera_moved) {
 		state->motion_remaining = 8;
@@ -544,8 +593,8 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	auto v = [&](float x, float y, float z, float w) { params[at++] = x; params[at++] = y; params[at++] = z; params[at++] = w; };
 	auto vec = [&](Vector3 a, float w) { v(a.x, a.y, a.z, w); };
-	v(state->size.x, state->size.y, state->frames, state->frames > 0);
-	v(1.2, 1, moving ? -1 : state->stationary_samples, world.samples);
+	v(state->size.x, state->size.y, state->frames, state->frames > 0 && !initialize);
+	v(1.2, state->lighting_response, moving ? -1 : state->stationary_samples, world.samples);
 	// A stationary camera still samples different receivers under TAA jitter.
 	// Reproject those samples without classifying the camera as moving, so
 	// stationary confidence can accumulate to the full quality budget.
@@ -580,7 +629,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	// Keep the shader sampling parity and NRD's frame index identical even
 	// on the frame that switches NRD on/off.
 	params[82] = state->frames;
-	params[83] = state->frames > 0;
+	params[83] = state->frames > 0 && !initialize;
 	bool nrd_checkerboard = use_nrd && specular_rays > 0 && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd_specular_checkerboard", false)) && !bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd_reference", false));
 	bool specular_checkerboard = ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_checkerboard", true);
 	v(world.world.triangle_count, specular_checkerboard && !use_nrd, use_nrd ? (nrd_checkerboard ? 2 : 1) : 0, state->epoch);
@@ -674,7 +723,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	} else {
 		rd->texture_clear(T("raw"), Color(0, 0, 0, 0), 0, 1, 0, 1);
 	}
-	if (state->ao_quality != world.ao_quality || state->frames == 0) {
+	if (state->ao_quality != world.ao_quality || state->frames == 0 || initialize) {
 		state->ao_frames = 0;
 	}
 	state->ao_quality = world.ao_quality;
@@ -872,6 +921,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["height"] = state->size.y;
 			metadata["frame"] = state->frames;
 			metadata["moving"] = moving;
+			metadata["lighting_response"] = state->lighting_response;
+			metadata["relighting_frames"] = state->lighting_remaining;
+			metadata["screen_history_valid"] = state->frames > 0 && !initialize;
 			metadata["stationary_samples"] = state->stationary_samples;
 			metadata["geometry_version"] = world.geometry_version;
 			metadata["dynamic_version"] = world.dynamic_version;

@@ -42,7 +42,10 @@ compositor overlay.
    coordinates from 512x512 RGBA8 sRGB array layers, with hardware decoding and
    bilinear filtering, repeat/clamp, UV scale and offset. Material/texture changes update
    transport without rebuilding acceleration structures. Freed texture pages are
-   reused, and per-viewport GPU resources are freed on reconfiguration.
+   reused. Screen resources are recreated on viewport reconfiguration; world-space
+   surfel history and acceleration structures survive resize. Cache growth and
+   relighting results are recorded in the
+   [dynamic diffuse review](DIFFUSE-RELIGHTING-2026-09-18.md).
 6. Forward+ consumes the same diffuse and two specular integrals. Its packed
    depth-prepass roughness is decoded before tracing. The existing direct BRDF,
    transparency and other renderers remain independent.

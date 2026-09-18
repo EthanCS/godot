@@ -30,7 +30,9 @@ vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 			// separate integrate dispatch. Sharing only the last few-ray batch
 			// discards the convergence work already done by each neighbor.
 			vec4 history = surfels[neighbor].irradiance_samples;
-			float settled = (p.source_bvh_state.w > 0.5 ? 0.5 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
+			// During relighting, pool fresh batches and let MSME own the temporal
+			// history. Reusing old means here recursively delays the new lighting.
+			float settled = (p.source_bvh_state.w > 0.5 ? 0.0 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
 			sum += mix(batch.rgb, history.rgb, settled) * w;
 			weights += w;
 			history_fraction += settled * w;
@@ -75,6 +77,6 @@ void main() {
 	}
 	vec4 sample_value = ray_results[id];
 	// Alpha records reused history, not ray count (that lives in ray_results).
-	// Integrate compensates bootstrap and relighting for this temporal weight.
+	// Integrate compensates bootstrap for this temporal weight.
 	shared_samples[id] = vec4(mix(sample_value.rgb, total > 1e-6 ? sum / total : sample_value.rgb, sharing), sharing * history_fraction / max(total, 1e-6));
 }

@@ -82,6 +82,10 @@ records the subsequent cache-sharing revision using direct irradiance values.
 The [cold-cache convergence follow-up](docs/DIFFUSE-CONVERGENCE-2026-09-18.md)
 fixes false startup relighting and repeated history weighting, with early-frame
 raw-diffuse comparisons and explicit remaining startup noise.
+The [dynamic relighting and resize fix](docs/DIFFUSE-RELIGHTING-2026-09-18.md)
+preserves the world cache across viewport reconfiguration and replaces raw-batch
+relighting overrides with filtered local catch-up. It records continuous-TOD
+noise, response lag, resize continuity and the cold-start tradeoff separately.
 See the [cache/NRD comparison](docs/NRD-CACHE-DIFFUSE-2026-09-18.md) for measured
 benefits, regressions and cost. NRD has its own
 license; its SDK source is not vendored here. The figures above are historical;

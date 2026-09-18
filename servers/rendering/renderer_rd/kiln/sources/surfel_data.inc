@@ -142,7 +142,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;

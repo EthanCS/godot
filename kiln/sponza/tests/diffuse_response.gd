@@ -43,7 +43,8 @@ func run() -> void:
 	assert(scene.gi.get_statistics().material_version > material_version)
 	assert(scene.gi.get_statistics().moving)
 	material_version = scene.gi.get_statistics().material_version
-	await scene.settle(40)
+	# Relighting now keeps a 64-frame sampling window for filtered catch-up.
+	await scene.settle(72)
 	assert(scene.gi.get_statistics().material_version == material_version)
 	assert(not scene.gi.get_statistics().moving)
 	scene.floor_material.albedo_color = original_color

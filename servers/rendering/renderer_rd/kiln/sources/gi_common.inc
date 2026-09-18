@@ -6,7 +6,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity

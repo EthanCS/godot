@@ -16,7 +16,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -538,7 +538,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -619,7 +622,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -898,7 +901,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -969,7 +975,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -1491,7 +1497,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -1608,7 +1617,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -2130,7 +2139,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -2306,7 +2318,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -2585,7 +2597,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -2707,7 +2722,15 @@ void main() {
 		data.mean *= estimator_scale;
 		data.shortMean *= estimator_scale;
 		data.variance *= estimator_scale * estimator_scale;
-		MSME(sample_value.rgb * estimator_scale, data, 0.15);
+		// Gradual TOD needs a quiet short-term estimate; a measured scene step
+		// temporarily widens that window's bandwidth, then decays it smoothly.
+		float short_blend = p.source_bvh_state.w > 0.5 ? mix(0.08, 0.4, p.gi.y) : 0.15;
+		if (p.source_bvh_state.w > 0.5) {
+			// Sleeping surfels still feed multibounce. Keep the same response in
+			// elapsed frames when their updates are staggered (up to 16 frames).
+			short_blend = 1.0 - pow(1.0 - short_blend, clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0));
+		}
+		MSME(sample_value.rgb * estimator_scale, data, short_blend);
 		data.mean /= estimator_scale;
 		data.shortMean /= estimator_scale;
 		data.variance /= estimator_scale * estimator_scale;
@@ -2728,16 +2751,21 @@ void main() {
 			float blend = fresh_blend / max(1.0 - shared_samples[id].w, 0.25);
 			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, min(blend, 1.0));
 		}
-		// Explicit scene changes shorten the long-term estimator, including all-off.
+		// Catch up to the filtered short mean only where local estimates disagree.
+		// The former global blend used the raw batch, bypassing firefly suppression
+		// and variance reduction every frame of a continuously advancing TOD.
 		if (p.source_bvh_state.w > 0.5) {
-			// Preserve a per-frame decay after staggered updates. A constant 0.25
-			// per update otherwise doubles relighting lag when updating every other frame.
-			float elapsed = clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0);
-			// Spatial sharing already contains old lighting. Compensate so a
-			// uniform illumination step retains the same per-frame decay instead
-			// of silently doubling history when neighbor reuse is enabled.
-			float blend = (1.0 - pow(0.75, elapsed)) / max(1.0 - shared_samples[id].w, 0.25);
-			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, min(blend, 1.0));
+			vec3 error = abs(data.shortMean - s.irradiance_samples.rgb);
+			// EMA standard-error approximation; shared batches are correlated, so
+			// this is a response heuristic, not an independent-sample confidence test.
+			vec3 standard_error = sqrt(max(data.variance, vec3(1e-8)) * short_blend / (2.0 - short_blend));
+			// The imported variance floor must not classify a fading signal as
+			// permanently uncertain. Bound that uncertainty in relative units,
+			// including all-off, without replacing filtered light with raw rays.
+			standard_error = min(standard_error, max(max(data.shortMean, s.irradiance_samples.rgb), vec3(1e-6)) * 0.1);
+			float change = dot(vec3(0.299, 0.587, 0.114), error / max(standard_error, vec3(1e-7)));
+			float response = smoothstep(0.25, 1.0, change);
+			data.mean = mix(data.mean, data.shortMean, response);
 		}
 	}
 	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));
@@ -2766,7 +2794,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -3045,7 +3073,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -3110,7 +3141,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -3328,7 +3359,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -3850,7 +3881,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -4062,7 +4096,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -4322,7 +4356,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -4601,7 +4635,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -4771,7 +4808,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -4937,7 +4974,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -5111,7 +5148,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -5370,7 +5407,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -5612,7 +5649,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -5891,7 +5928,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -5938,7 +5978,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -6217,7 +6257,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -6269,7 +6312,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -6548,7 +6591,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -6617,7 +6663,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -6849,7 +6895,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -7073,7 +7119,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -7595,7 +7641,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -7715,7 +7764,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -7891,7 +7940,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -8170,7 +8219,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -8215,7 +8267,9 @@ vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 			// separate integrate dispatch. Sharing only the last few-ray batch
 			// discards the convergence work already done by each neighbor.
 			vec4 history = surfels[neighbor].irradiance_samples;
-			float settled = (p.source_bvh_state.w > 0.5 ? 0.5 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
+			// During relighting, pool fresh batches and let MSME own the temporal
+			// history. Reusing old means here recursively delays the new lighting.
+			float settled = (p.source_bvh_state.w > 0.5 ? 0.0 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
 			sum += mix(batch.rgb, history.rgb, settled) * w;
 			weights += w;
 			history_fraction += settled * w;
@@ -8260,7 +8314,7 @@ void main() {
 	}
 	vec4 sample_value = ray_results[id];
 	// Alpha records reused history, not ray count (that lives in ray_results).
-	// Integrate compensates bootstrap and relighting for this temporal weight.
+	// Integrate compensates bootstrap for this temporal weight.
 	shared_samples[id] = vec4(mix(sample_value.rgb, total > 1e-6 ? sum / total : sample_value.rgb, sharing), sharing * history_fraction / max(total, 1e-6));
 }
 
@@ -8276,7 +8330,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
@@ -8555,7 +8609,10 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+				// Newly exposed/denser receivers must not overpower mature neighbors
+				// with their first few noisy rays. Normalize RGB by the same weight
+				// so confidence controls influence, never a fade from black.
+				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -8626,7 +8683,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 view;
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
-    vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
