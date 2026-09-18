@@ -603,9 +603,46 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	bool reproject = camera_moved || scene->taa_jitter != Vector2() || scene->prev_taa_jitter != Vector2();
 	bool reconstruct_diffuse = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_reconstruction", true);
 	v(world.rays, reproject, world.ao_quality, reconstruct_diffuse);
-	// Correctness-first default. The scheduler still spends only requested rays,
-	// but newly born and high-variance surfels may now use their full request.
-	int surfel_ray_budget = CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_ray_budget", 2097152)), 0, 8388608);
+	// Preserve the correctness-first budget as a ceiling while avoiding its full
+	// cost after the cache has settled. The measured tiers retain full bootstrap
+	// and abrupt-relighting bandwidth, then reduce steady and camera-motion work.
+	// A configured budget of zero keeps its historical meaning: uncapped rays.
+	int configured_surfel_ray_budget = CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_ray_budget", 2097152)), 0, 8388608);
+	bool adaptive_surfel_budget = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_adaptive_budget", true);
+	int surfel_ray_budget = configured_surfel_ray_budget;
+	String surfel_ray_budget_mode = configured_surfel_ray_budget == 0 ? "uncapped" : "fixed";
+	if (adaptive_surfel_budget && configured_surfel_ray_budget > 0) {
+		int stationary_budget = CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_stationary_ray_budget", 393216)), 65536, 8388608);
+		int motion_budget = MAX(stationary_budget, CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_motion_ray_budget", 524288)), 65536, 8388608));
+		int bootstrap_budget = MAX(motion_budget, CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_bootstrap_ray_budget", 1048576)), 65536, 8388608));
+		int requested_budget = stationary_budget;
+		surfel_ray_budget_mode = "stationary";
+		if (camera_moved || state->motion_remaining > 0) {
+			requested_budget = MAX(requested_budget, motion_budget);
+			surfel_ray_budget_mode = "motion";
+		}
+		// Continuous TOD changes need the motion tier, while abrupt changes ramp
+		// toward the configured correctness ceiling and decay with the response.
+		if (state->lighting_response > 0.001f) {
+			requested_budget = MAX(requested_budget, motion_budget);
+			surfel_ray_budget_mode = "lighting";
+		}
+		if (state->lighting_response > 0.02f) {
+			float relight = Math::smoothstep(0.02f, 0.5f, state->lighting_response);
+			requested_budget = MAX(requested_budget, int(Math::lerp(float(motion_budget), float(configured_surfel_ray_budget), relight)));
+			surfel_ray_budget_mode = "relighting";
+		}
+		// New surfels receive their 32-ray admission batch without making the
+		// high bootstrap tier a permanent steady-state cost.
+		if (state->frames < 16) {
+			requested_budget = MAX(requested_budget, bootstrap_budget);
+			surfel_ray_budget_mode = "bootstrap";
+		}
+		surfel_ray_budget = MIN(configured_surfel_ray_budget, requested_budget);
+		if (configured_surfel_ray_budget < requested_budget) {
+			surfel_ray_budget_mode = "configured_cap";
+		}
+	}
 	vec(world.world.bounds.position, surfel_ray_budget);
 	vec(world.world.bounds.size, state->slots);
 	int specular_rays = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_specular", true) ? CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_rays", 2)), 1, 8) : 0;
@@ -824,6 +861,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["surfel_multibounce"] = multibounce;
 			metadata["surfel_reconstruction"] = reconstruct_diffuse;
 			metadata["surfel_ray_budget"] = surfel_ray_budget;
+			metadata["surfel_ray_budget_configured"] = configured_surfel_ray_budget;
+			metadata["surfel_ray_budget_adaptive"] = adaptive_surfel_budget;
+			metadata["surfel_ray_budget_mode"] = surfel_ray_budget_mode;
 			metadata["irradiance_sharing"] = irradiance_sharing;
 			metadata["surfel_specular"] = specular_rays > 0;
 			metadata["specular_rays"] = specular_rays;
@@ -971,6 +1011,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	statistics["surfel_multibounce"] = multibounce;
 	statistics["surfel_reconstruction"] = reconstruct_diffuse;
 	statistics["surfel_ray_budget"] = surfel_ray_budget;
+	statistics["surfel_ray_budget_configured"] = configured_surfel_ray_budget;
+	statistics["surfel_ray_budget_adaptive"] = adaptive_surfel_budget;
+	statistics["surfel_ray_budget_mode"] = surfel_ray_budget_mode;
 	statistics["irradiance_sharing"] = irradiance_sharing;
 	statistics["specular_rays"] = specular_rays;
 	statistics["specular_implementation"] = state->hardware_active && native_specular_version.is_valid() ? "handwritten_msl" : "translated_glsl";

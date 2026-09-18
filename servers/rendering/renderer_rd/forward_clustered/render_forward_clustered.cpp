@@ -5296,6 +5296,11 @@ RenderForwardClustered::RenderForwardClustered(bool p_kiln_deferred) :
 	singleton = this;
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/debug_view", PROPERTY_HINT_ENUM, "Lit,Albedo,Normal,Roughness,Emission,Material,Depth,Indirect,AO,Motion,Direct,ClusterCount,History,Instance,Geometric Normal,Surfel IDs,Surfel Irradiance,Surfel Normals,Surfel Radius,Surfel Age,Surfel Samples,Surfel Updates,Surfel Coverage,Surfel Contributors,Surfel Variance,Surfel Raw GI,Surfel Grid,Surfel Anchors,Indirect Specular"), 0);
 	GLOBAL_DEF("rendering/kiln/surfel_multibounce", true);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_ray_budget", PROPERTY_HINT_RANGE, "0,8388608,65536"), 2097152);
+	GLOBAL_DEF("rendering/kiln/surfel_adaptive_budget", true);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_stationary_ray_budget", PROPERTY_HINT_RANGE, "65536,8388608,65536"), 393216);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_motion_ray_budget", PROPERTY_HINT_RANGE, "65536,8388608,65536"), 524288);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_bootstrap_ray_budget", PROPERTY_HINT_RANGE, "65536,8388608,65536"), 1048576);
 	GLOBAL_DEF("rendering/kiln/surfel_specular", true);
 	GLOBAL_DEF("rendering/kiln/nrd", false);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/nrd_diffuse_iterations", PROPERTY_HINT_RANGE, "2,5,1"), 4);

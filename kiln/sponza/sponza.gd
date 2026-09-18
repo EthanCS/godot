@@ -83,7 +83,12 @@ func _ready() -> void:
 		if arg == "--metal-native-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", true)
 		if arg == "--metal-translated-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", false)
 		if arg == "--no-specular": ProjectSettings.set_setting("rendering/kiln/surfel_specular", false)
-		if arg.begins_with("--surfel-ray-budget="): ProjectSettings.set_setting("rendering/kiln/surfel_ray_budget", int(arg.get_slice("=", 1)))
+		if arg.begins_with("--surfel-ray-budget="):
+			ProjectSettings.set_setting("rendering/kiln/surfel_ray_budget", int(arg.get_slice("=", 1)))
+			# An explicit command-line value is a controlled fixed-budget run.
+			ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", false)
+		if arg == "--adaptive-budget": ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", true)
+		if arg == "--no-adaptive-budget": ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", false)
 		if arg == "--no-irradiance-sharing": ProjectSettings.set_setting("rendering/kiln/surfel_irradiance_sharing", false)
 		if arg == "--raw-cache": ProjectSettings.set_setting("rendering/kiln/surfel_reconstruction", false)
 		if arg == "--no-nrd": ProjectSettings.set_setting("rendering/kiln/nrd", false)

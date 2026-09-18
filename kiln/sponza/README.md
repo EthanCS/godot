@@ -77,9 +77,18 @@ CLI options after `--`: `--still`, `--no-gi`, `--no-aa`, `--rays=2`,
 Ray quality 1–8 supplies the nominal 4–32 rays per scheduled surfel. The GPU
 redistributes these requests by variance and cache age; newborn and high-variance
 surfels may receive up to 32 actual rays while stable entries are decimated. The
-correctness-first default caps primary diffuse rays at 2,097,152 per frame
-(`--surfel-ray-budget=0` removes the cap). Shadow and
+correctness-first 2,097,152 value is now a ceiling. Default adaptive tiers use
+393,216 rays while stationary, 524,288 during camera/continuous-light motion and
+1,048,576 for the first 16 cache frames; abrupt relighting ramps toward the
+ceiling. `--surfel-ray-budget=<N>` selects a fixed budget for controlled A/B runs,
+`--surfel-ray-budget=0` removes the cap, and a following `--adaptive-budget`
+re-enables adaptive selection. The corresponding project settings are
+`surfel_adaptive_budget`, `surfel_stationary_ray_budget`,
+`surfel_motion_ray_budget` and `surfel_bootstrap_ray_budget` under
+`rendering/kiln/`. Shadow and
 cache-miss continuation rays are additional work, included in measured time.
+See the [adaptive budget report](../docs/SURFEL-ADAPTIVE-BUDGET-2026-09-18.md)
+for real-GPU image loss, performance and unverified scope.
 `--raw-cache` disables screen/temporal diffuse reconstruction.
 `--no-irradiance-sharing` disables cache sharing for an independent comparison.
 Use `run.ps1 -NoSpecular -Still -DebugView 25` to inspect raw diffuse values;

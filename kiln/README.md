@@ -91,6 +91,13 @@ removes the fixed 64-frame relighting mode, delays newborn surfel admission,
 initializes new entries from the existing cache and makes variance/bootstrap ray
 requests consume the real global budget. It adds deterministic per-frame TOD and
 moving-camera validation and records the remaining limits separately.
+The [adaptive ray-budget follow-up](docs/SURFEL-ADAPTIVE-BUDGET-2026-09-18.md)
+keeps that correctness-first budget as a ceiling while using measured bootstrap,
+stationary, motion and relighting tiers. On the documented Apple M5 editor A/B,
+diffuse-only frame time falls 33.1% static and 8.8% moving; image comparisons,
+build scope and the existing multibounce-tail failure are recorded separately.
+With the same default two-ray reflections on both sides, whole-frame reductions
+are 24.7% static and 6.1% moving in the same editor A/B.
 See the [cache/NRD comparison](docs/NRD-CACHE-DIFFUSE-2026-09-18.md) for measured
 benefits, regressions and cost. NRD has its own
 license; its SDK source is not vendored here. The figures above are historical;
