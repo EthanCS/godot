@@ -1,0 +1,26 @@
+#version 450
+// kajiya age_surfels.hlsl: life increment and recycle-to-pool on expiry.
+// @GI_COMMON@
+// @KAJIYA_COMMON@
+// @KAJIYA_SURFEL@
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count) {
+		return;
+	}
+	if (!kajiya_surfel_life_needs_aging(kajiya_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+	uint prev_age = kajiya_surfel_life_buf[surfel_idx];
+	uint new_age = prev_age + 1u;
+	if (kajiya_is_surfel_life_valid(new_age)) {
+		kajiya_surfel_life_buf[surfel_idx] = new_age;
+	} else {
+		kajiya_surfel_life_buf[surfel_idx] = KAJIYA_SURFEL_LIFE_RECYCLED;
+		// Deallocate: push the index back onto the LIFO pool.
+		uint alloc_count = atomicAdd(kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_ALLOC_COUNT / 4u], -1u);
+		kajiya_surfel_pool_buf[alloc_count - 1u] = surfel_idx;
+	}
+}

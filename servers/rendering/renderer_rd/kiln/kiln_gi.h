@@ -2,6 +2,7 @@
 // Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
 
 #pragma once
+#include <vector>
 #include "kiln_nrd.h"
 #include "kiln_world.h"
 
@@ -37,10 +38,24 @@ class KilnGI {
 		NRD_RESOLVE,
 		SURFEL_SPATIAL,
 		SURFEL_SCHEDULE,
+		KAJIYA_SKY,
+		KAJIYA_SURFEL_CLEAR_POOL,
+		KAJIYA_SURFEL_FIND_MISSING,
+		KAJIYA_SURFEL_ARGS,
+		KAJIYA_SURFEL_AGE,
+		KAJIYA_SURFEL_ALLOCATE,
+		KAJIYA_SURFEL_CLEAR_CELLS,
+		KAJIYA_SURFEL_COUNT_CELLS,
+		KAJIYA_SURFEL_SCAN,
+		KAJIYA_SURFEL_SCAN_SEGMENTS,
+		KAJIYA_SURFEL_SCAN_MERGE,
+		KAJIYA_SURFEL_SLOT_CELLS,
+		KAJIYA_SURFEL_TRACE,
+		KAJIYA_SURFEL_RESOLVE,
 		STAGE_COUNT,
 		QUERY_VALIDATE = STAGE_COUNT };
 	KilnGiShaderRD shader, hardware_shader;
-	RID hardware_version, hardware_pipelines[5];
+	RID hardware_version, hardware_pipelines[6];
 	KilnSpecularNativeShaderRD native_specular_shader;
 	RID native_specular_version;
 	RID specular_pipelines[3][8];
@@ -52,7 +67,7 @@ class KilnGI {
 		RID resource;
 		bool linear = false;
 	};
-	void dispatch(Stage p_stage, Size2i p_size, std::initializer_list<Binding> p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID(), bool p_force_translated = false, Vector2 p_jitter_delta = Vector2());
+	void dispatch(Stage p_stage, Size2i p_size, const std::vector<Binding> &p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID(), bool p_force_translated = false, Vector2 p_jitter_delta = Vector2());
 	RID texture(Size2i p_size, RD::DataFormat p_format);
 
 public:

@@ -30,7 +30,7 @@ RID KilnGI::texture(Size2i size, RD::DataFormat format) {
 }
 KilnGI::KilnGI() {
 	Vector<String> defines;
-	const char *stages[] = { "SURFEL_UPDATE", "SURFEL_GRID", "SURFEL_GENERATE", "SURFEL_TRACE", "SURFEL_INTEGRATE", "SURFEL_EVALUATE", "SURFEL_PUBLISH", "SURFEL_SPECULAR", "SURFEL_SPECULAR_FILTER", "SURFEL_DEBUG", "SEQUENCE_LUT", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT", "SURFEL_GRID_PREFIX", "SURFEL_GRID_PREFIX_SUMS", "SURFEL_GRID_SCATTER", "SURFEL_DIFFUSE_FILTER", "NRD_PREPARE", "NRD_DIFFUSE", "NRD_RESOLVE", "SURFEL_SPATIAL", "SURFEL_SCHEDULE" };
+	const char *stages[] = { "SURFEL_UPDATE", "SURFEL_GRID", "SURFEL_GENERATE", "SURFEL_TRACE", "SURFEL_INTEGRATE", "SURFEL_EVALUATE", "SURFEL_PUBLISH", "SURFEL_SPECULAR", "SURFEL_SPECULAR_FILTER", "SURFEL_DEBUG", "SEQUENCE_LUT", "XEGTAO_DEPTH", "XEGTAO_MAIN", "XEGTAO_DENOISE", "XEGTAO_TEMPORAL", "BVH_REFIT", "SURFEL_GRID_PREFIX", "SURFEL_GRID_PREFIX_SUMS", "SURFEL_GRID_SCATTER", "SURFEL_DIFFUSE_FILTER", "NRD_PREPARE", "NRD_DIFFUSE", "NRD_RESOLVE", "SURFEL_SPATIAL", "SURFEL_SCHEDULE", "KAJIYA_SKY", "KAJIYA_SURFEL_CLEAR_POOL", "KAJIYA_SURFEL_FIND_MISSING", "KAJIYA_SURFEL_ARGS", "KAJIYA_SURFEL_AGE", "KAJIYA_SURFEL_ALLOCATE", "KAJIYA_SURFEL_CLEAR_CELLS", "KAJIYA_SURFEL_COUNT_CELLS", "KAJIYA_SURFEL_SCAN", "KAJIYA_SURFEL_SCAN_SEGMENTS", "KAJIYA_SURFEL_SCAN_MERGE", "KAJIYA_SURFEL_SLOT_CELLS", "KAJIYA_SURFEL_TRACE", "KAJIYA_SURFEL_RESOLVE" };
 	for (int i = 0; i < STAGE_COUNT; i++) {
 		defines.push_back(String("\n#define STAGE_") + stages[i] + "\n");
 	}
@@ -43,13 +43,13 @@ KilnGI::KilnGI() {
 	hardware_available = RD::get_singleton()->has_feature(RD::SUPPORTS_RAY_QUERY);
 	if (hardware_available) {
 		Vector<String> hardware_defines;
-		for (const char *stage : { "SURFEL_GENERATE", "SURFEL_TRACE", "QUERY_VALIDATE", "SURFEL_SPECULAR", "NRD_DIFFUSE" }) {
+		for (const char *stage : { "SURFEL_GENERATE", "SURFEL_TRACE", "QUERY_VALIDATE", "SURFEL_SPECULAR", "NRD_DIFFUSE", "KAJIYA_SURFEL_TRACE" }) {
 			hardware_defines.push_back(String("\n#define KILN_HARDWARE_RAY_QUERY\n#define STAGE_") + stage + "\n");
 		}
 		hardware_shader.initialize(hardware_defines);
 		hardware_version = hardware_shader.version_create();
 		hardware_shader.version_set_compute_code(hardware_version, HashMap<String, String>(), "", "", Vector<String>());
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 6; i++) {
 			RID code = hardware_shader.version_get_shader(hardware_version, i);
 			if (code.is_valid()) {
 				hardware_pipelines[i] = RD::get_singleton()->compute_pipeline_create(code);
@@ -158,9 +158,9 @@ void KilnGI::View::free_cache() {
 	static_material_version = dynamic_material_version = 0;
 	ready = false;
 }
-void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> bindings, int stride, int z, RID tlas, bool force_translated, Vector2 jitter_delta) {
+void KilnGI::dispatch(Stage stage, Size2i size, const std::vector<Binding> &bindings, int stride, int z, RID tlas, bool force_translated, Vector2 jitter_delta) {
 	RD *rd = RD::get_singleton();
-	static const char *stage_names[] = { "Update", "Grid", "Generate", "Trace diffuse", "Integrate", "Evaluate", "Publish diffuse", "Trace specular", "Filter specular", "Debug", "Sequence", "AO depth", "AO main", "AO denoise", "AO temporal", "BVH refit", "Grid prefix", "Grid prefix sums", "Grid scatter", "Filter diffuse", "NRD prepare", "NRD diffuse rays", "NRD resolve", "Share irradiance", "Schedule rays", "Query validation" };
+	static const char *stage_names[] = { "Update", "Grid", "Generate", "Trace diffuse", "Integrate", "Evaluate", "Publish diffuse", "Trace specular", "Filter specular", "Debug", "Sequence", "AO depth", "AO main", "AO denoise", "AO temporal", "BVH refit", "Grid prefix", "Grid prefix sums", "Grid scatter", "Filter diffuse", "NRD prepare", "NRD diffuse rays", "NRD resolve", "Share irradiance", "Schedule rays", "Query validation", "Kajiya sky", "Kajiya surfel pool init", "Kajiya find missing surfels", "Kajiya surfel args", "Kajiya age surfels", "Kajiya allocate surfels", "Kajiya clear cells", "Kajiya count surfels per cell", "Kajiya prefix scan", "Kajiya prefix scan segments", "Kajiya prefix scan merge", "Kajiya slot surfels into cells", "Kajiya trace irradiance", "Kajiya surfel resolve" };
 	RENDER_TIMESTAMP(String("Kiln / ") + stage_names[stage]);
 	LocalVector<RD::Uniform> uniforms;
 	const uint64_t surfel_data = (1ull << 0) | (31ull << 20) | (1ull << 35);
@@ -212,8 +212,18 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 	}
 	RID code, pipeline;
 	if (tlas.is_valid()) {
-		int variant = stage == NRD_DIFFUSE ? 4 : stage == SURFEL_GENERATE ? 0
-																		  : (stage == SURFEL_TRACE ? 1 : (stage == SURFEL_SPECULAR ? 3 : 2));
+		int variant = 2; // general query stage
+		if (stage == NRD_DIFFUSE) {
+			variant = 4;
+		} else if (stage == KAJIYA_SURFEL_TRACE) {
+			variant = 5;
+		} else if (stage == SURFEL_GENERATE) {
+			variant = 0;
+		} else if (stage == SURFEL_TRACE) {
+			variant = 1;
+		} else if (stage == SURFEL_SPECULAR) {
+			variant = 3;
+		}
 		RD::Uniform u;
 		u.binding = 27;
 		u.uniform_type = RD::UNIFORM_TYPE_ACCELERATION_STRUCTURE;
@@ -258,6 +268,11 @@ void KilnGI::dispatch(Stage stage, Size2i size, std::initializer_list<Binding> b
 	}
 	uint32_t group_width = stage == SURFEL_SPECULAR ? 16 : 8;
 	uint32_t group_height = stage == SURFEL_SPECULAR ? 2 : 8;
+	if (stage >= KAJIYA_SKY) {
+		// kajiya stages declare their own local sizes; `size` is given in workgroups.
+		group_width = 1;
+		group_height = 1;
+	}
 	rd->compute_list_dispatch(list, (size.x + group_width - 1) / group_width, (size.y + group_height - 1) / group_height, z);
 	rd->compute_list_end();
 	RENDER_TIMESTAMP("Kiln / between passes");
@@ -310,7 +325,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		// not discard transport, sample sequences or the hardware scene.
 		state->slots = MAX(state->slots, CLAMP(requested_slots, 65536u, 262144u));
 		if (initialize_cache) {
-			state->parameters = rd->uniform_buffer_create(704);
+			state->parameters = rd->uniform_buffer_create(736);
 		}
 		// Persistent world-space surfels. Screen textures contain only the resolve
 		// and geometry history; there are no screen probes or legacy SH caches.
@@ -364,6 +379,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		state->tracing = world.enabled;
 	}
 	bool multibounce = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_multibounce", true);
+	// kajiya restir-meets-surfel parity mode: reroutes the GI pass order and
+	// shading to the ported reference pipeline (NRD and SurfelPlus stages idle).
+	bool kajiya_mode = ProjectSettings::get_singleton()->get_setting("rendering/kiln/kajiya_mode", false);
 	if (multibounce != state->multibounce) {
 		state->frames = 0;
 		state->multibounce = multibounce;
@@ -594,7 +612,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	Projection projection = scene->get_cam_projection();
 	Projection vp = projection * Projection(scene->cam_transform.affine_inverse());
-	float params[176] = {};
+	float params[184] = {};
 	int at = 0;
 	for (const Projection &m : { projection, projection.inverse(), Projection(scene->cam_transform), Projection(scene->cam_transform.affine_inverse()), state->previous_vp }) {
 		MaterialStorage::store_camera(m, params + at);
@@ -705,7 +723,12 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	bool has_surface = buffers->has_texture(SNAME("kiln_deferred"), SNAME("surface"));
 	RID surface_input = has_surface ? buffers->get_texture(SNAME("kiln_deferred"), SNAME("surface")) : empty_surface;
 	v(signed_normal, has_surface, multibounce, changed_dynamic);
-	ERR_FAIL_COND_V(at != 176, false);
+	// kajiya parity port: previous eye position (the reference clipmap anchors the
+	// grid on the previous frame's eye) and the reference sun size / mode flags.
+	vec(state->previous_camera.origin, 1.0f);
+	const float kajiya_sun_angular_radius_cos = Math::cos(Math::deg_to_rad(0.53f) * 0.5f);
+	v(kajiya_sun_angular_radius_cos, 0.0f, kajiya_mode ? 1.0f : 0.0f, 0);
+	ERR_FAIL_COND_V(at != 184, false);
 	rd->buffer_update(state->parameters, 0, sizeof(params), params);
 	auto U = [&]() { return Binding{ 0, RD::UNIFORM_TYPE_UNIFORM_BUFFER, state->parameters }; };
 	auto S = [&](int binding, RID rid, bool linear = false) { return Binding{ binding, RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, rid, linear }; };
@@ -726,7 +749,109 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 						B(20, "surfels"), B(21, "cell_heads"), B(22, "cell_links"), B(23, "free_slots"), B(24, "counters"), B(35, "grid_sums"), I(6, base), I(7, fresnel) },
 				specular_rays, 1, query_tlas, force_translated);
 	};
-	if (world.enabled) {
+	if (kajiya_mode) {
+		// kajiya restir-meets-surfel parity pipeline (port in progress). The
+		// clipmap surfel pool, binning, tracing and a screen resolve replace the
+		// SurfelPlus chain; NRD and XeGTAO stay idle.
+		const uint32_t kmax = 262144u;
+		allocate("kajiya_meta", 8 * 4);
+		allocate("kajiya_pool", kmax * 4, true);
+		allocate("kajiya_cell_offset", (kmax + 1) * 4);
+		allocate("kajiya_index", kmax * 24 * 4);
+		allocate("kajiya_spatial", kmax * 16);
+		allocate("kajiya_irradiance", kmax * 16);
+		allocate("kajiya_aux", kmax * 32);
+		allocate("kajiya_life", kmax * 4);
+		allocate("kajiya_proposal", kmax * 16);
+		allocate("kajiya_scan_segments", 1024 * 4);
+		allocate("kajiya_args", 12 * 4);
+		if (initialize) {
+			rd->buffer_clear(state->storage["kajiya_meta"], 0, 8 * 4);
+			rd->buffer_clear(state->storage["kajiya_life"], 0, kmax * 4);
+			dispatch(KAJIYA_SURFEL_CLEAR_POOL, Size2i(kmax / 64, 1),
+					{ U(), B(41, "kajiya_pool"), B(40, "kajiya_meta"), B(42, "kajiya_cell_offset"), B(43, "kajiya_index"), B(44, "kajiya_spatial"), B(45, "kajiya_irradiance"), B(46, "kajiya_aux"), B(47, "kajiya_life"), B(48, "kajiya_proposal") });
+		}
+		if (!state->textures.has("kajiya_sky")) {
+			RD::TextureFormat tf;
+			tf.format = RD::DATA_FORMAT_R16G16B16A16_SFLOAT;
+			tf.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
+			tf.width = 32;
+			tf.height = 32;
+			tf.array_layers = 6;
+			tf.mipmaps = 1;
+			tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_STORAGE_BIT | RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
+			state->textures["kajiya_sky"] = own(rd->texture_create(tf, RD::TextureView()));
+			RD::TextureFormat ta;
+			ta.format = RD::DATA_FORMAT_R32G32_UINT;
+			ta.width = (state->size.x + 7) / 8;
+			ta.height = (state->size.y + 7) / 8;
+			ta.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_STORAGE_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
+			state->textures["kajiya_tile_alloc"] = own(rd->texture_create(ta, RD::TextureView()));
+			RD::TextureFormat ti;
+			ti.format = RD::DATA_FORMAT_R32G32B32A32_SFLOAT;
+			ti.width = (state->size.x + 7) / 8;
+			ti.height = (state->size.y + 7) / 8;
+			ti.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_STORAGE_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
+			state->textures["kajiya_tile_irradiance"] = own(rd->texture_create(ti, RD::TextureView()));
+		}
+		RID ksky = state->textures["kajiya_sky"];
+		RID kalloc = state->textures["kajiya_tile_alloc"];
+		RID ktile_irr = state->textures["kajiya_tile_irradiance"];
+		RID kalbedo = has_surface ? buffers->get_texture(SNAME("kiln_deferred"), SNAME("albedo_metallic")) : empty_surface;
+		// Every kajiya surfel stage shares the binding contract of the include; bind
+		// the full set plus the stage-specific resources on top.
+		auto kbase = [&]() {
+			return std::vector<Binding>{
+				U(),
+				B(40, "kajiya_meta"), B(41, "kajiya_pool"), B(42, "kajiya_cell_offset"), B(43, "kajiya_index"),
+				B(44, "kajiya_spatial"), B(45, "kajiya_irradiance"), B(46, "kajiya_aux"), B(47, "kajiya_life"), B(48, "kajiya_proposal")
+			};
+		};
+		auto kappend = [&](std::vector<Binding> &list, std::initializer_list<Binding> extra) {
+			list.insert(list.end(), extra.begin(), extra.end());
+		};
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { I(1, ksky) });
+			dispatch(KAJIYA_SKY, Size2i(4, 4), b, 0, 6);
+		}
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { S(10, depth), S(11, surface_input), I(12, kalloc), I(13, ktile_irr) });
+			dispatch(KAJIYA_SURFEL_FIND_MISSING, Size2i((state->size.x + 7) / 8, (state->size.y + 7) / 8), b);
+		}
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { B(10, "kajiya_args") });
+			dispatch(KAJIYA_SURFEL_ARGS, Size2i(1, 1), b);
+		}
+		dispatch(KAJIYA_SURFEL_AGE, Size2i(kmax / 64, 1), kbase());
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { S(10, depth), S(11, surface_input), I(12, kalloc), I(13, ktile_irr) });
+			dispatch(KAJIYA_SURFEL_ALLOCATE, Size2i((state->size.x + 7) / 8, (state->size.y + 7) / 8), b);
+		}
+		dispatch(KAJIYA_SURFEL_CLEAR_CELLS, Size2i(65536, 1), kbase());
+		dispatch(KAJIYA_SURFEL_COUNT_CELLS, Size2i(kmax / 64, 1), kbase());
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { B(10, "kajiya_cell_offset"), B(11, "kajiya_scan_segments") });
+			dispatch(KAJIYA_SURFEL_SCAN, Size2i(1024, 1), b);
+			dispatch(KAJIYA_SURFEL_SCAN_SEGMENTS, Size2i(1, 1), b);
+			dispatch(KAJIYA_SURFEL_SCAN_MERGE, Size2i(1024, 1), b);
+		}
+		dispatch(KAJIYA_SURFEL_SLOT_CELLS, Size2i(kmax / 64, 1), kbase());
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"), S(19, ksky), S(20, dfg) });
+			dispatch(KAJIYA_SURFEL_TRACE, Size2i(kmax / 64, 1), b, 0, 1, query_tlas);
+		}
+		{
+			std::vector<Binding> b = kbase();
+			kappend(b, { S(10, depth), S(11, surface_input), S(12, kalbedo), I(13, T("diffuse")) });
+			dispatch(KAJIYA_SURFEL_RESOLVE, Size2i((state->size.x + 7) / 8, (state->size.y + 7) / 8), b);
+		}
+	} else if (world.enabled) {
 		const Size2i surfel_dispatch(256, state->slots / 256);
 		auto surfel_pass = [&](Stage stage, bool geometry, bool screen, RID tlas = RID()) {
 			Size2i work = screen ? state->size : surfel_dispatch;
@@ -798,6 +923,13 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	} else {
 		rd->texture_clear(T("raw"), Color(0, 0, 0, 0), 0, 1, 0, 1);
 	}
+	if (kajiya_mode) {
+		// The kajiya resolve wrote diffuse; keep AO neutral and the specular
+		// targets empty while the specular chain is not ported.
+		rd->texture_clear(T("ao"), Color(1, 1, 1, 1), 0, 1, 0, 1);
+		rd->texture_clear(T("specular"), Color(), 0, 1, 0, 1);
+		rd->texture_clear(T("fresnel"), Color(), 0, 1, 0, 1);
+	} else {
 	if (state->ao_quality != world.ao_quality || state->frames == 0 || initialize) {
 		state->ao_frames = 0;
 	}
@@ -866,6 +998,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			rd->texture_clear(T(name), Color(), 0, 1, 0, 1);
 		}
 	}
+	} // end !kajiya_mode legacy AO / publish / NRD / specular filtering
 
 	if (!world.enabled) {
 		rd->texture_clear(T("diffuse"), Color(0, 0, 0, 0), 0, 1, 0, 1);

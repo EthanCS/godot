@@ -1,0 +1,24 @@
+#version 450
+// kajiya prepare_surfel_assignment_dispatch_args / prepare_trace_dispatch_args,
+// merged. The reference launches binning and tracing indirectly from the live
+// surfel count; this port dispatches fixed bounds with the same per-thread
+// early-out, so the args drive nothing here and serve as a debug readback.
+// @GI_COMMON@
+// @KAJIYA_COMMON@
+// @KAJIYA_SURFEL@
+layout(set = 0, binding = 10, std430) writeonly buffer KajiyaArgs {
+	uint assignment_args[8];
+	uint trace_args[4];
+};
+layout(local_size_x = 1) in;
+void main() {
+	uint surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	assignment_args[4] = (surfel_count + 63u) / 64u;
+	assignment_args[5] = 1u;
+	assignment_args[6] = 1u;
+	assignment_args[7] = 0u;
+	trace_args[0] = surfel_count;
+	trace_args[1] = 1u;
+	trace_args[2] = 1u;
+	trace_args[3] = 0u;
+}

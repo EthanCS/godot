@@ -67,7 +67,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.position = Vector3(0, 1, 8)
 	camera.fov = 52.0
-	camera.near = 0.1
+	camera.near = 0.01 # kajiya CameraLens default
 	add_child(camera)
 	camera.make_current()
 

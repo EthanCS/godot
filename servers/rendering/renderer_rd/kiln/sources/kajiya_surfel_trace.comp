@@ -1,0 +1,167 @@
+#version 450
+// kajiya trace_irradiance.rgen.hlsl: per-surfel path tracing with MSME
+// accumulation. One ray-generation thread per surfel becomes one invocation per
+// surfel; MAX_PATH_LENGTH 1, four cosine paths per frame, sun NEE, emissive
+// hit light, one surfel-cache bounce at the last vertex, sky-cube miss.
+// USE_DYNAMIC_TRACE_ORIGIN 1, USE_BLEND_RESULT 1, USE_MSME 1, FIREFLY_SUPPRESSION 1.
+// @GI_COMMON@
+// @BVH@
+// @KAJIYA_COMMON@
+// @KAJIYA_SKY@
+// @KAJIYA_BRDF@
+// @KAJIYA_SURFEL@
+layout(set = 0, binding = 19) uniform sampler2DArray kajiya_sky_cube;
+layout(set = 0, binding = 20) uniform sampler2D kajiya_fg_lut;
+// Cornell-box material contract of the target scene: uniform roughness, no
+// metallic. The reference samples these per-hit from its packed G-buffer.
+const float KAJIYA_HIT_ROUGHNESS = 0.8945907354354858;
+const float KAJIYA_HIT_METALNESS = 0.0;
+
+vec3 kajiya_build_tangent(vec3 n) {
+	return safe_normalize(cross(abs(n.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), n));
+}
+
+vec3 kajiya_sample_environment_light(sampler2DArray sky_tex, vec3 dir) {
+	return kajiya_sample_sky(sky_tex, dir);
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count || !kajiya_is_surfel_life_valid(kajiya_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+
+	// USE_DYNAMIC_TRACE_ORIGIN: trace from the reposition proposal.
+	vec3 surfel_position = kajiya_surfel_reposition_proposal_buf[surfel_idx].xyz;
+	vec3 surfel_normal = kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_reposition_proposal_buf[surfel_idx].w));
+
+	vec4 prev_total_radiance_packed = kajiya_surfel_aux_buf[surfel_idx * 2u + 0u];
+
+	vec3 tangent = kajiya_build_tangent(surfel_normal);
+	vec3 bitangent = cross(surfel_normal, tangent);
+
+	const uint sample_count = 4u;
+	vec3 irradiance_sum = vec3(0.0);
+	float valid_sample_count = 0.0;
+	float sample0_luminance = 0.0;
+
+	for (uint sample_idx = 0u; sample_idx < sample_count; sample_idx++) {
+		valid_sample_count += 1.0;
+		uint sequence_idx = kajiya_hash1(surfel_idx) + sample_idx + uint(p.size_frame.z) * sample_count;
+
+		uint rng = kajiya_hash1(sequence_idx);
+		vec2 urand = kajiya_r2_sequence(sequence_idx % max(128u, 128u /* TARGET_SAMPLE_COUNT */));
+
+		// Cosine lobe sample with albedo 1 (DiffuseBrdf::sample about +z).
+		float phi = urand.x * KAJIYA_M_TAU;
+		float cos_theta = sqrt(max(0.0, 1.0 - urand.y));
+		float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
+		vec3 wi_local = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+		vec3 outgoing_dir = safe_normalize(tangent * wi_local.x + bitangent * wi_local.y + surfel_normal * wi_local.z);
+
+		int triangle_id;
+		float ray_t;
+		vec3 hit_normal;
+		vec3 irradiance = vec3(0.0);
+
+		if (world_trace(surfel_position, outgoing_dir, 1e30, false, triangle_id, ray_t, hit_normal)) {
+			vec3 hit_position = surfel_position + outgoing_dir * ray_t;
+			Triangle tri = world_triangle(triangle_id);
+			vec3 hit_albedo_value = hit_albedo(triangle_id, hit_position);
+			vec3 hit_emission = tri.emission.rgb;
+
+			// Sun NEE with the layered BRDF at the hit.
+			vec3 to_light_norm = p.sun_direction.xyz;
+			bool is_shadowed = occluded(hit_position + hit_normal * 0.025, to_light_norm);
+
+			vec3 hit_tangent = kajiya_build_tangent(hit_normal);
+			vec3 hit_bitangent = cross(hit_normal, hit_tangent);
+			vec3 wi = vec3(dot(to_light_norm, hit_tangent), dot(to_light_norm, hit_bitangent), dot(to_light_norm, hit_normal));
+			vec3 neg_dir = -outgoing_dir;
+			vec3 wo = vec3(dot(neg_dir, hit_tangent), dot(neg_dir, hit_bitangent), dot(neg_dir, hit_normal));
+
+			// Hack (reference): flip the outgoing ray along the shading normal when
+			// facing away, so the reflection's curvature continues at a lower rate.
+			if (wo.z < 0.0) {
+				wo.z *= -0.25;
+				wo = normalize(wo);
+			}
+
+			KajiyaLayeredBrdf brdf = kajiya_layered_from_gbuffer_ndotv(hit_albedo_value, KAJIYA_HIT_ROUGHNESS, KAJIYA_HIT_METALNESS, wo.z, kajiya_fg_lut);
+			// FIREFLY_SUPPRESSION with roughness_bias 0.5.
+			brdf.specular_brdf.roughness = mix(brdf.specular_brdf.roughness, 1.0, 0.5);
+
+			vec3 brdf_value = kajiya_layered_evaluate_directional_light(brdf, wo, wi);
+			vec3 sun_color = kajiya_sun_color(p.sun_direction.xyz, vec3(1.0));
+			vec3 light_radiance = is_shadowed ? vec3(0.0) : sun_color;
+			irradiance += brdf_value * light_radiance * max(0.0, wi.z);
+
+			// USE_EMISSIVE.
+			irradiance += hit_emission;
+
+			// SAMPLE_SURFELS_AT_LAST_VERTEX: one surfel-cache bounce.
+			irradiance += kajiya_lookup_surfel_gi(hit_position, hit_normal) * hit_albedo_value;
+		} else {
+			irradiance += kajiya_sample_environment_light(kajiya_sky_cube, outgoing_dir);
+		}
+
+		irradiance_sum += irradiance;
+		if (sample_idx == 0u) {
+			sample0_luminance = kajiya_calculate_luma(irradiance);
+		}
+	}
+
+	vec3 new_value = irradiance_sum / max(1.0, valid_sample_count);
+	float irradiance_lum = kajiya_calculate_luma(new_value);
+
+	vec4 prev_aux = kajiya_surfel_aux_buf[surfel_idx * 2u + 1u];
+	float prev_sample0_luminance = prev_aux.x;
+	vec2 prev_ex_ex2 = prev_aux.zw;
+
+	// MSME luminance moments with short-estimator clamped blending.
+	vec2 sample_ex_ex2 = vec2(irradiance_lum, irradiance_lum * irradiance_lum);
+	vec2 ex_ex2 = mix(prev_ex_ex2, sample_ex_ex2, 1.0 / (1.0 + clamp(prev_total_radiance_packed.w, 1.0, 4.0)));
+
+	vec4 new_aux = vec4(
+			sample0_luminance,
+			mix(prev_aux.y, irradiance_lum, 1.0 / (1.0 + clamp(prev_total_radiance_packed.w, 2.0, 8.0))),
+			ex_ex2);
+	kajiya_surfel_aux_buf[surfel_idx * 2u + 1u] = new_aux;
+
+	float lum_variance = max(0.0, ex_ex2.y - ex_ex2.x * ex_ex2.x);
+	float lum_dev = sqrt(lum_variance);
+
+	float prev_sample_count = min(prev_total_radiance_packed.w, 128.0);
+
+	float total_sample_count = prev_sample_count + valid_sample_count;
+	float blend_factor_new = valid_sample_count / max(1.0, total_sample_count);
+
+	// Forecasting mean.
+	float quick_lum_ex = min(ex_ex2.x * 1.2, mix(new_aux.y, ex_ex2.x, 1.5));
+
+	// MSME clamp in YCbCr.
+	vec3 prev_value = prev_total_radiance_packed.rgb;
+	vec3 prev_value_ycbcr = kajiya_rgb_to_ycbcr(prev_value);
+	const float num_deviations = 1.0;
+	vec3 clamped_abs = clamp(
+			abs(prev_value_ycbcr),
+			abs(prev_value_ycbcr) * (quick_lum_ex - lum_dev * num_deviations) / max(1e-10, prev_value_ycbcr.x),
+			abs(prev_value_ycbcr) * (quick_lum_ex + lum_dev * num_deviations) / max(1e-10, prev_value_ycbcr.x));
+	vec3 prev_value_clamped = kajiya_ycbcr_to_rgb(sign(prev_value_ycbcr) * clamped_abs);
+
+	vec3 blended_value = mix(prev_value, new_value, blend_factor_new);
+
+	kajiya_surfel_aux_buf[surfel_idx * 2u + 0u] = max(vec4(0.0), vec4(
+			blended_value,
+			total_sample_count));
+
+	vec3 prev_irrad = kajiya_surfel_irradiance_buf[surfel_idx].xyz;
+	const float k = 0.5;
+
+	// USE_BLEND_RESULT: smoothed display value.
+	kajiya_surfel_irradiance_buf[surfel_idx] = max(vec4(0.0), vec4(
+			pow(mix(pow(max(vec3(0.0), prev_irrad), vec3(k)), pow(max(vec3(0.0), blended_value), vec3(k)), 0.25), vec3(1.0 / k)),
+			total_sample_count));
+}

@@ -26,6 +26,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;

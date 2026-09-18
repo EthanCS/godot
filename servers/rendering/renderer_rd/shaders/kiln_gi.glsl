@@ -36,6 +36,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -683,6 +685,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -1078,6 +1082,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -1770,6 +1776,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -2521,6 +2529,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -3050,6 +3060,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -3442,6 +3454,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -3665,6 +3679,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -4443,6 +4459,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -4703,6 +4721,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -5199,6 +5219,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -5365,6 +5387,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -5539,6 +5563,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -5798,6 +5824,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -6040,6 +6068,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -6410,6 +6440,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -6785,6 +6817,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -7178,6 +7212,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -7417,6 +7453,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -7641,6 +7679,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -8327,6 +8367,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -8503,6 +8545,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -8938,6 +8982,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -9336,6 +9382,8 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
 } p;
 
 const float PI=3.14159265358979323846;
@@ -9712,6 +9760,10894 @@ void main(){
     bool hard_blocked=world_trace_hardware(origin,direction,2.0,true,hard_id,hard_distance,n);
     bool visibility=visibility_blocked(origin,direction,2.0);
     results[index]=vec4(soft==hard?0.0:1.0,soft&&hard?abs(reference_distance-saved_distance):0.0,soft_blocked==hard_blocked&&soft_blocked==visibility?0.0:1.0,soft?1.0:0.0);
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SKY
+
+// kajiya sky cube: rust-gpu sky.rs comp_sky_cube_cs, ported. 32px RGBA16F, six faces.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya sky cube helpers: the reference renders a 32px RGBA16F cube per frame
+// (rust-gpu sky.rs, atmosphere from the world origin) and every GI stage samples
+// it. Ported as a 6-layer 2D array with the standard cube face mapping.
+const int KAJIYA_SKY_DIMS = 32;
+
+vec3 kajiya_cube_face_rotation(int face, vec3 v) {
+	// Column-major rotations from kajiya rust-shaders-shared/src/util.rs.
+	if (face == 0) return v * mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0.0), vec3(-1.0, 0.0, 0.0));
+	if (face == 1) return v * mat3(vec3(0.0, 0.0, 1.0), vec3(0.0, -1.0, 0.0), vec3(1.0, 0.0, 0.0));
+	if (face == 2) return v * mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, -1.0, 0.0));
+	if (face == 3) return v * mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
+	if (face == 4) return v * mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, -1.0));
+	return v * mat3(vec3(-1.0, 0.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0));
+}
+
+// Inverse of the face rotations above: standard OpenGL major-axis cube mapping.
+void kajiya_dir_to_cube_face_uv(vec3 dir, out int face, out vec2 uv) {
+	vec3 a = abs(dir);
+	if (a.x >= a.y && a.x >= a.z) {
+		if (dir.x >= 0.0) { face = 0; uv = vec2(-dir.z, -dir.y) / a.x; }
+		else { face = 1; uv = vec2(dir.z, -dir.y) / a.x; }
+	} else if (a.y >= a.z) {
+		if (dir.y >= 0.0) { face = 2; uv = vec2(dir.x, dir.z) / a.y; }
+		else { face = 3; uv = vec2(dir.x, -dir.z) / a.y; }
+	} else {
+		if (dir.z >= 0.0) { face = 4; uv = vec2(dir.x, -dir.y) / a.z; }
+		else { face = 5; uv = vec2(-dir.x, -dir.y) / a.z; }
+	}
+	uv = uv * 0.5 + 0.5;
+}
+
+vec3 kajiya_sample_sky(sampler2DArray sky_tex, vec3 dir) {
+	int face;
+	vec2 uv;
+	kajiya_dir_to_cube_face_uv(normalize(dir), face, uv);
+	return textureLod(sky_tex, vec3(uv, float(face)), 0.0).rgb;
+}
+
+layout(set = 0, binding = 1, rgba16f) uniform writeonly image2DArray sky_cube;
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+	ivec3 px = ivec3(gl_GlobalInvocationID);
+	if (px.x >= KAJIYA_SKY_DIMS || px.y >= KAJIYA_SKY_DIMS || px.z >= 6) {
+		return;
+	}
+	int face = px.z;
+	vec2 uv = (vec2(px.x, px.y) + 0.5) / float(KAJIYA_SKY_DIMS);
+	vec3 dir = kajiya_cube_face_rotation(face, vec3(uv * 2.0 - 1.0, -1.0));
+	vec3 output = kajiya_atmosphere_default(normalize(dir), p.sun_direction.xyz, vec3(0.0), vec3(1.0));
+	imageStore(sky_cube, px, vec4(output, 1.0));
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+
+// kajiya clear_surfel_pool.hlsl: one-time LIFO free-list initialization.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint idx = gl_GlobalInvocationID.x;
+	if (idx >= KAJIYA_MAX_SURFELS) {
+		return;
+	}
+	kajiya_surfel_pool_buf[idx] = idx;
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_FIND_MISSING
+
+// kajiya find_missing_surfels.hlsl: per-pixel keep-alive, per-tile reposition
+// proposals and despawn voting, and one stochastic spawn candidate per 8x8 tile.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(set = 0, binding = 10) uniform sampler2D kdepth;
+layout(set = 0, binding = 11) uniform usampler2D ksurface;
+layout(set = 0, binding = 12, rg32ui) uniform writeonly uimage2D tile_alloc_tex;
+layout(set = 0, binding = 13, rgba32f) uniform writeonly image2D tile_irradiance_tex;
+
+shared uint gs_px_min_score_loc_packed;
+shared uint gs_px_max_score_loc_packed;
+
+uint kajiya_pack_score_and_px_within_group(float score, uvec2 px_within_group) {
+	return (floatBitsToUint(score) & (0xffffffffu - 63u)) | (px_within_group.y * 8u + px_within_group.x);
+}
+
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+	uvec2 px = gl_GlobalInvocationID.xy;
+	uvec2 group_id = gl_WorkGroupID.xy;
+	uvec2 px_within_group = gl_LocalInvocationID.xy;
+	uint idx_within_group = gl_LocalInvocationIndex;
+
+	if (0u == idx_within_group) {
+		gs_px_min_score_loc_packed = 0xffffffffu;
+		gs_px_max_score_loc_packed = 0u;
+		imageStore(tile_alloc_tex, ivec2(group_id), uvec2(0u, 0u));
+		imageStore(tile_irradiance_tex, ivec2(group_id), vec4(0.0));
+	}
+
+	vec3 prev_eye_pos = kajiya_get_prev_eye_position();
+	vec2 size = p.size_frame.xy;
+	vec2 inv_size = 1.0 / size;
+
+	if (any(greaterThanEqual(px, uvec2(size)))) {
+		return;
+	}
+
+	barrier();
+
+	uint seed = kajiya_hash_combine2(kajiya_hash_combine2(px.x, kajiya_hash1(px.y)), uint(p.size_frame.z));
+	vec2 uv = (vec2(px) + 0.5) * inv_size;
+
+	float z_over_w = texelFetch(kdepth, ivec2(px), 0).r;
+	if (z_over_w == 0.0) {
+		return;
+	}
+
+	// World-space point from the kiln G-buffer depth.
+	vec4 pt_vs = p.inv_projection * vec4(uv * 2.0 - 1.0, z_over_w, 1.0);
+	pt_vs /= pt_vs.w;
+	vec3 pt_ws = (p.inv_view * vec4(pt_vs.xyz, 1.0)).xyz;
+	float pt_depth = -pt_vs.z;
+
+	// Geometric normal from the surface attachment (view space, octahedral).
+	uint packed_surface = texelFetch(ksurface, ivec2(px), 0).g;
+	vec2 oct = unpackSnorm2x16(packed_surface);
+	vec3 n_view = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
+	n_view.xy += mix(vec2(1.0), vec2(-1.0), greaterThanEqual(n_view.xy, vec2(0.0))) * max(-n_view.z, 0.0);
+	vec3 geometric_normal_ws = safe_normalize(mat3(p.inv_view) * safe_normalize(n_view));
+
+	ivec3 pt_grid_coord = kajiya_surfel_pos_to_grid_coord(pt_ws, prev_eye_pos);
+	const uint4 pt_c4 = kajiya_surfel_grid_coord_to_c4(pt_grid_coord);
+	const uint pt_c4_hash = kajiya_surfel_grid_c4_to_hash(pt_c4);
+
+	float px_score = 0.0;
+
+	uint cell_idx = kajiya_surfel_grid_coord_to_hash(pt_grid_coord);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	float highest_weight = 0.0;
+	float second_highest_weight = 0.0;
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): bound the cell iteration.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	const uint cell_surfel_count = range_end - range_begin;
+
+	float scoring_total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; surfel_idx_loc++) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+
+		vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+		vec3 surfel_color = surfel_irradiance_packed.xyz;
+
+		const uint surfel_c4_hash = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(surfel_position, prev_eye_pos));
+		if (surfel_c4_hash == pt_c4_hash && dot(geometric_normal_ws, surfel_normal) > 0.8) {
+			if (kajiya_uint_to_u01_float(kajiya_hash1_mut(seed)) < 2000.0 * pt_depth / 64.0 * inv_size.x * inv_size.y) {
+				kajiya_surfel_reposition_proposal_buf[surfel_idx] = vec4(pt_ws, kajiya_pack_normal_11_10_11(geometric_normal_ws));
+			}
+
+			if (cell_surfel_count <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+				// Mark used
+				if (kajiya_surfel_life_buf[surfel_idx] != KAJIYA_SURFEL_LIFE_RECYCLE) {
+					kajiya_surfel_life_buf[surfel_idx] = 0u;
+				}
+			}
+		}
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, geometric_normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+		const float scoring_weight = smoothstep(surfel_radius, 0.0, mahalanobis_dist) * directional_weight;
+
+		if (weight > highest_weight) {
+			second_highest_weight = highest_weight;
+			highest_weight = weight;
+		}
+
+		total_weight += weight;
+		scoring_total_weight += scoring_weight;
+		total_color += surfel_color * weight;
+	}
+
+	total_color /= max(1e-5, total_weight);
+
+	// Despawn surfels: vote within the tile on the highest-overlap surfel.
+	{
+		uint px_max_score_loc_packed = 0u;
+
+		const float cell_fullness = smoothstep(
+				KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE * 0.75,
+				KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE * 1.0,
+				float(cell_surfel_count));
+
+		const float despawn_weight_threshold = mix(3.5, 3.0, cell_fullness);
+		const float second_highest_weight_threshold = mix(0.9, 0.8, cell_fullness);
+
+		if (scoring_total_weight > despawn_weight_threshold && second_highest_weight > second_highest_weight_threshold) {
+			px_max_score_loc_packed = kajiya_pack_score_and_px_within_group(px_score, px_within_group);
+			atomicMax(gs_px_max_score_loc_packed, px_max_score_loc_packed);
+		}
+
+		barrier();
+
+		uint surfel_to_despawn = 0xffffffffu;
+		float surfel_to_despawn_weight = 0.0;
+
+		if (gs_px_max_score_loc_packed == px_max_score_loc_packed && px_max_score_loc_packed != 0u) {
+			for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; surfel_idx_loc++) {
+				const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+				const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+				const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+				const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+
+				const vec3 pos_offset = pt_ws - surfel_position;
+				const float directional_weight = max(0.0, dot(surfel_normal, geometric_normal_ws));
+				const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+				float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+				if (weight > surfel_to_despawn_weight) {
+					surfel_to_despawn_weight = weight;
+					surfel_to_despawn = surfel_idx;
+				}
+			}
+		}
+
+		if (surfel_to_despawn != 0xffffffffu) {
+			kajiya_surfel_life_buf[surfel_to_despawn] = KAJIYA_SURFEL_LIFE_RECYCLE;
+		}
+	}
+
+	if (cell_surfel_count >= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE || second_highest_weight > 0.4 || scoring_total_weight > 0.1) {
+		return;
+	}
+
+	px_score = total_weight;
+
+	// Execution only survives here if this tile would like a new surfel.
+	const float prob_mult = 4000.0;
+
+	uint px_min_score_loc_packed = 0xffffffffu;
+	if (kajiya_uint_to_u01_float(kajiya_hash1_mut(seed)) < prob_mult * pt_depth / 64.0 * inv_size.x * inv_size.y) {
+		px_min_score_loc_packed = kajiya_pack_score_and_px_within_group(px_score, px_within_group);
+		atomicMin(gs_px_min_score_loc_packed, px_min_score_loc_packed);
+	}
+
+	barrier();
+
+	if (gs_px_min_score_loc_packed == px_min_score_loc_packed && px_min_score_loc_packed != 0xffffffffu) {
+		imageStore(tile_alloc_tex, ivec2(group_id), uvec2(px_min_score_loc_packed, cell_idx));
+		imageStore(tile_irradiance_tex, ivec2(group_id), vec4(total_color, total_weight));
+	}
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_ARGS
+
+// kajiya prepare_surfel_assignment_dispatch_args / prepare_trace_dispatch_args,
+// merged. The reference launches binning and tracing indirectly from the live
+// surfel count; this port dispatches fixed bounds with the same per-thread
+// early-out, so the args drive nothing here and serve as a debug readback.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(set = 0, binding = 10, std430) writeonly buffer KajiyaArgs {
+	uint assignment_args[8];
+	uint trace_args[4];
+};
+layout(local_size_x = 1) in;
+void main() {
+	uint surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	assignment_args[4] = (surfel_count + 63u) / 64u;
+	assignment_args[5] = 1u;
+	assignment_args[6] = 1u;
+	assignment_args[7] = 0u;
+	trace_args[0] = surfel_count;
+	trace_args[1] = 1u;
+	trace_args[2] = 1u;
+	trace_args[3] = 0u;
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_AGE
+
+// kajiya age_surfels.hlsl: life increment and recycle-to-pool on expiry.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count) {
+		return;
+	}
+	if (!kajiya_surfel_life_needs_aging(kajiya_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+	uint prev_age = kajiya_surfel_life_buf[surfel_idx];
+	uint new_age = prev_age + 1u;
+	if (kajiya_is_surfel_life_valid(new_age)) {
+		kajiya_surfel_life_buf[surfel_idx] = new_age;
+	} else {
+		kajiya_surfel_life_buf[surfel_idx] = KAJIYA_SURFEL_LIFE_RECYCLED;
+		// Deallocate: push the index back onto the LIFO pool.
+		uint alloc_count = atomicAdd(kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_ALLOC_COUNT / 4u], -1u);
+		kajiya_surfel_pool_buf[alloc_count - 1u] = surfel_idx;
+	}
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_ALLOCATE
+
+// kajiya allocate_surfels.hlsl: pop the pool for the per-tile winning candidate.
+// The new surfel sits at the clipmap cell center, seeded with the tile's
+// weight-blended irradiance.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(set = 0, binding = 10) uniform sampler2D kdepth;
+layout(set = 0, binding = 11) uniform usampler2D ksurface;
+layout(set = 0, binding = 12, rg32ui) uniform readonly uimage2D tile_alloc_tex;
+layout(set = 0, binding = 13, rgba32f) uniform readonly image2D tile_irradiance_tex;
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+	uvec2 tile_px = gl_GlobalInvocationID.xy;
+	ivec2 tiles = ivec2(ceil(p.size_frame.xy / 8.0));
+	if (any(greaterThanEqual(ivec2(tile_px), tiles))) {
+		return;
+	}
+
+	uvec2 tile_surfel_alloc_packed = imageLoad(tile_alloc_tex, ivec2(tile_px)).xy;
+	if (tile_surfel_alloc_packed.x == 0u) {
+		return;
+	}
+
+	const uint px_score_loc_packed = tile_surfel_alloc_packed.x;
+	const uint cell_idx = tile_surfel_alloc_packed.y;
+
+	const uvec2 px = tile_px * 8u + uvec2(px_score_loc_packed & 7u, (px_score_loc_packed >> 3u) & 7u);
+	vec2 size = p.size_frame.xy;
+	vec2 uv = (vec2(px) + 0.5) / size;
+
+	float z_over_w = texelFetch(kdepth, ivec2(px), 0).r;
+	if (z_over_w == 0.0) {
+		return;
+	}
+
+	vec4 pt_vs = p.inv_projection * vec4(uv * 2.0 - 1.0, z_over_w, 1.0);
+	pt_vs /= pt_vs.w;
+	vec3 pt_ws = (p.inv_view * vec4(pt_vs.xyz, 1.0)).xyz;
+
+	if (any(isnan(pt_ws)) || any(isinf(pt_ws))) {
+		return;
+	}
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const uvec4 c4_coord = kajiya_surfel_grid_coord_to_c4(kajiya_surfel_pos_to_grid_coord(pt_ws, eye_pos));
+	const vec3 c4_center = kajiya_surfel_grid_coord_center(c4_coord, eye_pos);
+
+	// The reference packs the candidate's shading normal here (gbuffer_packed.y);
+	// the kiln G-buffer path re-packs the geometric normal of this pixel instead.
+	// Reconstruct it from the surface attachment.
+	uint packed_surface = texelFetch(ksurface, ivec2(px), 0).g;
+	vec2 oct = unpackSnorm2x16(packed_surface);
+	vec3 n_view = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
+	n_view.xy += mix(vec2(1.0), vec2(-1.0), greaterThanEqual(n_view.xy, vec2(0.0))) * max(-n_view.z, 0.0);
+	vec3 geometric_normal_ws = safe_normalize(mat3(p.inv_view) * safe_normalize(n_view));
+
+	// The allocate stage needs the surface binding; declare it above by enabling
+	// the reference-equivalent normal bits in the surfel's spatial entry.
+	vec4 surfel_entry = vec4(c4_center, kajiya_pack_normal_11_10_11(geometric_normal_ws));
+
+	uint surfel_alloc_idx = atomicAdd(kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_ALLOC_COUNT / 4u], 1u);
+
+	const uint surfel_idx = kajiya_surfel_pool_buf[surfel_alloc_idx];
+	atomicMax(kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u], surfel_idx + 1u);
+
+	// Clear dead state, mark used.
+	kajiya_surfel_life_buf[surfel_idx] = 0u;
+
+	kajiya_surfel_spatial_buf[surfel_idx] = surfel_entry;
+	kajiya_surfel_reposition_proposal_buf[surfel_idx] = surfel_entry;
+
+	// Irradiance at the interpolated surfel position.
+	vec4 source_irradiance = imageLoad(tile_irradiance_tex, ivec2(tile_px));
+
+	// Starting radiance and sample count for the new surfel.
+	vec4 start_irradiance_and_sample_count = max(vec4(0.0), vec4(
+			source_irradiance.rgb,
+			min(64.0, 32.0 * source_irradiance.a)));
+
+	kajiya_surfel_aux_buf[surfel_idx * 2u + 0u] = start_irradiance_and_sample_count;
+	kajiya_surfel_irradiance_buf[surfel_idx] = start_irradiance_and_sample_count;
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_CELLS
+
+// kajiya clear_cells.hlsl: zero the per-cell counts before binning.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint base = gl_GlobalInvocationID.x * 4u;
+	if (base + 3u >= KAJIYA_MAX_SURFEL_CELLS + 1u) {
+		for (uint i = 0u; i < 4u; i++) {
+			if (base + i < KAJIYA_MAX_SURFEL_CELLS + 1u) {
+				kajiya_cell_index_offset_buf[base + i] = 0u;
+			}
+		}
+		return;
+	}
+	kajiya_cell_index_offset_buf[base + 0u] = 0u;
+	kajiya_cell_index_offset_buf[base + 1u] = 0u;
+	kajiya_cell_index_offset_buf[base + 2u] = 0u;
+	kajiya_cell_index_offset_buf[base + 3u] = 0u;
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_COUNT_CELLS
+
+// kajiya count_surfels_per_cell.hlsl: splat each live surfel into every
+// overlapping clipmap cell (up to two cascades).
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count || !kajiya_is_surfel_life_valid(kajiya_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+
+	vec3 position = kajiya_surfel_position(surfel_idx);
+	vec3 normal = kajiya_surfel_normal(surfel_idx);
+
+	KajiyaSurfelGridMinMax box = kajiya_get_surfel_grid_box_min_max(position);
+	for (uint ci = 0u; ci < box.cascade_count; ci++) {
+		for (uint z = box.c4_min[ci].z; z <= box.c4_max[ci].z; z++) {
+			for (uint y = box.c4_min[ci].y; y <= box.c4_max[ci].y; y++) {
+				for (uint x = box.c4_min[ci].x; x <= box.c4_max[ci].x; x++) {
+					uvec4 c4 = uvec4(x, y, z, box.c4_min[ci].w);
+					if (!kajiya_surfel_intersects_grid_coord(position, normal, c4)) {
+						continue;
+					}
+					uint cell_idx = kajiya_surfel_grid_c4_to_hash(c4);
+					atomicAdd(kajiya_cell_index_offset_buf[cell_idx], 1u);
+				}
+			}
+		}
+	}
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_SCAN
+
+// kajiya inclusive_prefix_scan.hlsl: shared-memory Blelloch-style inclusive scan
+// over 1024-entry segments. One workgroup per segment. Loads beyond the cell
+// buffer return 0 and stores are dropped (the reference scans a full 1M range
+// over a 262145-entry buffer, relying on HLSL's zero-fill OOB behavior).
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+#define KAJIYA_SCAN_THREAD_GROUP_SIZE 512
+#define KAJIYA_SCAN_SEGMENT_SIZE (KAJIYA_SCAN_THREAD_GROUP_SIZE * 2)
+layout(set = 0, binding = 10, std430) buffer KajiyaScanBuf {
+	uint values[];
+};
+shared uint shared_data[KAJIYA_SCAN_SEGMENT_SIZE];
+uint load_input(uint idx, uint segment) {
+	uint linear = idx + segment * KAJIYA_SCAN_SEGMENT_SIZE;
+	if (linear >= KAJIYA_MAX_SURFEL_CELLS + 1u) {
+		return 0u;
+	}
+	return values[linear];
+}
+void store_output(uint idx, uint segment, uint val) {
+	uint linear = idx + segment * KAJIYA_SCAN_SEGMENT_SIZE;
+	if (linear < KAJIYA_MAX_SURFEL_CELLS + 1u) {
+		values[linear] = val;
+	}
+}
+layout(local_size_x = KAJIYA_SCAN_THREAD_GROUP_SIZE) in;
+void main() {
+	uint idx = gl_LocalInvocationID.x;
+	uint segment = gl_WorkGroupID.x;
+	const uint STEP_COUNT = uint(log2(float(KAJIYA_SCAN_THREAD_GROUP_SIZE))) + 1u;
+
+	shared_data[idx * 2u] = load_input(idx * 2u, segment);
+	shared_data[idx * 2u + 1u] = load_input(idx * 2u + 1u, segment);
+
+	barrier();
+
+	for (uint step = 0u; step < STEP_COUNT; step++) {
+		uint mask = (1u << step) - 1u;
+		uint rd_idx = ((idx >> step) << (step + 1u)) + mask;
+		uint wr_idx = rd_idx + 1u + (idx & mask);
+		shared_data[wr_idx] += shared_data[rd_idx];
+		barrier();
+	}
+
+	store_output(idx * 2u, segment, shared_data[idx * 2u]);
+	store_output(idx * 2u + 1u, segment, shared_data[idx * 2u + 1u]);
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_SCAN_SEGMENTS
+
+// kajiya inclusive_prefix_scan_segments.hlsl: scan the per-segment sums.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+#define KAJIYA_SCAN_THREAD_GROUP_SIZE 512
+#define KAJIYA_SCAN_SEGMENT_SIZE (KAJIYA_SCAN_THREAD_GROUP_SIZE * 2)
+layout(set = 0, binding = 10, std430) readonly buffer KajiyaScanBuf {
+	uint values[];
+};
+layout(set = 0, binding = 11, std430) writeonly buffer KajiyaScanSegments {
+	uint segment_sums[];
+};
+shared uint shared_data[KAJIYA_SCAN_SEGMENT_SIZE];
+uint load_input(uint idx) {
+	uint segment_sum_idx = idx * KAJIYA_SCAN_SEGMENT_SIZE + KAJIYA_SCAN_SEGMENT_SIZE - 1u;
+	if (segment_sum_idx >= KAJIYA_MAX_SURFEL_CELLS + 1u) {
+		return 0u;
+	}
+	return values[segment_sum_idx];
+}
+layout(local_size_x = KAJIYA_SCAN_THREAD_GROUP_SIZE) in;
+void main() {
+	uint idx = gl_LocalInvocationID.x;
+	const uint STEP_COUNT = uint(log2(float(KAJIYA_SCAN_THREAD_GROUP_SIZE))) + 1u;
+
+	shared_data[idx * 2u] = load_input(idx * 2u);
+	shared_data[idx * 2u + 1u] = load_input(idx * 2u + 1u);
+
+	barrier();
+
+	for (uint step = 0u; step < STEP_COUNT; step++) {
+		uint mask = (1u << step) - 1u;
+		uint rd_idx = ((idx >> step) << (step + 1u)) + mask;
+		uint wr_idx = rd_idx + 1u + (idx & mask);
+		shared_data[wr_idx] += shared_data[rd_idx];
+		barrier();
+	}
+
+	segment_sums[idx * 2u] = shared_data[idx * 2u];
+	segment_sums[idx * 2u + 1u] = shared_data[idx * 2u + 1u];
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_SCAN_MERGE
+
+// kajiya inclusive_prefix_scan_merge.hlsl: add the previous segment sums.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+#define KAJIYA_SCAN_THREAD_GROUP_SIZE 512
+#define KAJIYA_SCAN_SEGMENT_SIZE (KAJIYA_SCAN_THREAD_GROUP_SIZE * 2)
+layout(set = 0, binding = 10, std430) buffer KajiyaScanBuf {
+	uint values[];
+};
+layout(set = 0, binding = 11, std430) readonly buffer KajiyaScanSegments {
+	uint segment_sums[];
+};
+layout(local_size_x = KAJIYA_SCAN_THREAD_GROUP_SIZE) in;
+void main() {
+	uint idx = gl_LocalInvocationID.x;
+	uint segment = gl_WorkGroupID.x;
+
+	uint linear0 = idx * 2u + segment * KAJIYA_SCAN_SEGMENT_SIZE;
+	uint linear1 = linear0 + 1u;
+	uint prev0 = segment == 0u ? 0u : segment_sums[segment - 1u];
+
+	if (linear0 < KAJIYA_MAX_SURFEL_CELLS + 1u) {
+		values[linear0] += prev0;
+	}
+	if (linear1 < KAJIYA_MAX_SURFEL_CELLS + 1u) {
+		values[linear1] += prev0;
+	}
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+
+// kajiya slot_surfels_into_cells.hlsl: decrement-count scatter producing the
+// compacted per-cell surfel index ranges [offset[cell], offset[cell+1]).
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count || !kajiya_is_surfel_life_valid(kajiya_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+
+	vec3 position = kajiya_surfel_position(surfel_idx);
+	vec3 normal = kajiya_surfel_normal(surfel_idx);
+
+	KajiyaSurfelGridMinMax box = kajiya_get_surfel_grid_box_min_max(position);
+	for (uint ci = 0u; ci < box.cascade_count; ci++) {
+		for (uint z = box.c4_min[ci].z; z <= box.c4_max[ci].z; z++) {
+			for (uint y = box.c4_min[ci].y; y <= box.c4_max[ci].y; y++) {
+				for (uint x = box.c4_min[ci].x; x <= box.c4_max[ci].x; x++) {
+					uvec4 c4 = uvec4(x, y, z, box.c4_min[ci].w);
+					if (!kajiya_surfel_intersects_grid_coord(position, normal, c4)) {
+						continue;
+					}
+					uint cell_idx = kajiya_surfel_grid_c4_to_hash(c4);
+					uint cell_index_loc_plus_one = atomicAdd(kajiya_cell_index_offset_buf[cell_idx], -1u);
+					kajiya_surfel_index_buf[cell_index_loc_plus_one - 1u] = surfel_idx;
+				}
+			}
+		}
+	}
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+
+// kajiya trace_irradiance.rgen.hlsl: per-surfel path tracing with MSME
+// accumulation. One ray-generation thread per surfel becomes one invocation per
+// surfel; MAX_PATH_LENGTH 1, four cosine paths per frame, sun NEE, emissive
+// hit light, one surfel-cache bounce at the last vertex, sky-cube miss.
+// USE_DYNAMIC_TRACE_ORIGIN 1, USE_BLEND_RESULT 1, USE_MSME 1, FIREFLY_SUPPRESSION 1.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// Threaded SAH BVH. Internal: lo.w=-1, hi.w=escape node after subtree.
+// Leaf: lo.w=first triangle, hi.w=-triangle count-1. Children follow their parent.
+// Escape links identify the right child for near-first traversal; depth < 32 is
+// validated when building/loading the hierarchy. Triangle p1/p2 are cached edges.
+struct BvhNode { vec4 lo; vec4 hi; };
+struct Triangle { vec4 p0; vec4 p1; vec4 p2; vec4 albedo; vec4 emission; };
+layout(set=0,binding=4,std430) readonly buffer Nodes { BvhNode nodes[]; };
+layout(set=0,binding=5,std430) readonly buffer Triangles { Triangle triangles[]; };
+layout(set=0,binding=16,std430) readonly buffer DynamicNodes { BvhNode dynamic_nodes[]; };
+layout(set=0,binding=17,std430) readonly buffer DynamicTriangles { Triangle dynamic_triangles[]; };
+layout(set=0,binding=18,std430) readonly buffer Emitters { vec4 emitters[]; };
+struct TextureCoordinates { vec4 ab; vec4 c_page_repeat; };
+layout(set=0,binding=32) uniform sampler2DArray ray_albedo;
+layout(set=0,binding=33,std430) readonly buffer StaticUVs { TextureCoordinates static_uvs[]; };
+layout(set=0,binding=34,std430) readonly buffer DynamicUVs { TextureCoordinates dynamic_uvs[]; };
+Triangle world_triangle(int id){return id<int(p.source_bvh_state.y)?triangles[id]:dynamic_triangles[id-int(p.source_bvh_state.y)];}
+vec3 hit_albedo(int id, vec3 position) {
+    Triangle t = world_triangle(id);
+    TextureCoordinates record = id < int(p.source_bvh_state.y) ? static_uvs[id] : dynamic_uvs[id-int(p.source_bvh_state.y)];
+    if (record.c_page_repeat.z < 0.5) return t.albedo.rgb;
+    vec3 delta = position - t.p0.xyz;
+    float aa = dot(t.p1.xyz,t.p1.xyz), ab = dot(t.p1.xyz,t.p2.xyz), bb = dot(t.p2.xyz,t.p2.xyz);
+    float da = dot(delta,t.p1.xyz), db = dot(delta,t.p2.xyz), denominator = max(aa*bb-ab*ab,1e-20);
+    vec2 bary = vec2(da*bb-db*ab, db*aa-da*ab)/denominator;
+    vec2 uv = record.ab.xy*(1.0-bary.x-bary.y)+record.ab.zw*bary.x+record.c_page_repeat.xy*bary.y;
+    // The sampler repeats; clamping to texel centers gives clamp-to-edge pages
+    // without a second sampler or an extra fetch. sRGB is decoded by hardware
+    // before filtering, matching the original four-tap linear-light estimator.
+    uv = record.c_page_repeat.w > 0.5 ? fract(uv) : clamp(uv, vec2(0.5/512.0), vec2(511.5/512.0));
+    vec3 color = textureLod(ray_albedo, vec3(uv, record.c_page_repeat.z - 1.0), 0.0).rgb;
+    return t.albedo.rgb*color;
+}
+BvhNode world_node(int id,bool dynamic){return dynamic?dynamic_nodes[id]:nodes[id];}
+float box_near(vec3 origin,vec3 inverse_ray,BvhNode node,float maximum){
+    vec3 a=(node.lo.xyz-origin)*inverse_ray,b=(node.hi.xyz-origin)*inverse_ray;
+    vec3 lo=min(a,b),hi=max(a,b);
+    float near_distance=max(0.0,max(lo.x,max(lo.y,lo.z)));
+    return near_distance<=min(maximum,min(hi.x,min(hi.y,hi.z)))?near_distance:-1.0;
+}
+// Visibility rays need only the first blocker. Escape links let them walk
+// without a per-ray stack or sorting/loading both children at every branch.
+bool trace_blocker(vec3 origin,vec3 ray,float maximum,bool dynamic,out int triangle_id,out float distance){
+    triangle_id=-1;distance=maximum;
+    int node_count=int(dynamic?p.dynamic_scene.x:p.source_bvh_state.x);
+    vec3 inverse_ray=1.0/(mix(vec3(1e-8),vec3(-1e-8),lessThan(ray,vec3(0)))+ray);
+    int index=0;
+    while(index<node_count){
+        BvhNode node=world_node(index,dynamic);
+        bool leaf=node.hi.w<0.0;
+        if(box_near(origin,inverse_ray,node,maximum)<0.0){index=leaf?index+1:int(node.hi.w);continue;}
+        if(!leaf){index++;continue;}
+        int first=int(node.lo.w),end=first-int(node.hi.w)-1;
+        for(int i=first;i<end;i++){
+            Triangle tri=dynamic?dynamic_triangles[i]:triangles[i];
+            vec3 h=cross(ray,tri.p2.xyz);float det=dot(tri.p1.xyz,h);if(abs(det)<1e-9)continue;
+            float inv=1.0/det;vec3 s=origin-tri.p0.xyz;float u=dot(s,h)*inv;
+            if(u<0.0||u>1.0)continue;
+            vec3 q=cross(s,tri.p1.xyz);float v=dot(ray,q)*inv;if(v<0.0||u+v>1.0)continue;
+            float t=dot(tri.p2.xyz,q)*inv;if(t<=.006||t>=maximum)continue;
+            distance=t;triangle_id=i+(dynamic?int(p.source_bvh_state.y):0);return true;
+        }
+        index++;
+    }
+    return false;
+}
+#ifndef GI_VISIBILITY_ONLY
+bool trace_hierarchy(vec3 origin,vec3 ray,float maximum,bool any_hit,bool dynamic,out int triangle_id,out float distance){
+    if(any_hit)return trace_blocker(origin,ray,maximum,dynamic,triangle_id,distance);
+    triangle_id=-1;distance=maximum;
+    vec3 inverse_ray=1.0/(mix(vec3(1e-8),vec3(-1e-8),lessThan(ray,vec3(0)))+ray);
+    // Visit the near child first so a nearby hit prunes the far subtree.
+    // Fixed preorder walked distant geometry before finding the nearest hit,
+    // allowing a few grazing rays to monopolize an entire GPU workgroup.
+    int pending[32];int count=0,index=(dynamic?p.dynamic_scene.x:p.source_bvh_state.x)>0.0?0:-1;
+    while(index>=0){
+        BvhNode node=world_node(index,dynamic);
+        bool leaf=node.hi.w<0.0;
+        if(box_near(origin,inverse_ray,node,distance)<0.0){
+            index=count>0?pending[--count]:-1;continue;
+        }
+        if(!leaf){
+            int left=index+1;
+            BvhNode left_node=world_node(left,dynamic);
+            int right=left_node.hi.w<0.0?left+1:int(left_node.hi.w);
+            float a=box_near(origin,inverse_ray,left_node,distance);
+            float b=box_near(origin,inverse_ray,world_node(right,dynamic),distance);
+            if(a>=0.0&&b>=0.0){pending[count++]=a<=b?right:left;index=a<=b?left:right;}
+            else if(a>=0.0)index=left;
+            else if(b>=0.0)index=right;
+            else index=count>0?pending[--count]:-1;
+            continue;
+        }
+        int first=int(node.lo.w),end=first-int(node.hi.w)-1;
+        for(int i=first;i<end;i++){
+            Triangle tri=dynamic?dynamic_triangles[i]:triangles[i];vec3 e1=tri.p1.xyz,e2=tri.p2.xyz;
+            vec3 h=cross(ray,e2);float det=dot(e1,h);if(abs(det)<1e-9)continue;
+            float inv=1.0/det;vec3 s=origin-tri.p0.xyz;float u=dot(s,h)*inv;
+            if(u<0.0||u>1.0)continue;
+            vec3 q=cross(s,e1);float v=dot(ray,q)*inv;if(v<0.0||u+v>1.0)continue;
+            float t=dot(e2,q)*inv;if(t<=.006||t>=distance)continue;
+            distance=t;triangle_id=i+(dynamic?int(p.source_bvh_state.y):0);
+            if(any_hit)return true;
+        }
+        index=count>0?pending[--count]:-1;
+    }
+    return triangle_id>=0;
+}
+#endif
+bool world_trace_software(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+    normal=vec3(0);
+#ifdef GI_VISIBILITY_ONLY
+    // The lighting stage issues only visibility segments. Keep the nearest-hit
+    // stack out of this kernel entirely, even on compilers without call-site
+    // specialization of the any_hit argument.
+    if(trace_blocker(origin,ray,maximum,false,triangle_id,distance))return true;
+    return trace_blocker(origin,ray,maximum,true,triangle_id,distance);
+#else
+    bool hit=trace_hierarchy(origin,ray,maximum,any_hit,false,triangle_id,distance);
+    if(hit&&any_hit)return true;
+    int dynamic_id;float dynamic_distance;
+    if(trace_hierarchy(origin,ray,distance,any_hit,true,dynamic_id,dynamic_distance)){
+        triangle_id=dynamic_id;distance=dynamic_distance;hit=true;
+    }
+    if(hit){
+        Triangle tri=world_triangle(triangle_id);
+        normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
+        if(dot(normal,ray)>0.0)normal=-normal;
+    }
+    return hit;
+#endif
+}
+#ifdef KILN_HARDWARE_RAY_QUERY
+layout(set=0,binding=27) uniform accelerationStructureEXT scene_tlas;
+bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+    triangle_id=-1;distance=maximum;normal=vec3(0);
+    rayQueryEXT query;
+    // Keep both flag alternatives constant so the Metal translator can prove
+    // that traversal is opaque and lower it to its native intersector.
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
+    int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
+    triangle_id=int(rayQueryGetIntersectionPrimitiveIndexEXT(query,true))+(instance==1?int(p.source_bvh_state.y):0);
+    distance=rayQueryGetIntersectionTEXT(query,true);
+    Triangle tri=world_triangle(triangle_id);
+    normal=safe_normalize(vec3(tri.p0.w,tri.p1.w,tri.p2.w));
+    if(dot(normal,direction)>0.0)normal=-normal;
+    return true;
+}
+#endif
+bool world_trace(vec3 origin,vec3 ray,float maximum,bool any_hit,out int triangle_id,out float distance,out vec3 normal){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    return world_trace_hardware(origin,ray,maximum,any_hit,triangle_id,distance,normal);
+#else
+    return world_trace_software(origin,ray,maximum,any_hit,triangle_id,distance,normal);
+#endif
+}
+bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
+#ifdef KILN_HARDWARE_RAY_QUERY
+    // A visibility segment needs only the hit bit. Keep this query separate
+    // from closest-hit shading so primitive/material/normal payloads never
+    // enter its native Metal intersector or the surrounding live state.
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    while(rayQueryProceedEXT(query)){}
+    return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
+#else
+    int id;float distance;vec3 normal;
+    return world_trace(origin,direction,maximum,true,id,distance,normal);
+#endif
+}
+bool occluded(vec3 origin,vec3 direction){
+    return visibility_blocked(origin,direction,1000.0);
+}
+vec3 sky_at_surface(vec3 position,vec3 normal,vec2 xi){
+    vec3 ray=cosine_direction(normal,xi);
+    if(p.sun_color.w<=0.0||ray.y<=0.0)return vec3(0);
+    return occluded(position+normal*.025,ray)?vec3(0):environment_radiance(ray);
+}
+// Area-weighted next-event sampling makes a small crystal useful at the
+// production ray budget. This is surface emission with world-space visibility,
+// not an unshadowed point light or a screen-space bloom approximation.
+vec3 emitter_sample(vec3 position,vec3 normal,vec3 xi,out vec3 direction){
+    direction=normal;
+    int count=int(p.dynamic_scene.z);if(count==0)return vec3(0);
+    float target=xi.x*p.dynamic_scene.w;int lo=0,hi=count-1;
+    while(lo<hi){int mid=(lo+hi)/2;if(emitters[mid].y<target)lo=mid+1;else hi=mid;}
+    vec4 entry=emitters[lo];Triangle tri=world_triangle(int(entry.x));
+    float u=sqrt(xi.y);vec3 point=tri.p0.xyz+tri.p1.xyz*(u*(1.0-xi.z))+tri.p2.xyz*(u*xi.z);
+    vec3 origin=position+normal*.012,delta=point-origin;float squared=dot(delta,delta);
+    if(squared<.0004)return vec3(0);
+    float distance=sqrt(squared);direction=delta/distance;
+    if(dot(normal,direction)<=0.0)return vec3(0);
+    vec3 source_normal=safe_normalize(cross(tri.p1.xyz,tri.p2.xyz));
+    float cosine=abs(dot(source_normal,-direction));
+    if(cosine<.0001)return vec3(0);
+    int id;float hit_distance;vec3 n;
+    if(visibility_blocked(origin,direction,distance-.008))return vec3(0);
+    return tri.emission.rgb*(entry.z*cosine*p.dynamic_scene.w/(squared*entry.w));
+}
+// World-space light grid: each cell stores a complete, dynamically sized list.
+// One uniformly sampled overlapping analytic light per bounce is unbiased; the
+// sample weight includes list length. Visibility uses the same software BVH.
+layout(set=0,binding=25,std430) readonly buffer LocalLights { vec4 local_lights[]; };
+layout(set=0,binding=26,std430) readonly buffer LightGrid { uint light_grid[]; };
+vec3 local_light_unoccluded(uint id,vec3 position,vec3 normal,out vec3 direction,out float distance){
+    vec4 pr=local_lights[2u+id*4u],color=local_lights[3u+id*4u],cone=local_lights[4u+id*4u];
+    vec3 delta=pr.xyz-position;distance=length(delta);direction=delta/max(distance,.0001);
+    if(distance>=pr.w||distance<.001)return vec3(0);
+    float nl=max(0.0,dot(normal,direction));if(nl<=0.0)return vec3(0);
+    float window=max(1.0-pow(distance/pr.w,4.0),0.0);
+    float attenuation=window*window*pow(max(distance,.0001),-color.w);
+    if(cone.w>=-1.0){
+        float scos=max(dot(-direction,cone.xyz),cone.w);
+        float rim=max(1e-4,(1.0-scos)/(1.0-cone.w));
+        attenuation*=1.0-pow(rim,local_lights[5u+id*4u].x);
+    }
+    return max(vec3(0),color.rgb*(attenuation*nl/PI));
+}
+vec3 local_light_sample(vec3 position,vec3 normal,float xi){
+    vec4 origin=local_lights[0];ivec3 dims=ivec3(local_lights[1].xyz);
+    ivec3 cell=ivec3(floor((position-origin.xyz)/origin.w));
+    if(any(lessThan(cell,ivec3(0)))||any(greaterThanEqual(cell,dims)))return vec3(0);
+    int cell_id=(cell.z*dims.y+cell.y)*dims.x+cell.x;
+    uint count=light_grid[cell_id*2+1],start=light_grid[cell_id*2];
+    // Importance-sample actual incident power, including range and spot cone.
+    // A uniform light index spent most samples on irrelevant lamps in Sponza.
+    // The CDF uses cheap unoccluded weights, then traces ONE visibility ray.
+    float total=0.0,distance;vec3 direction;
+    for(uint i=0u;i<count;i++)total+=luminance(local_light_unoccluded(light_grid[start+i],position,normal,direction,distance));
+    if(total<=1e-10)return vec3(0);
+    float target=xi*total,accum=0.0;
+    for(uint i=0u;i<count;i++){
+        vec3 value=local_light_unoccluded(light_grid[start+i],position,normal,direction,distance);
+        float weight=luminance(value);accum+=weight;
+        if(weight>0.0 && (accum>=target || i+1u==count)){
+            if(visibility_blocked(position+normal*.025,direction,distance-.03))return vec3(0);
+            return value*(total/weight);
+        }
+    }
+    return vec3(0);
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya sky cube helpers: the reference renders a 32px RGBA16F cube per frame
+// (rust-gpu sky.rs, atmosphere from the world origin) and every GI stage samples
+// it. Ported as a 6-layer 2D array with the standard cube face mapping.
+const int KAJIYA_SKY_DIMS = 32;
+
+vec3 kajiya_cube_face_rotation(int face, vec3 v) {
+	// Column-major rotations from kajiya rust-shaders-shared/src/util.rs.
+	if (face == 0) return v * mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0.0), vec3(-1.0, 0.0, 0.0));
+	if (face == 1) return v * mat3(vec3(0.0, 0.0, 1.0), vec3(0.0, -1.0, 0.0), vec3(1.0, 0.0, 0.0));
+	if (face == 2) return v * mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, -1.0, 0.0));
+	if (face == 3) return v * mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
+	if (face == 4) return v * mat3(vec3(1.0, 0.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, -1.0));
+	return v * mat3(vec3(-1.0, 0.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0));
+}
+
+// Inverse of the face rotations above: standard OpenGL major-axis cube mapping.
+void kajiya_dir_to_cube_face_uv(vec3 dir, out int face, out vec2 uv) {
+	vec3 a = abs(dir);
+	if (a.x >= a.y && a.x >= a.z) {
+		if (dir.x >= 0.0) { face = 0; uv = vec2(-dir.z, -dir.y) / a.x; }
+		else { face = 1; uv = vec2(dir.z, -dir.y) / a.x; }
+	} else if (a.y >= a.z) {
+		if (dir.y >= 0.0) { face = 2; uv = vec2(dir.x, dir.z) / a.y; }
+		else { face = 3; uv = vec2(dir.x, -dir.z) / a.y; }
+	} else {
+		if (dir.z >= 0.0) { face = 4; uv = vec2(dir.x, -dir.y) / a.z; }
+		else { face = 5; uv = vec2(-dir.x, -dir.y) / a.z; }
+	}
+	uv = uv * 0.5 + 0.5;
+}
+
+vec3 kajiya_sample_sky(sampler2DArray sky_tex, vec3 dir) {
+	int face;
+	vec2 uv;
+	kajiya_dir_to_cube_face_uv(normalize(dir), face, uv);
+	return textureLod(sky_tex, vec3(uv, float(face)), 0.0).rgb;
+}
+
+// kajiya BRDF stack, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{brdf,brdf_lut,layered_brdf}.hlsl.
+// USE_GGX_VNDF_SAMPLING 1, USE_GGX_CORRELATED_MASKING 1 as in the reference.
+// The FG LUT is supplied per stage as `kajiya_fg_lut` (64x64 RG32F-like sampled texture).
+
+const float KAJIYA_M_TAU = 6.28318530717958647692;
+const float KAJIYA_M_FRAC_1_PI = 0.31830988618379067154;
+const float KAJIYA_BRDF_SAMPLING_MIN_COS = 1e-5;
+
+const vec2 KAJIYA_BRDF_FG_LUT_UV_SCALE = (vec2(64.0) - 1.0) / vec2(64.0);
+const vec2 KAJIYA_BRDF_FG_LUT_UV_BIAS = 0.5 / vec2(64.0);
+
+float kajiya_calculate_luma(vec3 col) {
+	return dot(vec3(0.2126, 0.7152, 0.0722), col);
+}
+
+struct KajiyaBrdfValue {
+	vec3 value_over_pdf;
+	vec3 value;
+	float pdf;
+	vec3 transmission_fraction;
+};
+
+KajiyaBrdfValue kajiya_brdf_value_invalid() {
+	KajiyaBrdfValue res;
+	res.value_over_pdf = vec3(0.0);
+	res.value = vec3(0.0);
+	res.pdf = 0.0;
+	res.transmission_fraction = vec3(0.0);
+	return res;
+}
+
+struct KajiyaBrdfSample {
+	vec3 value_over_pdf;
+	vec3 value;
+	float pdf;
+	vec3 transmission_fraction;
+	vec3 wi;
+	float approx_roughness;
+};
+
+KajiyaBrdfSample kajiya_brdf_sample_invalid() {
+	KajiyaBrdfSample res;
+	res.value_over_pdf = vec3(0.0);
+	res.value = vec3(0.0);
+	res.pdf = 0.0;
+	res.transmission_fraction = vec3(0.0);
+	res.wi = vec3(0.0, 0.0, -1.0);
+	res.approx_roughness = 0.0;
+	return res;
+}
+
+bool kajiya_brdf_sample_is_valid(KajiyaBrdfSample s) {
+	return s.wi.z > 1e-6;
+}
+
+struct KajiyaDiffuseBrdf {
+	vec3 albedo;
+};
+
+KajiyaBrdfSample kajiya_diffuse_sample(KajiyaDiffuseBrdf b, vec2 urand) {
+	float phi = urand.x * KAJIYA_M_TAU;
+	float cos_theta = sqrt(max(0.0, 1.0 - urand.y));
+	float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
+
+	KajiyaBrdfSample res;
+	res.wi = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+	res.pdf = KAJIYA_M_FRAC_1_PI;
+	res.value_over_pdf = b.albedo;
+	res.value = res.value_over_pdf * res.pdf;
+	res.transmission_fraction = vec3(0.0);
+	res.approx_roughness = 1.0;
+	return res;
+}
+
+KajiyaBrdfValue kajiya_diffuse_evaluate(KajiyaDiffuseBrdf b, vec3 wi) {
+	KajiyaBrdfValue res;
+	res.pdf = wi.z > 0.0 ? KAJIYA_M_FRAC_1_PI : 0.0;
+	res.value_over_pdf = wi.z > 0.0 ? b.albedo : vec3(0.0);
+	res.value = res.value_over_pdf * res.pdf;
+	res.transmission_fraction = vec3(0.0);
+	return res;
+}
+
+vec3 kajiya_eval_fresnel_schlick(vec3 f0, vec3 f90, float cos_theta) {
+	return mix(f0, f90, pow(max(0.0, 1.0 - cos_theta), 5.0));
+}
+
+float kajiya_g_smith_ggx_correlated(float ndotv, float ndotl, float a2) {
+	float lambda_v = ndotl * sqrt((-ndotv * a2 + ndotv) * ndotv + a2);
+	float lambda_l = ndotv * sqrt((-ndotl * a2 + ndotl) * ndotl + a2);
+	return 2.0 * ndotl * ndotv / (lambda_v + lambda_l);
+}
+
+float kajiya_g_smith_ggx1(float ndotv, float a2) {
+	float tan2_v = (1.0 - ndotv * ndotv) / (ndotv * ndotv);
+	return 2.0 / (1.0 + sqrt(1.0 + a2 * tan2_v));
+}
+
+float kajiya_ggx_ndf(float a2, float cos_theta) {
+	float denom_sqrt = cos_theta * cos_theta * (a2 - 1.0) + 1.0;
+	return a2 / (PI * denom_sqrt * denom_sqrt);
+}
+
+float kajiya_ggx_ndf_0_1(float a2, float cos_theta) {
+	float denom_sqrt = cos_theta * cos_theta * (a2 - 1.0) + 1.0;
+	return a2 * a2 / (denom_sqrt * denom_sqrt);
+}
+
+float kajiya_pdf_ggx(float a2, float cos_theta) {
+	return kajiya_ggx_ndf(a2, cos_theta) * cos_theta;
+}
+
+float kajiya_pdf_ggx_vn(float a2, vec3 wo, vec3 h) {
+	float g1 = kajiya_g_smith_ggx1(wo.z, a2);
+	float d = kajiya_ggx_ndf(a2, h.z);
+	return g1 * d * max(0.0, dot(wo, h)) / wo.z;
+}
+
+struct KajiyaNdfSample {
+	vec3 m;
+	float pdf;
+};
+
+KajiyaNdfSample kajiya_sample_ndf(float roughness, vec2 urand) {
+	const float a2 = roughness * roughness;
+
+	const float cos2_theta = (1.0 - urand.x) / (1.0 - urand.x + a2 * urand.x);
+	const float cos_theta = sqrt(cos2_theta);
+	const float phi = KAJIYA_M_TAU * urand.y;
+
+	const float sin_theta = sqrt(max(0.0, 1.0 - cos2_theta));
+
+	KajiyaNdfSample res;
+	res.m = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+	res.pdf = kajiya_pdf_ggx(a2, cos_theta);
+	return res;
+}
+
+// Heitz 2018 VNDF sampling for the identical alpha in both axes.
+KajiyaNdfSample kajiya_sample_vndf(float roughness, vec3 wo, vec2 urand) {
+	float alpha = roughness;
+	float a2 = alpha * alpha;
+
+	// Transform the view vector to the hemisphere configuration.
+	vec3 Vh = normalize(vec3(alpha * wo.x, alpha * wo.y, wo.z));
+
+	// Construct orthonormal basis (Vh, T1, T2).
+	vec3 T1 = (Vh.z < 0.9999) ? normalize(cross(vec3(0.0, 0.0, 1.0), Vh)) : vec3(1.0, 0.0, 0.0);
+	vec3 T2 = cross(Vh, T1);
+
+	// Parameterization of the projected area of the hemisphere.
+	float r = sqrt(urand.x);
+	float phi = (2.0 * PI) * urand.y;
+	float t1 = r * cos(phi);
+	float t2 = r * sin(phi);
+	float s = 0.5 * (1.0 + Vh.z);
+	t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+
+	// Reproject onto hemisphere.
+	vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+
+	// Transform the normal back to the ellipsoid configuration.
+	vec3 h = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));
+	float pdf = kajiya_pdf_ggx_vn(a2, wo, h);
+
+	KajiyaNdfSample res;
+	res.m = h;
+	res.pdf = pdf;
+	return res;
+}
+
+struct KajiyaSpecularBrdf {
+	float roughness;
+	vec3 albedo;
+};
+
+KajiyaBrdfSample kajiya_specular_sample(KajiyaSpecularBrdf b, vec3 wo, vec2 urand) {
+	KajiyaNdfSample ndf_sample = kajiya_sample_vndf(b.roughness, wo, urand);
+
+	const vec3 wi = reflect(-wo, ndf_sample.m);
+
+	if (ndf_sample.m.z <= KAJIYA_BRDF_SAMPLING_MIN_COS || wi.z <= KAJIYA_BRDF_SAMPLING_MIN_COS || wo.z <= KAJIYA_BRDF_SAMPLING_MIN_COS) {
+		return kajiya_brdf_sample_invalid();
+	}
+
+	// Change of variables from half-direction space to regular lighting geometry.
+	const float jacobian = 1.0 / (4.0 * dot(wi, ndf_sample.m));
+
+	const vec3 fresnel = kajiya_eval_fresnel_schlick(b.albedo, vec3(1.0), dot(ndf_sample.m, wi));
+	const float a2 = b.roughness * b.roughness;
+	const float cos_theta = ndf_sample.m.z;
+
+	const float g = kajiya_g_smith_ggx_correlated(wo.z, wi.z, a2);
+	const float g_over_g1_wo = g / kajiya_g_smith_ggx1(wo.z, a2);
+
+	KajiyaBrdfSample res;
+	res.pdf = ndf_sample.pdf * jacobian / wi.z;
+	res.wi = wi;
+	res.transmission_fraction = vec3(1.0) - fresnel;
+	res.approx_roughness = b.roughness;
+	res.value_over_pdf = fresnel * g_over_g1_wo;
+	res.value = fresnel * g * kajiya_ggx_ndf(a2, cos_theta) / (4.0 * wo.z * wi.z);
+
+	return res;
+}
+
+KajiyaBrdfValue kajiya_specular_evaluate(KajiyaSpecularBrdf b, vec3 wo, vec3 wi) {
+	if (wi.z <= 0.0 || wo.z <= 0.0) {
+		return kajiya_brdf_value_invalid();
+	}
+
+	const float a2 = b.roughness * b.roughness;
+
+	const vec3 m = normalize(wo + wi);
+
+	const float cos_theta = m.z;
+
+	const float pdf_h = kajiya_pdf_ggx_vn(a2, wo, m);
+
+	const float jacobian = 1.0 / (4.0 * dot(wi, m));
+
+	const vec3 fresnel = kajiya_eval_fresnel_schlick(b.albedo, vec3(1.0), dot(m, wi));
+
+	const float g = kajiya_g_smith_ggx_correlated(wo.z, wi.z, a2);
+	const float g_over_g1_wo = g / kajiya_g_smith_ggx1(wo.z, a2);
+
+	KajiyaBrdfValue res;
+	res.pdf = pdf_h * jacobian / wi.z;
+	res.transmission_fraction = vec3(1.0) - fresnel;
+	res.value_over_pdf = fresnel * g_over_g1_wo;
+	res.value = fresnel * g * kajiya_ggx_ndf(a2, cos_theta) / (4.0 * wo.z * wi.z);
+
+	return res;
+}
+
+// ---- brdf_lut.hlsl: split-sum energy preservation over the FG LUT ----
+struct KajiyaSpecularBrdfEnergyPreservation {
+	vec3 preintegrated_reflection;
+	vec3 preintegrated_reflection_mult;
+	vec3 preintegrated_transmission_fraction;
+};
+
+KajiyaSpecularBrdfEnergyPreservation kajiya_energy_preservation_from_brdf_ndotv(KajiyaSpecularBrdf brdf, float ndotv, sampler2D fg_lut) {
+	const float roughness = brdf.roughness;
+	const vec3 specular_albedo = brdf.albedo;
+
+	vec2 uv = vec2(ndotv, roughness) * KAJIYA_BRDF_FG_LUT_UV_SCALE + KAJIYA_BRDF_FG_LUT_UV_BIAS;
+	vec2 fg = textureLod(fg_lut, uv, 0.0).xy;
+	vec3 single_scatter = specular_albedo * fg.x + fg.y;
+
+	// The active reference path: multi-scatter energy compensation reformulated
+	// per Belcour 2018 sec. 5.1, with an ad-hoc F90 shift for subsequent bounces.
+	float e_ss = fg.x + fg.y;
+	vec3 f_ss = single_scatter / e_ss;
+	// Ad-hoc shift towards F90 for subsequent bounces.
+	vec3 f_ss_tail = mix(f_ss, vec3(1.0), 0.4);
+	vec3 bounce_radiance = (1.0 - e_ss) * f_ss_tail;
+	vec3 mult = 1.0 + bounce_radiance / (1.0 - bounce_radiance);
+
+	KajiyaSpecularBrdfEnergyPreservation res;
+	res.preintegrated_reflection = single_scatter * mult;
+	res.preintegrated_reflection_mult = mult;
+	res.preintegrated_transmission_fraction = vec3(1.0) - res.preintegrated_reflection;
+	return res;
+}
+
+// ---- layered_brdf.hlsl ----
+vec3 kajiya_metalness_albedo_boost(float metalness, vec3 diffuse_albedo) {
+	const float a0 = 1.749;
+	const float a1 = -1.61;
+	const float e1 = 0.5555;
+	const float e3 = 0.8244;
+
+	const float x = metalness;
+	const vec3 y = diffuse_albedo;
+	const vec3 y3 = y * y * y;
+
+	return 1.0 + (0.25 - (x - 0.5) * (x - 0.5)) * (a0 + a1 * abs(x - 0.5)) * (e1 * y + e3 * y3);
+}
+
+void kajiya_apply_metalness_to_brdfs(inout KajiyaSpecularBrdf specular_brdf, inout KajiyaDiffuseBrdf diffuse_brdf, float metalness) {
+	const vec3 albedo = diffuse_brdf.albedo;
+
+	specular_brdf.albedo = mix(specular_brdf.albedo, albedo, metalness);
+	diffuse_brdf.albedo = max(0.0, 1.0 - metalness) * albedo;
+
+	const vec3 albedo_boost = kajiya_metalness_albedo_boost(metalness, albedo);
+	specular_brdf.albedo = min(1.0, specular_brdf.albedo * albedo_boost);
+	diffuse_brdf.albedo = min(1.0, diffuse_brdf.albedo * albedo_boost);
+}
+
+struct KajiyaLayeredBrdf {
+	KajiyaSpecularBrdf specular_brdf;
+	KajiyaDiffuseBrdf diffuse_brdf;
+	KajiyaSpecularBrdfEnergyPreservation energy_preservation;
+};
+
+KajiyaLayeredBrdf kajiya_layered_from_gbuffer_ndotv(vec3 albedo, float roughness, float metalness, float ndotv, sampler2D fg_lut) {
+	KajiyaSpecularBrdf specular_brdf;
+	specular_brdf.albedo = vec3(0.04);
+	specular_brdf.roughness = roughness;
+
+	KajiyaDiffuseBrdf diffuse_brdf;
+	diffuse_brdf.albedo = albedo;
+
+	kajiya_apply_metalness_to_brdfs(specular_brdf, diffuse_brdf, metalness);
+
+	KajiyaLayeredBrdf res;
+	res.energy_preservation = kajiya_energy_preservation_from_brdf_ndotv(specular_brdf, ndotv, fg_lut);
+	res.specular_brdf = specular_brdf;
+	res.diffuse_brdf = diffuse_brdf;
+	return res;
+}
+
+vec3 kajiya_layered_evaluate(KajiyaLayeredBrdf b, vec3 wo, vec3 wi) {
+	if (wo.z <= 0.0 || wi.z <= 0.0) {
+		return vec3(0.0);
+	}
+
+	const KajiyaBrdfValue diff = kajiya_diffuse_evaluate(b.diffuse_brdf, wi);
+	const KajiyaBrdfValue spec = kajiya_specular_evaluate(b.specular_brdf, wo, wi);
+
+	return spec.value * b.energy_preservation.preintegrated_reflection_mult + diff.value * spec.transmission_fraction;
+}
+
+vec3 kajiya_layered_evaluate_directional_light(KajiyaLayeredBrdf b, vec3 wo, vec3 wi) {
+	if (wo.z <= 0.0 || wi.z <= 0.0) {
+		return vec3(0.0);
+	}
+
+	const KajiyaBrdfValue diff = kajiya_diffuse_evaluate(b.diffuse_brdf, wi);
+	const KajiyaBrdfValue spec = kajiya_specular_evaluate(b.specular_brdf, wo, wi);
+
+	const vec3 preintegrated_reflection_mult_directional = mix(vec3(1.0), b.energy_preservation.preintegrated_reflection_mult, sqrt(abs(wi.z)));
+
+	return spec.value * preintegrated_reflection_mult_directional + diff.value * spec.transmission_fraction;
+}
+
+KajiyaBrdfSample kajiya_layered_sample(KajiyaLayeredBrdf b, vec3 wo, vec3 urand) {
+	KajiyaBrdfSample brdf_sample;
+
+	// Single ray: toss a coin between reflection and transmission.
+	const float spec_wt = kajiya_calculate_luma(b.energy_preservation.preintegrated_reflection);
+	const float diffuse_wt = kajiya_calculate_luma(b.energy_preservation.preintegrated_transmission_fraction * b.diffuse_brdf.albedo);
+	const float transmission_p = diffuse_wt / (spec_wt + diffuse_wt);
+
+	const float lobe_xi = urand.z;
+	if (lobe_xi < transmission_p) {
+		// Transmission wins: sample the bottom layer (diffuse).
+		brdf_sample = kajiya_diffuse_sample(b.diffuse_brdf, urand.xy);
+
+		const float lobe_pdf = transmission_p;
+		brdf_sample.value_over_pdf /= lobe_pdf;
+
+		// Account for the masking that the top level exerts on the bottom.
+		brdf_sample.value_over_pdf *= b.energy_preservation.preintegrated_transmission_fraction;
+	} else {
+		// Reflection wins.
+		brdf_sample = kajiya_specular_sample(b.specular_brdf, wo, urand.xy);
+
+		const float lobe_pdf = (1.0 - transmission_p);
+		brdf_sample.value_over_pdf /= lobe_pdf;
+
+		// Apply approximate multi-scatter energy preservation.
+		brdf_sample.value_over_pdf *= b.energy_preservation.preintegrated_reflection_mult;
+	}
+
+	return brdf_sample;
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(set = 0, binding = 19) uniform sampler2DArray kajiya_sky_cube;
+layout(set = 0, binding = 20) uniform sampler2D kajiya_fg_lut;
+// Cornell-box material contract of the target scene: uniform roughness, no
+// metallic. The reference samples these per-hit from its packed G-buffer.
+const float KAJIYA_HIT_ROUGHNESS = 0.8945907354354858;
+const float KAJIYA_HIT_METALNESS = 0.0;
+
+vec3 kajiya_build_tangent(vec3 n) {
+	return safe_normalize(cross(abs(n.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), n));
+}
+
+vec3 kajiya_sample_environment_light(sampler2DArray sky_tex, vec3 dir) {
+	return kajiya_sample_sky(sky_tex, dir);
+}
+
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kajiya_surfel_meta_buf[KAJIYA_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count || !kajiya_is_surfel_life_valid(kajiya_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+
+	// USE_DYNAMIC_TRACE_ORIGIN: trace from the reposition proposal.
+	vec3 surfel_position = kajiya_surfel_reposition_proposal_buf[surfel_idx].xyz;
+	vec3 surfel_normal = kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_reposition_proposal_buf[surfel_idx].w));
+
+	vec4 prev_total_radiance_packed = kajiya_surfel_aux_buf[surfel_idx * 2u + 0u];
+
+	vec3 tangent = kajiya_build_tangent(surfel_normal);
+	vec3 bitangent = cross(surfel_normal, tangent);
+
+	const uint sample_count = 4u;
+	vec3 irradiance_sum = vec3(0.0);
+	float valid_sample_count = 0.0;
+	float sample0_luminance = 0.0;
+
+	for (uint sample_idx = 0u; sample_idx < sample_count; sample_idx++) {
+		valid_sample_count += 1.0;
+		uint sequence_idx = kajiya_hash1(surfel_idx) + sample_idx + uint(p.size_frame.z) * sample_count;
+
+		uint rng = kajiya_hash1(sequence_idx);
+		vec2 urand = kajiya_r2_sequence(sequence_idx % max(128u, 128u /* TARGET_SAMPLE_COUNT */));
+
+		// Cosine lobe sample with albedo 1 (DiffuseBrdf::sample about +z).
+		float phi = urand.x * KAJIYA_M_TAU;
+		float cos_theta = sqrt(max(0.0, 1.0 - urand.y));
+		float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
+		vec3 wi_local = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+		vec3 outgoing_dir = safe_normalize(tangent * wi_local.x + bitangent * wi_local.y + surfel_normal * wi_local.z);
+
+		int triangle_id;
+		float ray_t;
+		vec3 hit_normal;
+		vec3 irradiance = vec3(0.0);
+
+		if (world_trace(surfel_position, outgoing_dir, 1e30, false, triangle_id, ray_t, hit_normal)) {
+			vec3 hit_position = surfel_position + outgoing_dir * ray_t;
+			Triangle tri = world_triangle(triangle_id);
+			vec3 hit_albedo_value = hit_albedo(triangle_id, hit_position);
+			vec3 hit_emission = tri.emission.rgb;
+
+			// Sun NEE with the layered BRDF at the hit.
+			vec3 to_light_norm = p.sun_direction.xyz;
+			bool is_shadowed = occluded(hit_position + hit_normal * 0.025, to_light_norm);
+
+			vec3 hit_tangent = kajiya_build_tangent(hit_normal);
+			vec3 hit_bitangent = cross(hit_normal, hit_tangent);
+			vec3 wi = vec3(dot(to_light_norm, hit_tangent), dot(to_light_norm, hit_bitangent), dot(to_light_norm, hit_normal));
+			vec3 neg_dir = -outgoing_dir;
+			vec3 wo = vec3(dot(neg_dir, hit_tangent), dot(neg_dir, hit_bitangent), dot(neg_dir, hit_normal));
+
+			// Hack (reference): flip the outgoing ray along the shading normal when
+			// facing away, so the reflection's curvature continues at a lower rate.
+			if (wo.z < 0.0) {
+				wo.z *= -0.25;
+				wo = normalize(wo);
+			}
+
+			KajiyaLayeredBrdf brdf = kajiya_layered_from_gbuffer_ndotv(hit_albedo_value, KAJIYA_HIT_ROUGHNESS, KAJIYA_HIT_METALNESS, wo.z, kajiya_fg_lut);
+			// FIREFLY_SUPPRESSION with roughness_bias 0.5.
+			brdf.specular_brdf.roughness = mix(brdf.specular_brdf.roughness, 1.0, 0.5);
+
+			vec3 brdf_value = kajiya_layered_evaluate_directional_light(brdf, wo, wi);
+			vec3 sun_color = kajiya_sun_color(p.sun_direction.xyz, vec3(1.0));
+			vec3 light_radiance = is_shadowed ? vec3(0.0) : sun_color;
+			irradiance += brdf_value * light_radiance * max(0.0, wi.z);
+
+			// USE_EMISSIVE.
+			irradiance += hit_emission;
+
+			// SAMPLE_SURFELS_AT_LAST_VERTEX: one surfel-cache bounce.
+			irradiance += kajiya_lookup_surfel_gi(hit_position, hit_normal) * hit_albedo_value;
+		} else {
+			irradiance += kajiya_sample_environment_light(kajiya_sky_cube, outgoing_dir);
+		}
+
+		irradiance_sum += irradiance;
+		if (sample_idx == 0u) {
+			sample0_luminance = kajiya_calculate_luma(irradiance);
+		}
+	}
+
+	vec3 new_value = irradiance_sum / max(1.0, valid_sample_count);
+	float irradiance_lum = kajiya_calculate_luma(new_value);
+
+	vec4 prev_aux = kajiya_surfel_aux_buf[surfel_idx * 2u + 1u];
+	float prev_sample0_luminance = prev_aux.x;
+	vec2 prev_ex_ex2 = prev_aux.zw;
+
+	// MSME luminance moments with short-estimator clamped blending.
+	vec2 sample_ex_ex2 = vec2(irradiance_lum, irradiance_lum * irradiance_lum);
+	vec2 ex_ex2 = mix(prev_ex_ex2, sample_ex_ex2, 1.0 / (1.0 + clamp(prev_total_radiance_packed.w, 1.0, 4.0)));
+
+	vec4 new_aux = vec4(
+			sample0_luminance,
+			mix(prev_aux.y, irradiance_lum, 1.0 / (1.0 + clamp(prev_total_radiance_packed.w, 2.0, 8.0))),
+			ex_ex2);
+	kajiya_surfel_aux_buf[surfel_idx * 2u + 1u] = new_aux;
+
+	float lum_variance = max(0.0, ex_ex2.y - ex_ex2.x * ex_ex2.x);
+	float lum_dev = sqrt(lum_variance);
+
+	float prev_sample_count = min(prev_total_radiance_packed.w, 128.0);
+
+	float total_sample_count = prev_sample_count + valid_sample_count;
+	float blend_factor_new = valid_sample_count / max(1.0, total_sample_count);
+
+	// Forecasting mean.
+	float quick_lum_ex = min(ex_ex2.x * 1.2, mix(new_aux.y, ex_ex2.x, 1.5));
+
+	// MSME clamp in YCbCr.
+	vec3 prev_value = prev_total_radiance_packed.rgb;
+	vec3 prev_value_ycbcr = kajiya_rgb_to_ycbcr(prev_value);
+	const float num_deviations = 1.0;
+	vec3 clamped_abs = clamp(
+			abs(prev_value_ycbcr),
+			abs(prev_value_ycbcr) * (quick_lum_ex - lum_dev * num_deviations) / max(1e-10, prev_value_ycbcr.x),
+			abs(prev_value_ycbcr) * (quick_lum_ex + lum_dev * num_deviations) / max(1e-10, prev_value_ycbcr.x));
+	vec3 prev_value_clamped = kajiya_ycbcr_to_rgb(sign(prev_value_ycbcr) * clamped_abs);
+
+	vec3 blended_value = mix(prev_value, new_value, blend_factor_new);
+
+	kajiya_surfel_aux_buf[surfel_idx * 2u + 0u] = max(vec4(0.0), vec4(
+			blended_value,
+			total_sample_count));
+
+	vec3 prev_irrad = kajiya_surfel_irradiance_buf[surfel_idx].xyz;
+	const float k = 0.5;
+
+	// USE_BLEND_RESULT: smoothed display value.
+	kajiya_surfel_irradiance_buf[surfel_idx] = max(vec4(0.0), vec4(
+			pow(mix(pow(max(vec3(0.0), prev_irrad), vec3(k)), pow(max(vec3(0.0), blended_value), vec3(k)), 0.25), vec3(1.0 / k)),
+			total_sample_count));
+}
+
+#endif
+
+#ifdef STAGE_KAJIYA_SURFEL_RESOLVE
+
+// kajiya-parity screen resolve: evaluates lookup_surfel_gi at every receiver and
+// writes irradiance x albedo into the shared diffuse target, mirroring the way
+// the reference adds rtdgi x albedo in light_gbuffer.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    mat4 previous_view_projection;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 gi;               // AO radius, abrupt lighting response [0,1], stationary batch (-1 moving), convergence batches
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
+    vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
+    vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
+    vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
+    vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky
+    vec4 fake_light_color; // legacy lobe RGB; w = project sky solar halo energy
+    vec4 fake_light_direction; // sun direction; w = project sky time of day
+    vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
+    vec4 fake_light2_direction; // legacy direction; x = project sky saturation
+    vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    mat4 previous_inverse_view_projection;
+    vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
+    vec4 kajiya_prev_eye; // xyz: previous eye position (parity port), w: sun size multiplier
+    vec4 kajiya; // x: sun angular radius cos, y: ev shift, z: kajiya mode, w: previous frame index
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 receiver_view_normal(sampler2D normals,sampler2D depths,ivec2 pixel){
+    vec3 value=texelFetch(normals,pixel,0).xyz;
+    return safe_normalize(p.engine_state.x>.5?value:value*2.0-1.0);
+}
+float receiver_roughness(sampler2D normals, ivec2 pixel) {
+    float r = texelFetch(normals, pixel, 0).a;
+    // Forward+ packs the dynamic/static flag into its normal prepass alpha.
+    return clamp(p.engine_state.x > 0.5 ? r : min(r, 1.0-r) * (255.0/127.0), 0.0, 1.0);
+}
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+vec2 project_view(vec3 v) {
+    vec4 c=p.projection*vec4(v,1.0);
+    return c.xy/c.w*0.5+0.5;
+}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+// Shared by the visible sky and BVH ray misses. All colors are linear radiance.
+// The elevation curve, solar disc and two halo profiles follow the local
+// TinyGladeInverse/shaders/captured_sky.gdshader reference. Clouds are procedural.
+float sky_luminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 sky_saturate(vec3 c, float saturation) {
+    return max(vec3(0.0), mix(vec3(sky_luminance(c)), c, saturation));
+}
+float sky_cloud_union(float a, float b) {
+    float h = max(0.26 - abs(a - b), 0.0) / 0.26;
+    return min(a, b) - h * h * 0.065;
+}
+float sky_clouds(vec3 ray, float coverage) {
+    if (coverage <= 0.0 || ray.y < -0.12 || ray.y > 0.55) return 0.0;
+    // Rounded cumulus silhouettes on a direction-space ring. Analytic lobes
+    // avoid texture/float-hash seams and remain stable under camera motion.
+    float cloud = 0.0;
+    for (int i = 0; i < 12; i++) {
+        float seed = fract(float(i) * 0.618033989 + 0.31);
+        float angle = float(i) * 2.39996323;
+        vec2 facing = vec2(cos(angle), sin(angle));
+        if (dot(ray.xz, facing) < 0.86) continue;
+        float width = mix(0.09, 0.19, seed) * mix(0.45, 1.4, coverage);
+        float height = mix(0.022, 0.055, seed);
+        vec2 uv = vec2(dot(ray.xz, vec2(-facing.y, facing.x)) / width,
+            (ray.y - mix(0.035, 0.22, fract(seed * 3.7))) / height);
+        float d = length(uv / vec2(1.1, 0.40)) - 1.0;
+        d = sky_cloud_union(d, length((uv - vec2(-0.55, 0.25)) / vec2(0.47, 0.60)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.0, 0.48)) / vec2(0.55, 0.90)) - 1.0);
+        d = sky_cloud_union(d, length((uv - vec2(0.58, 0.20)) / vec2(0.42, 0.55)) - 1.0);
+        d += sin(uv.x * 13.0 + sin(uv.y * 9.0)) * sin(uv.y * 11.0) * 0.025;
+        cloud = max(cloud, (1.0 - smoothstep(-0.14, 0.16, d)) * smoothstep(0.0, 0.15, coverage));
+    }
+    return cloud * smoothstep(-0.12, 0.015, ray.y);
+}
+vec3 project_sky_radiance(vec3 ray, vec3 sun_direction, vec3 low, vec3 high,
+        float halo_energy, float time_of_day, float saturation, vec3 cloud_color, float coverage) {
+    float elevation = pow(clamp(1.0 - pow(1.0 - clamp(ray.y + 0.2, 0.0, 1.0), 14.0), 0.0, 1.0), 0.65);
+    float night = 1.0 - (smoothstep(0.483, 0.505, time_of_day) - smoothstep(0.84, 0.91, time_of_day)) * 0.75;
+    vec3 base = mix(low * 1.5, high, elevation) * night;
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float distance_from_sun = max(0.0, angle - 0.0261799395);
+    float halo_a = 0.5 + 25.0 * distance_from_sun;
+    float halo_b = 1.0 + 5.0 * distance_from_sun;
+    vec3 halo = vec3(1.0, 0.65, 0.2) * (5.0 / (halo_a * halo_a))
+        + vec3(1.0, 0.75, 0.6) * (0.8 / (halo_b * halo_b));
+    float clouds = sky_clouds(ray, coverage);
+    float cloud_light = 0.70 + 0.30 * smoothstep(-0.05, 0.28, ray.y);
+    base = mix(base, cloud_color * cloud_light * night, clouds);
+    return sky_saturate(base + halo * halo_energy * (1.0 - clouds * 0.85), saturation);
+}
+vec3 project_sky_disc(vec3 ray, vec3 sun_direction, float energy, float saturation, float coverage) {
+    float angle = acos(clamp(dot(sun_direction, ray), -1.0, 1.0));
+    float disc = 1.0 - smoothstep(0.0244346093, 0.0261799395, angle);
+    return sky_saturate(vec3(1.0, 0.7, 0.2) * (disc * 30.0 * energy), saturation)
+        * (1.0 - sky_clouds(ray, coverage));
+}
+
+vec3 environment_radiance(vec3 ray){
+    if(p.sky_high.w<.5)return p.sky_color.rgb*p.sun_color.w;
+    if(ray.y<=0.0)return p.ground_escape.rgb*p.sun_color.w;
+    // Sky rays still travel through the BVH. The solar disc is sampled only
+    // by the direct light, avoiding double sun energy and tiny-disc fireflies.
+    if(p.sky_high.w>1.5)return project_sky_radiance(ray,p.sun_direction.xyz,
+        p.sky_color.rgb,p.sky_high.rgb,p.fake_light_color.w,p.fake_light_direction.w,
+        p.fake_light2_direction.x,p.fake_light2_color.rgb,p.fake_light2_color.w)*p.sun_color.w;
+    float alignment=dot(ray,p.fake_light_direction.xyz);
+    vec3 directional_tint=mix(mix(vec3(.2,.4,1),vec3(1,.4,.2),alignment*.5+.5),vec3(1),ray.y*ray.y);
+    vec3 fake=(p.fake_light_color.rgb*pow(max(0.0,alignment),12.0)
+        +p.fake_light2_color.rgb*pow(max(0.0,dot(ray,p.fake_light2_direction.xyz)),12.0))*3.0;
+    vec3 tint=max(vec3(0),vec3(1)-p.indirect_tint.rgb*.9200000166893005);
+    float sky_mix=pow(clamp(1.0-pow(1.0-clamp(ray.y+.2,0.0,1.0),14.0),0.0,1.0),.6499999761581421);
+    vec3 sky=mix(p.sky_color.rgb,p.sky_high.rgb,sky_mix)*1.0999999046325684
+        *directional_tint/max(luminance(directional_tint),1e-6);
+    sky+=max(vec3(0),mix(tint/max(luminance(tint),1e-6)*luminance(fake),fake,.8547008633613586)*.8333333134651184);
+    return sky*p.sun_color.w;
+}
+vec3 cosine_direction(vec3 normal,vec2 xi) {
+    float r=sqrt(xi.x), phi=2.0*PI*xi.y;
+    vec3 tangent=safe_normalize(cross(abs(normal.y)<.95?vec3(0,1,0):vec3(1,0,0),normal));
+    vec3 bitangent=cross(normal,tangent);
+    return tangent*(r*cos(phi))+bitangent*(r*sin(phi))+normal*sqrt(max(0.0,1.0-xi.x));
+}
+uint hilbert_index(uvec2 pixel) {
+    uint x=pixel.x&63u,y=pixel.y&63u,index=0u;
+    for(uint s=32u;s>0u;s/=2u){
+        uint rx=uint((x&s)>0u),ry=uint((y&s)>0u);
+        index+=s*s*((3u*rx)^ry);
+        if(ry==0u){if(rx==1u){x=63u-x;y=63u-y;}uint tmp=x;x=y;y=tmp;}
+    }
+    return index;
+}
+
+// kajiya restir-meets-surfel shared math, ported for the parity comparison.
+// Sources: kajiya assets/shaders/inc/{hash,quasi_random,reservoir,working_color_space,
+// pack_unpack}.hlsl and atmosphere_felix.hlsl (Felix Westin, MIT). The RNG streams are
+// reproduced bit-for-bit so per-frame noise patterns line up between the engines.
+
+const float KAJIYA_M_PLASTIC = 1.32471795724474602596;
+const float KAJIYA_M_CBRT_2 = 1.2599210498948731647672106072782283505;
+const float KAJIYA_INFINITY = 1.0 / 0.0;
+
+// ---- hash.hlsl ----
+uint kajiya_hash1(uint x) {
+	x += (x << 10u);
+	x ^= (x >> 6u);
+	x += (x << 3u);
+	x ^= (x >> 11u);
+	x += (x << 15u);
+	return x;
+}
+
+uint kajiya_hash1_mut(inout uint h) {
+	uint res = h;
+	h = kajiya_hash1(h);
+	return res;
+}
+
+uint kajiya_hash_combine2(uint x, uint y) {
+	const uint M = 1664525u, C = 1013904223u;
+	uint seed = (x * M + y + C) * M;
+	// Tempering (from Matsumoto)
+	seed ^= (seed >> 11u);
+	seed ^= (seed << 7u) & 0x9d2c5680u;
+	seed ^= (seed << 15u) & 0xefc60000u;
+	seed ^= (seed >> 18u);
+	return seed;
+}
+
+uint kajiya_hash2(uvec2 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash1(v.y));
+}
+
+uint kajiya_hash3(uvec3 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash2(v.yz));
+}
+
+uint kajiya_hash4(uvec4 v) {
+	return kajiya_hash_combine2(v.x, kajiya_hash3(v.yzw));
+}
+
+float kajiya_uint_to_u01_float(uint h) {
+	const uint mantissa_mask = 0x007FFFFFu;
+	const uint one = 0x3F800000u;
+	h &= mantissa_mask;
+	h |= one;
+	return uintBitsToFloat(h) - 1.0;
+}
+
+float kajiya_interleaved_gradient_noise(uvec2 px) {
+	return fract(52.9829189 * fract(0.06711056 * float(px.x) + 0.00583715 * float(px.y)));
+}
+
+// ---- quasi_random.hlsl ----
+float kajiya_radical_inverse_vdc(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 kajiya_hammersley(uint i, uint n) {
+	return vec2(float(i + 1) / n, kajiya_radical_inverse_vdc(i + 1));
+}
+
+vec2 kajiya_r2_sequence(uint i) {
+	const float a1 = 1.0 / KAJIYA_M_PLASTIC;
+	const float a2 = 1.0 / (KAJIYA_M_PLASTIC * KAJIYA_M_PLASTIC);
+	return fract(vec2(a1, a2) * i + 0.5);
+}
+
+// ---- reservoir.hlsl ----
+struct KajiyaReservoir1spp {
+	float w_sum;
+	uint payload;
+	float M;
+	float W;
+};
+
+KajiyaReservoir1spp kajiya_reservoir_create() {
+	KajiyaReservoir1spp res;
+	res.w_sum = 0.0;
+	res.payload = 0u;
+	res.M = 0.0;
+	res.W = 0.0;
+	return res;
+}
+
+KajiyaReservoir1spp kajiya_reservoir_from_raw(vec4 raw) {
+	KajiyaReservoir1spp res;
+	res.w_sum = raw.x;
+	res.payload = floatBitsToUint(raw.y);
+	res.M = raw.z;
+	res.W = raw.w;
+	return res;
+}
+
+vec4 kajiya_reservoir_as_raw(KajiyaReservoir1spp res) {
+	return vec4(res.w_sum, uintBitsToFloat(res.payload), res.M, res.W);
+}
+
+bool kajiya_reservoir_update(inout KajiyaReservoir1spp res, float w, uint sample_payload, inout uint rng) {
+	res.w_sum += w;
+	res.M += 1.0;
+	const float dart = kajiya_uint_to_u01_float(kajiya_hash1_mut(rng));
+	const float prob = w / res.w_sum;
+	if (prob >= dart) {
+		res.payload = sample_payload;
+		return true;
+	}
+	return false;
+}
+
+// ---- working_color_space.hlsl (crunched luma-chroma used by temporal_filter2) ----
+vec3 kajiya_rgb_to_ycbcr(vec3 col) {
+	return mat3(0.2126, 0.7152, 0.0722, -0.1146, -0.3854, 0.5, 0.5, -0.4542, -0.0458) * col;
+}
+
+vec3 kajiya_ycbcr_to_rgb(vec3 col) {
+	return max(vec3(0.0), mat3(1.0, 0.0, 1.5748, 1.0, -0.1873, -0.4681, 1.0, 1.8556, 0.0) * col);
+}
+
+vec4 kajiya_linear_rgb_to_crunched_luma_chroma(vec4 v) {
+	v.rgb = kajiya_rgb_to_ycbcr(v.rgb);
+	float k = sqrt(v.x) / max(1e-8, v.x);
+	return vec4(v.rgb * k, v.a);
+}
+
+vec4 kajiya_crunched_luma_chroma_to_linear_rgb(vec4 v) {
+	v.rgb *= v.x;
+	v.rgb = kajiya_ycbcr_to_rgb(v.rgb);
+	return v;
+}
+
+// ---- pack_unpack.hlsl ----
+float kajiya_unpack_unorm(uint pckd, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return float(pckd & max_val) / float(max_val);
+}
+
+uint kajiya_pack_unorm(float val, uint bit_count) {
+	uint max_val = (1u << bit_count) - 1u;
+	return uint(clamp(val, 0.0, 1.0) * float(max_val));
+}
+
+float kajiya_pack_normal_11_10_11(vec3 n) {
+	uint pckd = 0u;
+	pckd += kajiya_pack_unorm(n.x * 0.5 + 0.5, 11u);
+	pckd += kajiya_pack_unorm(n.y * 0.5 + 0.5, 10u) << 11u;
+	pckd += kajiya_pack_unorm(n.z * 0.5 + 0.5, 11u) << 21u;
+	return uintBitsToFloat(pckd);
+}
+
+vec3 kajiya_unpack_normal_11_10_11(uint p) {
+	return normalize(vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0);
+}
+
+vec3 kajiya_unpack_normal_11_10_11_no_normalize(uint p) {
+	return vec3(
+		kajiya_unpack_unorm(p, 11u),
+		kajiya_unpack_unorm(p >> 11u, 10u),
+		kajiya_unpack_unorm(p >> 21u, 11u)) * 2.0 - 1.0;
+}
+
+// ---- atmosphere_felix.hlsl (Felix Westin, MIT; kajiya USE_FELIX_ATMOSPHERE path) ----
+const float KAJIYA_PLANET_RADIUS = 6371000.0;
+const vec3 KAJIYA_PLANET_CENTER = vec3(0.0, -KAJIYA_PLANET_RADIUS, 0.0);
+const float KAJIYA_ATMOSPHERE_HEIGHT = 100000.0;
+const float KAJIYA_RAYLEIGH_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.08;
+const float KAJIYA_MIE_HEIGHT = KAJIYA_ATMOSPHERE_HEIGHT * 0.012;
+const vec3 KAJIYA_C_RAYLEIGH = vec3(5.802, 13.558, 33.100) * 1e-6;
+const vec3 KAJIYA_C_MIE = vec3(3.996, 3.996, 3.996) * 1e-6;
+const vec3 KAJIYA_C_OZONE = vec3(0.650, 1.881, 0.085) * 1e-6;
+const float KAJIYA_ATMOSPHERE_DENSITY = 1.0;
+const float KAJIYA_ATMOSPHERE_EXPOSURE = 20.0;
+
+vec2 kajiya_sphere_intersection(vec3 ray_start, vec3 ray_dir, vec3 sphere_center, float sphere_radius) {
+	ray_start -= sphere_center;
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_start, ray_dir);
+	float c = dot(ray_start, ray_start) - (sphere_radius * sphere_radius);
+	float d = b * b - 4.0 * a * c;
+	if (d < 0.0) {
+		return vec2(-1.0);
+	}
+	d = sqrt(d);
+	return vec2(-b - d, -b + d) / (2.0 * a);
+}
+
+vec2 kajiya_planet_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS);
+}
+
+vec2 kajiya_atmosphere_intersection(vec3 ray_start, vec3 ray_dir) {
+	return kajiya_sphere_intersection(ray_start, ray_dir, KAJIYA_PLANET_CENTER, KAJIYA_PLANET_RADIUS + KAJIYA_ATMOSPHERE_HEIGHT);
+}
+
+float kajiya_phase_rayleigh(float costh) {
+	return 3.0 * (1.0 + costh * costh) / (16.0 * PI);
+}
+
+float kajiya_phase_mie(float costh, float g) {
+	g = min(g, 0.9381);
+	float k = 1.55 * g - 0.55 * g * g * g;
+	float kcosth = k * costh;
+	return (1.0 - k * k) / ((4.0 * PI) * (1.0 - kcosth) * (1.0 - kcosth));
+}
+
+float kajiya_atmosphere_height(vec3 position_ws) {
+	return distance(position_ws, KAJIYA_PLANET_CENTER) - KAJIYA_PLANET_RADIUS;
+}
+
+float kajiya_density_rayleigh(float h) {
+	return exp(-max(0.0, h / KAJIYA_RAYLEIGH_HEIGHT));
+}
+
+float kajiya_density_mie(float h) {
+	return exp(-max(0.0, h / KAJIYA_MIE_HEIGHT));
+}
+
+float kajiya_density_ozone(float h) {
+	// Tent function, 30 km wide, centered at 25 km altitude.
+	return max(0.0, 1.0 - abs(h - 25000.0) / 15000.0);
+}
+
+vec3 kajiya_atmosphere_density(float h) {
+	return vec3(kajiya_density_rayleigh(h), kajiya_density_mie(h), kajiya_density_ozone(h));
+}
+
+vec3 kajiya_integrate_optical_depth(vec3 ray_start, vec3 ray_dir) {
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	float ray_length = intersection.y;
+
+	const int sample_count = 8;
+	float step_size = ray_length / float(sample_count);
+
+	vec3 optical_depth = vec3(0.0);
+	for (int i = 0; i < sample_count; i++) {
+		vec3 local_position = ray_start + ray_dir * (float(i) + 0.5) * step_size;
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+		optical_depth += local_density * step_size;
+	}
+	return optical_depth;
+}
+
+vec3 kajiya_absorb(vec3 optical_depth) {
+	// Mie results in slightly more absorption than scattering, about 10%.
+	return exp(-(optical_depth.x * KAJIYA_C_RAYLEIGH + optical_depth.y * KAJIYA_C_MIE * 1.1 + optical_depth.z * KAJIYA_C_OZONE) * KAJIYA_ATMOSPHERE_DENSITY);
+}
+
+vec3 kajiya_integrate_scattering(vec3 ray_start, vec3 ray_dir, float ray_length, vec3 light_dir, vec3 light_color, out vec3 transmittance) {
+	float sample_distribution_exponent = 5.0;
+
+	vec2 intersection = kajiya_atmosphere_intersection(ray_start, ray_dir);
+	ray_length = min(ray_length, intersection.y);
+	if (intersection.x > 0.0) {
+		// Advance ray to the atmosphere entry point.
+		ray_start += ray_dir * intersection.x;
+		ray_length -= intersection.x;
+	}
+
+	float costh = dot(ray_dir, light_dir);
+	float phase_r = kajiya_phase_rayleigh(costh);
+	float phase_m = kajiya_phase_mie(costh, 0.85);
+
+	const int sample_count = 16;
+
+	vec3 optical_depth = vec3(0.0);
+	vec3 rayleigh = vec3(0.0);
+	vec3 mie = vec3(0.0);
+
+	float prev_ray_time = 0.0;
+
+	for (int i = 1; i <= sample_count; i++) {
+		float ray_time = pow(float(i) / float(sample_count), sample_distribution_exponent) * ray_length;
+		float step_size = (ray_time - prev_ray_time);
+
+		vec3 local_position = ray_start + ray_dir * mix(prev_ray_time, ray_time, 0.5);
+		float local_height = kajiya_atmosphere_height(local_position);
+		vec3 local_density = kajiya_atmosphere_density(local_height);
+
+		optical_depth += local_density * step_size;
+
+		// The atmospheric transmittance from ray_start to local_position.
+		vec3 view_transmittance = kajiya_absorb(optical_depth);
+
+		vec3 optical_depth_light = kajiya_integrate_optical_depth(local_position, light_dir);
+		// The atmospheric transmittance of light reaching local_position.
+		vec3 light_transmittance = kajiya_absorb(optical_depth_light);
+
+		rayleigh += view_transmittance * light_transmittance * phase_r * local_density.x * step_size;
+		mie += view_transmittance * light_transmittance * phase_m * local_density.y * step_size;
+
+		prev_ray_time = ray_time;
+	}
+
+	transmittance = kajiya_absorb(optical_depth);
+
+	return (rayleigh * KAJIYA_C_RAYLEIGH + mie * KAJIYA_C_MIE) * light_color * KAJIYA_ATMOSPHERE_EXPOSURE;
+}
+
+// ---- sun.hlsl / atmosphere.hlsl (kajiya's sun and sky for the GI path) ----
+// kajiya evaluates the atmosphere from the world origin for both the sun color and
+// the sky cube; scene content is assumed to sit within a few km of the origin.
+vec3 kajiya_sun_color(vec3 sun_direction, vec3 sun_color_multiplier) {
+	return 20.0 * sun_color_multiplier * kajiya_absorb(kajiya_integrate_optical_depth(vec3(0.0), sun_direction));
+}
+
+vec3 kajiya_atmosphere_default(vec3 wi, vec3 light_dir, vec3 sky_ambient, vec3 sun_color_multiplier) {
+	vec3 ray_start = vec3(0.0);
+	vec3 ray_dir = wi;
+	float ray_length = KAJIYA_INFINITY;
+
+	vec3 transmittance;
+	return sky_ambient + sun_color_multiplier *
+			kajiya_integrate_scattering(ray_start, ray_dir, ray_length, light_dir, vec3(1.0), transmittance);
+}
+
+// kajiya restir-meets-surfel surfel pool, clipmap grid and lookup, ported for the
+// parity comparison. Sources: kajiya assets/shaders/surfel_gi/{surfel_constants,
+// surfel_grid_hash,surfel_binning_shared,lookup}.hlsl. The half-migrated hash table
+// of the reference is reduced to its effective modulo behavior.
+//
+// Buffer binding contract shared by every KAJIYA_* stage (set 0), kept clear of
+// the bvh.inc and kiln surfel bindings:
+//  40 surfel_meta_buf       8 x u32    [1] live count, [2] alloc pointer
+//  41 surfel_pool_buf       u32 x MAX  LIFO free-index stack
+//  42 cell_index_offset_buf u32 x MAX+1 per-cell inclusive prefix sum
+//  43 surfel_index_buf      u32 x MAX*24 sorted surfel ids per cell
+//  44 surfel_spatial_buf    vec4 x MAX xyz = position, w bits = packed normal 11:10:11
+//  45 surfel_irradiance_buf vec4 x MAX rgb = irradiance, a = accumulated samples
+//  46 surfel_aux_buf        vec4 x MAX*2 [2i] blended radiance + count, [2i] MSME state
+//  47 surfel_life_buf       u32 x MAX  age; valid < 100
+//  48 surfel_reposition_proposal_buf vec4 x MAX next trace origin proposal
+
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#define KAJIYA_MAX_SURFELS 262144u
+#define KAJIYA_MAX_SURFELS_PER_CELL 128u
+#define KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE 32u
+#define KAJIYA_SURFELS_PER_CELL_SLOTS 24u
+#define KAJIYA_SURFEL_CS 32u
+
+const float KAJIYA_SURFEL_GRID_CELL_DIAMETER = 0.2;
+const float KAJIYA_SURFEL_BASE_RADIUS = 0.24;
+const float KAJIYA_SURFEL_RADIUS_OVERSCALE = 1.25; // [sic] reference typo preserved
+const float KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH = 2.0;
+
+const uint KAJIYA_SURFEL_META_SURFEL_COUNT = 4u;
+const uint KAJIYA_SURFEL_META_ALLOC_COUNT = 8u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLE = 0x8000000u;
+const uint KAJIYA_SURFEL_LIFE_RECYCLED = KAJIYA_SURFEL_LIFE_RECYCLE + 1u;
+
+bool kajiya_is_surfel_life_valid(uint life) {
+	return life < 100u;
+}
+
+bool kajiya_surfel_life_needs_aging(uint life) {
+	return life != KAJIYA_SURFEL_LIFE_RECYCLED;
+}
+
+// Access qualifiers reflect each stage's use into RD dependencies, following the
+// kiln sources convention. The meta buffer is read-write everywhere: the count
+// is read by most stages while allocation and aging issue atomics on it.
+#define KAJIYA_META_ACCESS
+#ifdef STAGE_KAJIYA_SURFEL_CLEAR_POOL
+#define KAJIYA_POOL_ACCESS writeonly
+#elif defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_AGE)
+#define KAJIYA_POOL_ACCESS
+#else
+#define KAJIYA_POOL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_CLEAR_CELLS) || defined(STAGE_KAJIYA_SURFEL_COUNT_CELLS) || defined(STAGE_KAJIYA_SURFEL_SLOT_CELLS)
+#define KAJIYA_CELL_ACCESS
+#else
+#define KAJIYA_CELL_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_SLOT_CELLS
+#define KAJIYA_INDEX_ACCESS
+#else
+#define KAJIYA_INDEX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_SPATIAL_ACCESS
+#else
+#define KAJIYA_SPATIAL_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_ALLOCATE) || defined(STAGE_KAJIYA_SURFEL_TRACE)
+#define KAJIYA_IRRADIANCE_ACCESS
+#else
+#define KAJIYA_IRRADIANCE_ACCESS readonly
+#endif
+#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#define KAJIYA_AUX_ACCESS
+#else
+#define KAJIYA_AUX_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_LIFE_ACCESS
+#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
+#define KAJIYA_LIFE_ACCESS
+#else
+#define KAJIYA_LIFE_ACCESS readonly
+#endif
+#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
+#define KAJIYA_PROPOSAL_ACCESS
+#else
+#define KAJIYA_PROPOSAL_ACCESS readonly
+#endif
+
+layout(set = 0, binding = 40, std430) KAJIYA_META_ACCESS buffer KajiyaMetaBuf { uint kajiya_surfel_meta_buf[]; };
+layout(set = 0, binding = 41, std430) KAJIYA_POOL_ACCESS buffer KajiyaPoolBuf { uint kajiya_surfel_pool_buf[]; };
+layout(set = 0, binding = 42, std430) KAJIYA_CELL_ACCESS buffer KajiyaCellOffsetBuf { uint kajiya_cell_index_offset_buf[]; };
+layout(set = 0, binding = 43, std430) KAJIYA_INDEX_ACCESS buffer KajiyaIndexBuf { uint kajiya_surfel_index_buf[]; };
+layout(set = 0, binding = 44, std430) KAJIYA_SPATIAL_ACCESS buffer KajiyaSpatialBuf { vec4 kajiya_surfel_spatial_buf[]; };
+layout(set = 0, binding = 45, std430) KAJIYA_IRRADIANCE_ACCESS buffer KajiyaIrradianceBuf { vec4 kajiya_surfel_irradiance_buf[]; };
+layout(set = 0, binding = 46, std430) KAJIYA_AUX_ACCESS buffer KajiyaAuxBuf { vec4 kajiya_surfel_aux_buf[]; };
+layout(set = 0, binding = 47, std430) KAJIYA_LIFE_ACCESS buffer KajiyaLifeBuf { uint kajiya_surfel_life_buf[]; };
+layout(set = 0, binding = 48, std430) KAJIYA_PROPOSAL_ACCESS buffer KajiyaProposalBuf { vec4 kajiya_surfel_reposition_proposal_buf[]; };
+
+vec3 kajiya_surfel_position(uint idx) {
+	return kajiya_surfel_spatial_buf[idx].xyz;
+}
+
+vec3 kajiya_surfel_normal(uint idx) {
+	return kajiya_unpack_normal_11_10_11_no_normalize(floatBitsToUint(kajiya_surfel_spatial_buf[idx].w));
+}
+
+// ---- surfel_grid_hash.hlsl ----
+vec3 kajiya_get_eye_position() {
+	return p.inv_view[3].xyz;
+}
+
+vec3 kajiya_get_prev_eye_position() {
+	return p.kajiya_prev_eye.xyz;
+}
+
+ivec3 kajiya_surfel_pos_to_grid_coord(vec3 pos, vec3 eye_pos) {
+	return ivec3(floor((pos - eye_pos) / KAJIYA_SURFEL_GRID_CELL_DIAMETER));
+}
+
+vec3 kajiya_surfel_grid_coord_center(uvec4 coord, vec3 eye_pos) {
+	return eye_pos + ((vec3(coord.xyz) + 0.5 - float(KAJIYA_SURFEL_CS) * 0.5) * KAJIYA_SURFEL_GRID_CELL_DIAMETER) * float(1u << coord.w);
+}
+
+float kajiya_surfel_grid_coord_to_cascade_float(ivec3 coord) {
+	const vec3 fcoord = vec3(coord) + 0.5;
+	const float max_coord = max(abs(fcoord.x), max(abs(fcoord.y), abs(fcoord.z)));
+	return log2(max_coord / (float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+uint kajiya_cascade_float_to_cascade(float cascade_float) {
+	return uint(clamp(ceil(max(0.0, cascade_float)), 0.0, 7.0));
+}
+
+uint kajiya_surfel_grid_coord_to_cascade(ivec3 coord) {
+	return kajiya_cascade_float_to_cascade(kajiya_surfel_grid_coord_to_cascade_float(coord));
+}
+
+float kajiya_surfel_radius_for_pos(vec3 pos) {
+	return KAJIYA_SURFEL_BASE_RADIUS * max(1.0, length(pos - kajiya_get_eye_position()) / (KAJIYA_SURFEL_GRID_CELL_DIAMETER * float(KAJIYA_SURFEL_CS) * 0.5));
+}
+
+ivec3 kajiya_surfel_grid_coord_within_cascade(ivec3 coord, uint cascade) {
+	return (coord >> int(cascade)) + int(KAJIYA_SURFEL_CS / 2);
+}
+
+uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
+	const uint cascade = kajiya_surfel_grid_coord_to_cascade(coord);
+	const uvec3 ucoord_in_cascade = clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(coord, cascade)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u));
+	return uvec4(ucoord_in_cascade, cascade);
+}
+
+uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
+	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+}
+
+uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
+	return kajiya_surfel_grid_c4_to_hash(kajiya_surfel_grid_coord_to_c4(coord)) % KAJIYA_MAX_SURFEL_CELLS;
+}
+
+uint kajiya_cell_range_begin(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx];
+}
+
+uint kajiya_cell_range_end(uint cell_idx) {
+	return kajiya_cell_index_offset_buf[cell_idx + 1u];
+}
+
+// ---- surfel_binning_shared.hlsl ----
+uint kajiya_surfel_cascade_for_pos(vec3 position) {
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, kajiya_get_eye_position()));
+	return kajiya_cascade_float_to_cascade(fc);
+}
+
+bool kajiya_surfel_intersects_grid_coord(vec3 position, vec3 normal, uvec4 grid_coord) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 cell_center = kajiya_surfel_grid_coord_center(grid_coord, kajiya_get_eye_position());
+	const float grid_cell_radius = (KAJIYA_SURFEL_GRID_CELL_DIAMETER * 0.5) * float(1u << grid_coord.w);
+
+	const vec3 cell_local_surfel_pos = position - cell_center;
+	const vec3 cell_local_closest_point_on_grid_cell = clamp(cell_local_surfel_pos, vec3(-grid_cell_radius), vec3(grid_cell_radius));
+
+	const vec3 pos_offset = cell_local_surfel_pos - cell_local_closest_point_on_grid_cell;
+
+	// Approximate box-ellipsoid culling. Sometimes misses corners, but greatly
+	// improves culling efficiency (reference preserves this behavior).
+	const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+	return mahalanobis_dist < surfel_radius;
+}
+
+struct KajiyaSurfelGridMinMax {
+	uvec4 c4_min[2];
+	uvec4 c4_max[2];
+	uint cascade_count;
+};
+
+KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
+	const float surfel_radius = kajiya_surfel_radius_for_pos(position);
+
+	const vec3 box_min_pos = position - surfel_radius;
+	const vec3 box_max_pos = position + surfel_radius;
+
+	const vec3 eye_pos = kajiya_get_eye_position();
+	const float fc = kajiya_surfel_grid_coord_to_cascade_float(kajiya_surfel_pos_to_grid_coord(position, eye_pos));
+
+	const uint c0 = kajiya_cascade_float_to_cascade(fc - 0.2);
+	const uint c1 = kajiya_cascade_float_to_cascade(fc + 0.2);
+
+	const ivec3 min_coord = kajiya_surfel_pos_to_grid_coord(box_min_pos, eye_pos);
+	const ivec3 max_coord = kajiya_surfel_pos_to_grid_coord(box_max_pos, eye_pos);
+
+	KajiyaSurfelGridMinMax result;
+
+	result.cascade_count = 1u;
+	result.c4_min[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+	result.c4_max[0] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c0)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c0);
+
+	if (c1 != c0) {
+		result.cascade_count = 2u;
+		result.c4_min[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(min_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+		result.c4_max[1] = uvec4(clamp(uvec3(kajiya_surfel_grid_coord_within_cascade(max_coord, c1)), uvec3(0.0), uvec3(KAJIYA_SURFEL_CS - 1u)), c1);
+	}
+
+	return result;
+}
+
+// ---- lookup.hlsl ----
+// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
+// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
+#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
+#define KAJIYA_LIFE_ACCESS
+#endif
+
+vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
+	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
+
+	uint range_begin = kajiya_cell_range_begin(cell_idx);
+	uint range_end = kajiya_cell_range_end(cell_idx);
+	// TEMP HACK (reference): never iterate over tons of surfels out of bounds.
+	range_end = min(range_end, range_begin + KAJIYA_MAX_SURFELS_PER_CELL);
+
+	vec3 total_color = vec3(0.0);
+	float total_weight = 0.0;
+
+	for (uint surfel_idx_loc = range_begin; surfel_idx_loc < range_end; ++surfel_idx_loc) {
+		const uint surfel_idx = kajiya_surfel_index_buf[surfel_idx_loc];
+
+#ifndef KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE
+		if (range_end - range_begin <= KAJIYA_MAX_SURFELS_PER_CELL_FOR_KEEP_ALIVE) {
+			kajiya_surfel_life_buf[surfel_idx] = 0u;
+		}
+#endif
+
+		const vec3 surfel_position = kajiya_surfel_position(surfel_idx);
+		const vec3 surfel_normal = kajiya_surfel_normal(surfel_idx);
+		const vec4 surfel_irradiance_packed = kajiya_surfel_irradiance_buf[surfel_idx];
+
+		const vec3 pos_offset = pt_ws - surfel_position;
+		const float directional_weight = max(0.0, dot(surfel_normal, normal_ws));
+		const float mahalanobis_dist = length(pos_offset) * (1.0 + abs(dot(pos_offset, surfel_normal)) * KAJIYA_SURFEL_NORMAL_DIRECTION_SQUISH);
+
+		const float surfel_radius = kajiya_surfel_radius_for_pos(surfel_position);
+		const float weight = smoothstep(surfel_radius * KAJIYA_SURFEL_RADIUS_OVERSCALE, 0.0, mahalanobis_dist) * directional_weight;
+
+		total_weight += weight;
+		total_color += surfel_irradiance_packed.xyz * weight;
+	}
+
+	total_color /= max(0.1, total_weight);
+	return total_color;
+}
+
+layout(set = 0, binding = 10) uniform sampler2D kdepth;
+layout(set = 0, binding = 11) uniform usampler2D ksurface;
+layout(set = 0, binding = 12) uniform sampler2D albedo_metallic;
+layout(set = 0, binding = 13, rgba16f) uniform writeonly image2D kajiya_diffuse;
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+	if (any(greaterThanEqual(pixel, size))) {
+		return;
+	}
+	float d = texelFetch(kdepth, pixel, 0).r;
+	if (d <= 0.0 || d >= 1.0) {
+		imageStore(kajiya_diffuse, pixel, vec4(0));
+		return;
+	}
+	vec2 uv = (vec2(pixel) + 0.5) / vec2(size);
+	vec3 wp = world_position(uv, d);
+
+	uint packed_surface = texelFetch(ksurface, pixel, 0).g;
+	vec2 oct = unpackSnorm2x16(packed_surface);
+	vec3 n_view = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
+	n_view.xy += mix(vec2(1.0), vec2(-1.0), greaterThanEqual(n_view.xy, vec2(0.0))) * max(-n_view.z, 0.0);
+	vec3 geometric_normal_ws = safe_normalize(mat3(p.inv_view) * safe_normalize(n_view));
+
+	vec3 irradiance = kajiya_lookup_surfel_gi(wp, geometric_normal_ws);
+	vec3 albedo = texelFetch(albedo_metallic, pixel, 0).rgb;
+	imageStore(kajiya_diffuse, pixel, vec4(irradiance * albedo, 1.0));
 }
 
 #endif
