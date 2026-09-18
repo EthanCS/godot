@@ -70,7 +70,7 @@ public:
 		uint64_t texture_version = 0;
 		uint64_t static_material_version = 0, dynamic_material_version = 0;
 		uint64_t capture_request = 0, history_version = 0;
-		int frames = 0, index = 0, stationary_samples = 0, motion_remaining = 0, lighting_remaining = 0, epoch = 1;
+		int frames = 0, index = 0, stationary_samples = 0, motion_remaining = 0, epoch = 1;
 		float lighting_response = 0;
 		Vector3 previous_sun_direction, previous_sun_radiance, previous_sky_radiance, previous_sky_zenith;
 		PackedByteArray previous_local_lights;

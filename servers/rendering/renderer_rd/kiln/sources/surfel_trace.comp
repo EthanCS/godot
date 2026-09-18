@@ -36,7 +36,10 @@ void main() {
 	// Differences of adjacent prefix endpoints conserve the budget, including
 	// integer rounding. Allocation changes ray density, never radiance magnitude.
 	uvec2 request = ray_schedule[id];
-	uint budget = p.voxel_min.w > 0.0 ? min(nominal_rays, uint(p.voxel_min.w)) : nominal_rays;
+	// requested_weight is the real variance/bootstrap request. The old nominal
+	// total silently erased the priority multiplier whenever the configured cap
+	// was larger than the base ray count.
+	uint budget = p.voxel_min.w > 0.0 ? min(requested_weight, uint(p.voxel_min.w)) : requested_weight;
 	float scale = float(budget) / max(float(requested_weight), 1.0);
 	uint count = min(32u, uint(floor(float(request.y + request.x) * scale)) - uint(floor(float(request.y) * scale)));
 	if (count == 0u) return;
@@ -50,11 +53,13 @@ void main() {
 		distribution[bin] = max(ray_guiding[id * 16u + bin].x, 0.0001);
 		total += distribution[bin];
 	}
-	// Keep 25% uniform probability, including after abrupt illumination changes.
-	// The frozen per-batch CDF and explicit PDF preserve the cosine estimator.
+	// Fade guiding continuously toward a cosine-uniform proposal after a lighting
+	// change. This avoids following the old sun/sky distribution while preserving
+	// an unbiased estimator through the explicit mixture PDF.
+	float guiding_strength = 0.75 * (1.0 - clamp(p.source_bvh_state.w, 0.0, 1.0));
 	float accumulated = 0.0;
 	for (uint bin = 0u; bin < 16u; bin++) {
-		accumulated += mix(total / 16.0, distribution[bin], 0.75);
+		accumulated += mix(total / 16.0, distribution[bin], guiding_strength);
 		distribution[bin] = accumulated;
 	}
 	vec3 sum = vec3(0);
@@ -89,7 +94,11 @@ void main() {
 			incident += local_light_sample(hit, normal, random_float(seed));
 			vec4 cached = surfel_gather(hit, normal, false);
 			if (p.engine_state.z > 0.5 && cached.a > 0.1) {
-				incident += cached.rgb;
+				// Old multibounce energy otherwise circulates through the cache long
+				// after a light step. Dampen only that feedback continuously during the
+				// measured transition; direct light, emission and environment remain
+				// fully sampled, and gradual TOD keeps essentially all feedback.
+				incident += cached.rgb * mix(1.0, 0.15, clamp(p.source_bvh_state.w, 0.0, 1.0));
 			} else {
 				incident += surfel_miss_irradiance(hit, normal, seed);
 			}

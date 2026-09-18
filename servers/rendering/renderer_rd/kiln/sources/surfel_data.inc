@@ -145,7 +145,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;

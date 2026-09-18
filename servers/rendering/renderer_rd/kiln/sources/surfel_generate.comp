@@ -16,11 +16,15 @@ void main() {
 	bool valid = all(lessThan(pixel, size));
 	float d = valid ? texelFetch(depth, pixel, 0).r : 0.0;
 	vec3 position = vec3(0), normal = vec3(0);
+	vec4 inherited = vec4(0);
 	float coverage = 100.0;
 	if (valid && d > 1e-7) {
 		position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
 		normal = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
-		coverage = surfel_gather(position, normal, true).a;
+		// The pre-generation grid contains only surfels that were already admitted
+		// in an earlier frame. Reuse their filtered lighting as the newborn prior,
+		// matching the reference implementation instead of starting from black.
+		inherited = surfel_gather(position, normal, false, coverage);
 	}
 	// Every lane, including the odd-size border, participates in both barriers.
 	uint seed = surfel_hash(uint(pixel.x + pixel.y * size.x) ^ uint(p.size_frame.z) * 1664525u);
@@ -64,9 +68,14 @@ void main() {
 	Surfel s;
 	s.position_radius = vec4(position, radius);
 	s.normal_age = vec4(normal, 0.0);
-	s.irradiance_samples = vec4(0);
-	s.short_mean_vbbr = vec4(0, 0, 0, 1);
-	s.variance_inconsistency = vec4(1, 1, 1, 0);
+	// A bounded prior prevents a newly exposed tile from flashing black or from
+	// replacing its neighbors with one tiny Monte Carlo batch. It is deliberately
+	// weaker than the guaranteed first real batch and does not advance the ray
+	// sequence stored in anchor.w.
+	float prior_samples = inherited.a > 0.1 ? 16.0 : 0.0;
+	s.irradiance_samples = vec4(inherited.rgb, prior_samples);
+	s.short_mean_vbbr = vec4(inherited.rgb, 1.0);
+	s.variance_inconsistency = vec4(prior_samples > 0.0 ? max(inherited.rgb * inherited.rgb * 0.04, vec3(1e-6)) : vec3(1), 0);
 	s.anchor = uvec4(uint(triangle) + 1u, uint(p.size_frame.z), 1u, 0u);
 	vec3 delta = position - t.p0.xyz;
 	float aa = dot(t.p1.xyz, t.p1.xyz), ab = dot(t.p1.xyz, t.p2.xyz), bb = dot(t.p2.xyz, t.p2.xyz);

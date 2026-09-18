@@ -23,7 +23,9 @@ void main() {
 		return;
 	}
 	float d = texelFetch(depth, pixel, 0).r;
-	vec3 value = texelFetch(current_diffuse, pixel, 0).rgb;
+	vec4 current = texelFetch(current_diffuse, pixel, 0);
+	vec3 value = current.rgb;
+	float confidence = clamp(current.a, 0.0, 1.0);
 	vec3 n = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
 	if (settings.temporal_enabled != 0 && d > 1e-7 && p.size_frame.w > 0.5 && p.source_bvh_state.z > 0.5) {
 		vec3 wp = world_position((vec2(pixel) + 0.5) / vec2(size), d);
@@ -43,7 +45,10 @@ void main() {
 						hi = max(hi, v);
 					}
 				}
-				value = mix(clamp(old_light.rgb, lo, hi), value, p.source_bvh_state.w > 0.5 ? 0.5 : 0.2);
+				float lighting_response = clamp(p.source_bvh_state.w, 0.0, 1.0);
+				float stable_mix = mix(0.08, 0.20, confidence);
+				float changing_mix = mix(0.18, 0.35, confidence);
+				value = mix(clamp(old_light.rgb, lo, hi), value, mix(stable_mix, changing_mix, lighting_response));
 			}
 		}
 	}

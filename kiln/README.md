@@ -86,6 +86,11 @@ The [dynamic relighting and resize fix](docs/DIFFUSE-RELIGHTING-2026-09-18.md)
 preserves the world cache across viewport reconfiguration and replaces raw-batch
 relighting overrides with filtered local catch-up. It records continuous-TOD
 noise, response lag, resize continuity and the cold-start tradeoff separately.
+The subsequent [diffuse stability revision](docs/DIFFUSE-STABILITY-2026-09-18.md)
+removes the fixed 64-frame relighting mode, delays newborn surfel admission,
+initializes new entries from the existing cache and makes variance/bootstrap ray
+requests consume the real global budget. It adds deterministic per-frame TOD and
+moving-camera validation and records the remaining limits separately.
 See the [cache/NRD comparison](docs/NRD-CACHE-DIFFUSE-2026-09-18.md) for measured
 benefits, regressions and cost. NRD has its own
 license; its SDK source is not vendored here. The figures above are historical;

@@ -32,7 +32,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -541,7 +541,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -638,7 +642,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -904,7 +908,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -991,7 +999,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -1500,7 +1508,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -1543,11 +1555,15 @@ void main() {
 	bool valid = all(lessThan(pixel, size));
 	float d = valid ? texelFetch(depth, pixel, 0).r : 0.0;
 	vec3 position = vec3(0), normal = vec3(0);
+	vec4 inherited = vec4(0);
 	float coverage = 100.0;
 	if (valid && d > 1e-7) {
 		position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
 		normal = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
-		coverage = surfel_gather(position, normal, true).a;
+		// The pre-generation grid contains only surfels that were already admitted
+		// in an earlier frame. Reuse their filtered lighting as the newborn prior,
+		// matching the reference implementation instead of starting from black.
+		inherited = surfel_gather(position, normal, false, coverage);
 	}
 	// Every lane, including the odd-size border, participates in both barriers.
 	uint seed = surfel_hash(uint(pixel.x + pixel.y * size.x) ^ uint(p.size_frame.z) * 1664525u);
@@ -1591,9 +1607,14 @@ void main() {
 	Surfel s;
 	s.position_radius = vec4(position, radius);
 	s.normal_age = vec4(normal, 0.0);
-	s.irradiance_samples = vec4(0);
-	s.short_mean_vbbr = vec4(0, 0, 0, 1);
-	s.variance_inconsistency = vec4(1, 1, 1, 0);
+	// A bounded prior prevents a newly exposed tile from flashing black or from
+	// replacing its neighbors with one tiny Monte Carlo batch. It is deliberately
+	// weaker than the guaranteed first real batch and does not advance the ray
+	// sequence stored in anchor.w.
+	float prior_samples = inherited.a > 0.1 ? 16.0 : 0.0;
+	s.irradiance_samples = vec4(inherited.rgb, prior_samples);
+	s.short_mean_vbbr = vec4(inherited.rgb, 1.0);
+	s.variance_inconsistency = vec4(prior_samples > 0.0 ? max(inherited.rgb * inherited.rgb * 0.04, vec3(1e-6)) : vec3(1), 0);
 	s.anchor = uvec4(uint(triangle) + 1u, uint(p.size_frame.z), 1u, 0u);
 	vec3 delta = position - t.p0.xyz;
 	float aa = dot(t.p1.xyz, t.p1.xyz), ab = dot(t.p1.xyz, t.p2.xyz), bb = dot(t.p2.xyz, t.p2.xyz);
@@ -1633,7 +1654,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -2142,7 +2163,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -2229,7 +2254,10 @@ void main() {
 	// Differences of adjacent prefix endpoints conserve the budget, including
 	// integer rounding. Allocation changes ray density, never radiance magnitude.
 	uvec2 request = ray_schedule[id];
-	uint budget = p.voxel_min.w > 0.0 ? min(nominal_rays, uint(p.voxel_min.w)) : nominal_rays;
+	// requested_weight is the real variance/bootstrap request. The old nominal
+	// total silently erased the priority multiplier whenever the configured cap
+	// was larger than the base ray count.
+	uint budget = p.voxel_min.w > 0.0 ? min(requested_weight, uint(p.voxel_min.w)) : requested_weight;
 	float scale = float(budget) / max(float(requested_weight), 1.0);
 	uint count = min(32u, uint(floor(float(request.y + request.x) * scale)) - uint(floor(float(request.y) * scale)));
 	if (count == 0u) return;
@@ -2243,11 +2271,13 @@ void main() {
 		distribution[bin] = max(ray_guiding[id * 16u + bin].x, 0.0001);
 		total += distribution[bin];
 	}
-	// Keep 25% uniform probability, including after abrupt illumination changes.
-	// The frozen per-batch CDF and explicit PDF preserve the cosine estimator.
+	// Fade guiding continuously toward a cosine-uniform proposal after a lighting
+	// change. This avoids following the old sun/sky distribution while preserving
+	// an unbiased estimator through the explicit mixture PDF.
+	float guiding_strength = 0.75 * (1.0 - clamp(p.source_bvh_state.w, 0.0, 1.0));
 	float accumulated = 0.0;
 	for (uint bin = 0u; bin < 16u; bin++) {
-		accumulated += mix(total / 16.0, distribution[bin], 0.75);
+		accumulated += mix(total / 16.0, distribution[bin], guiding_strength);
 		distribution[bin] = accumulated;
 	}
 	vec3 sum = vec3(0);
@@ -2282,7 +2312,11 @@ void main() {
 			incident += local_light_sample(hit, normal, random_float(seed));
 			vec4 cached = surfel_gather(hit, normal, false);
 			if (p.engine_state.z > 0.5 && cached.a > 0.1) {
-				incident += cached.rgb;
+				// Old multibounce energy otherwise circulates through the cache long
+				// after a light step. Dampen only that feedback continuously during the
+				// measured transition; direct light, emission and environment remain
+				// fully sampled, and gradual TOD keeps essentially all feedback.
+				incident += cached.rgb * mix(1.0, 0.15, clamp(p.source_bvh_state.w, 0.0, 1.0));
 			} else {
 				incident += surfel_miss_irradiance(hit, normal, seed);
 			}
@@ -2334,7 +2368,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -2600,7 +2634,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -2722,14 +2760,12 @@ void main() {
 		data.mean *= estimator_scale;
 		data.shortMean *= estimator_scale;
 		data.variance *= estimator_scale * estimator_scale;
-		// Gradual TOD needs a quiet short-term estimate; a measured scene step
-		// temporarily widens that window's bandwidth, then decays it smoothly.
-		float short_blend = p.source_bvh_state.w > 0.5 ? mix(0.08, 0.4, p.gi.y) : 0.15;
-		if (p.source_bvh_state.w > 0.5) {
-			// Sleeping surfels still feed multibounce. Keep the same response in
-			// elapsed frames when their updates are staggered (up to 16 frames).
-			short_blend = 1.0 - pow(1.0 - short_blend, clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0));
-		}
+		// A continuous bandwidth avoids switching the estimator between two
+		// visibly different modes. Compensate every staggered update for elapsed
+		// frames so offscreen transport follows the same time constant.
+		float lighting_response = clamp(p.source_bvh_state.w, 0.0, 1.0);
+		float short_blend = mix(0.12, 0.35, lighting_response);
+		short_blend = 1.0 - pow(1.0 - short_blend, clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0));
 		MSME(sample_value.rgb * estimator_scale, data, short_blend);
 		data.mean /= estimator_scale;
 		data.shortMean /= estimator_scale;
@@ -2754,18 +2790,27 @@ void main() {
 		// Catch up to the filtered short mean only where local estimates disagree.
 		// The former global blend used the raw batch, bypassing firefly suppression
 		// and variance reduction every frame of a continuously advancing TOD.
-		if (p.source_bvh_state.w > 0.5) {
-			vec3 error = abs(data.shortMean - s.irradiance_samples.rgb);
-			// EMA standard-error approximation; shared batches are correlated, so
-			// this is a response heuristic, not an independent-sample confidence test.
-			vec3 standard_error = sqrt(max(data.variance, vec3(1e-8)) * short_blend / (2.0 - short_blend));
-			// The imported variance floor must not classify a fading signal as
-			// permanently uncertain. Bound that uncertainty in relative units,
-			// including all-off, without replacing filtered light with raw rays.
-			standard_error = min(standard_error, max(max(data.shortMean, s.irradiance_samples.rgb), vec3(1e-6)) * 0.1);
-			float change = dot(vec3(0.299, 0.587, 0.114), error / max(standard_error, vec3(1e-7)));
-			float response = smoothstep(0.25, 1.0, change);
-			data.mean = mix(data.mean, data.shortMean, response);
+		vec3 error = abs(data.shortMean - s.irradiance_samples.rgb);
+		// EMA standard-error approximation; shared batches are correlated, so
+		// this is a response heuristic, not an independent-sample confidence test.
+		vec3 standard_error = sqrt(max(data.variance, vec3(1e-8)) * short_blend / (2.0 - short_blend));
+		// The imported variance floor must not classify a fading signal as
+		// permanently uncertain. Bound that uncertainty in relative units,
+		// including all-off, without replacing filtered light with raw rays.
+		standard_error = min(standard_error, max(max(data.shortMean, s.irradiance_samples.rgb), vec3(1e-6)) * 0.1);
+		float change = dot(vec3(0.299, 0.587, 0.114), error / max(standard_error, vec3(1e-7)));
+		float local_change = smoothstep(0.25, 1.0, change);
+		// MSME inconsistency outlives the global lighting impulse. Let a coherent
+		// local disagreement finish converging after the impulse decays, while a
+		// stationary noisy surfel (mean ~= short mean) receives no extra bandwidth.
+		float persistent_change = smoothstep(0.20, 0.40, data.inconsistency) * local_change;
+		float change_response = max(lighting_response, persistent_change * 0.5);
+		if (change_response > 0.001) {
+			// Never replace the long mean wholesale with a noisy short window. A
+			// bounded catch-up reaches an abrupt step quickly without flashing and
+			// gives continuous TOD only the small bandwidth it requested.
+			float catchup = change_response * mix(0.08, 0.50, local_change);
+			data.mean = mix(data.mean, data.shortMean, catchup);
 		}
 	}
 	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));
@@ -2810,7 +2855,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -3076,7 +3121,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -3118,15 +3167,19 @@ void main() {
 	}
 	float d = texelFetch(depth, pixel, 0).r;
 	vec4 value = vec4(0);
+	float coverage = 0.0;
 	if (d > 1e-7 && p.source_bvh_state.z > 0.5) {
 		vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
 		vec3 normal = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
-		float coverage;
 		value = surfel_gather(position, normal, false, coverage);
-		value.a = coverage; // Diagnostic confidence retains geometric coverage.
+		// value.a is sampled-lighting support after admission; geometric coverage
+		// alone must not claim that an unresolved newborn is display-ready.
+		value.a = min(value.a, coverage);
 	}
-	imageStore(diffuse, pixel, vec4(value.rgb, 1));
-	imageStore(confidence, pixel, vec4(min(value.a, 1.0) * 256.0));
+	imageStore(diffuse, pixel, vec4(value.rgb, min(value.a, 1.0)));
+	// Preserve the established diagnostic contract: confidence.bin stores
+	// geometric coverage, while raw diffuse alpha carries lighting admission.
+	imageStore(confidence, pixel, vec4(min(coverage, 1.0) * 256.0));
 }
 
 #endif
@@ -3157,7 +3210,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -3312,7 +3365,9 @@ void main() {
 		return;
 	}
 	float d = texelFetch(depth, pixel, 0).r;
-	vec3 value = texelFetch(current_diffuse, pixel, 0).rgb;
+	vec4 current = texelFetch(current_diffuse, pixel, 0);
+	vec3 value = current.rgb;
+	float confidence = clamp(current.a, 0.0, 1.0);
 	vec3 n = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
 	if (settings.temporal_enabled != 0 && d > 1e-7 && p.size_frame.w > 0.5 && p.source_bvh_state.z > 0.5) {
 		vec3 wp = world_position((vec2(pixel) + 0.5) / vec2(size), d);
@@ -3332,7 +3387,10 @@ void main() {
 						hi = max(hi, v);
 					}
 				}
-				value = mix(clamp(old_light.rgb, lo, hi), value, p.source_bvh_state.w > 0.5 ? 0.5 : 0.2);
+				float lighting_response = clamp(p.source_bvh_state.w, 0.0, 1.0);
+				float stable_mix = mix(0.08, 0.20, confidence);
+				float changing_mix = mix(0.18, 0.35, confidence);
+				value = mix(clamp(old_light.rgb, lo, hi), value, mix(stable_mix, changing_mix, lighting_response));
 			}
 		}
 	}
@@ -3375,7 +3433,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -3884,7 +3942,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -4112,7 +4174,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -4372,7 +4434,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -4638,7 +4700,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -4824,7 +4890,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -4990,7 +5056,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -5164,7 +5230,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -5423,7 +5489,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -5665,7 +5731,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -5931,7 +5997,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -5994,7 +6064,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -6260,7 +6330,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -6328,7 +6402,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -6594,7 +6668,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -6679,7 +6757,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -6835,8 +6913,7 @@ void main() {
 		float qd = texelFetch(depth, q, 0).r;
 		tile_position[i] = vec4(world_position((vec2(q) + 0.5) / vec2(size), qd), qd);
 		tile_normal[i] = vec4(safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, q)), 0);
-		vec3 light = texelFetch(input_diffuse, q, 0).rgb;
-		tile_light[i] = vec4(light, luminance(light));
+		tile_light[i] = texelFetch(input_diffuse, q, 0);
 	}
 	barrier();
 	if (any(greaterThanEqual(pixel, size))) return;
@@ -6856,7 +6933,9 @@ void main() {
 	float plane_limit = max(0.012, radius * 0.06);
 	float center_luma = luminance(center);
 	vec3 sum = vec3(0);
-	float weights = 0.0;
+	float radiance_weights = 0.0;
+	float confidence_sum = 0.0;
+	float geometric_weights = 0.0;
 	const float kernel[5] = float[5](1.0, 4.0, 6.0, 4.0, 1.0);
 	for (int y = -2; y <= 2; y++) {
 		for (int x = -2; x <= 2; x++) {
@@ -6871,16 +6950,22 @@ void main() {
 			vec3 delta = tile_position[qi].xyz - position;
 			if (max(abs(dot(delta, n)), abs(dot(delta, qn))) > plane_limit || length(delta) > radius * 2.0) continue;
 			vec3 value = tile_light[qi].rgb;
-			float ql = tile_light[qi].w;
+			float confidence = clamp(tile_light[qi].a, 0.0, 1.0);
+			float ql = luminance(value);
 			float w = kernel[x + 2] * kernel[y + 2] * pow(max(alignment, 0.0), 16.0);
 			// A broad radiance gate removes stochastic cache blotches while
 			// limiting diffusion across high-contrast indirect-light boundaries.
 			w *= exp(-abs(ql - center_luma) / max(0.01, max(ql, center_luma) * 0.75));
-			sum += value * w;
-			weights += w;
+			geometric_weights += w;
+			confidence_sum += confidence * w;
+			// Prefer mature cache estimates, but retain a small local term when an
+			// entire newly exposed surface is still building confidence.
+			float reliable_w = w * mix(0.05, 1.0, confidence);
+			sum += value * reliable_w;
+			radiance_weights += reliable_w;
 		}
 	}
-	imageStore(output_diffuse, pixel, vec4(sum / max(weights, 1e-6), 1));
+	imageStore(output_diffuse, pixel, vec4(sum / max(radiance_weights, 1e-6), confidence_sum / max(geometric_weights, 1e-6)));
 }
 
 #endif
@@ -6911,7 +6996,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -7135,7 +7220,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -7644,7 +7729,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -7780,7 +7869,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -7956,7 +8045,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -8222,7 +8311,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -8267,9 +8360,10 @@ vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 			// separate integrate dispatch. Sharing only the last few-ray batch
 			// discards the convergence work already done by each neighbor.
 			vec4 history = surfels[neighbor].irradiance_samples;
-			// During relighting, pool fresh batches and let MSME own the temporal
-			// history. Reusing old means here recursively delays the new lighting.
-			float settled = (p.source_bvh_state.w > 0.5 ? 0.0 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
+			// Retain a stable prior during relighting. Abruptly dropping this term to
+			// zero was the main source of the former 64-frame flashing phase.
+			float history_trust = mix(0.75, 0.20, clamp(p.source_bvh_state.w, 0.0, 1.0));
+			float settled = history_trust * smoothstep(0.0, p.gi.w, history.w);
 			sum += mix(batch.rgb, history.rgb, settled) * w;
 			weights += w;
 			history_fraction += settled * w;
@@ -8346,7 +8440,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild
@@ -8612,7 +8706,11 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// Newly exposed/denser receivers must not overpower mature neighbors
 				// with their first few noisy rays. Normalize RGB by the same weight
 				// so confidence controls influence, never a fade from black.
-				float confidence = smoothstep(0.0, p.gi.w, irradiance.w);
+				// Admission is intentionally faster than long-term convergence. With
+				// the guaranteed high-quality birth batch this reaches full influence
+				// in roughly two frames, without a 256-sample full-amplitude flash.
+				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
+				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
 
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
@@ -8643,16 +8741,20 @@ void main() {
 	uint weight = 0u, nominal = 0u;
 	if (id < SURFEL_CAPACITY) {
 		Surfel s = surfels[id];
-		bool changing = p.source_bvh_state.w > 0.5;
+		float lighting_response = clamp(p.source_bvh_state.w, 0.0, 1.0);
 		float variance = s.local_normal.w;
 		// Sample count alone is not convergence. Noisy visible surfels must
 		// not become dormant merely because they have traced 256 rays.
-		uint mask = uint(p.size_frame.z) - s.anchor.y > 8u ? 15u : (changing || variance > 0.03 ? 0u : 3u);
+		uint mask = lighting_response > 0.02 ? 0u : (uint(p.size_frame.z) - s.anchor.y > 8u ? 15u : (variance > 0.03 ? 0u : 3u));
 		bool scheduled = s.irradiance_samples.w < p.gi.w || ((id + uint(p.size_frame.z)) & mask) == 0u;
 		if (s.anchor.z != 0u && scheduled) {
 			nominal = uint(clamp(p.quality.x * 4.0, 4.0, 32.0));
-			float need = s.irradiance_samples.w < p.gi.w ? 1.0 : smoothstep(0.01, 0.25, variance);
-			weight = uint(round(float(nominal) * mix(0.5, 2.0, need)));
+			float bootstrap = 1.0 - smoothstep(0.0, p.gi.w, s.irradiance_samples.w);
+			float need = max(lighting_response, max(bootstrap, smoothstep(0.005, 0.15, variance)));
+			// New/high-variance surfels receive up to 32 actual rays when budget is
+			// available. Previously the global normalization divided this request
+			// back to the nominal count, leaving newborns at roughly eight rays.
+			weight = uint(round(min(32.0, float(nominal) * mix(0.5, 4.0, need))));
 		}
 	}
 	prefix[lane] = uvec2(weight, nominal);
@@ -8699,7 +8801,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild

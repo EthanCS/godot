@@ -30,9 +30,10 @@ vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 			// separate integrate dispatch. Sharing only the last few-ray batch
 			// discards the convergence work already done by each neighbor.
 			vec4 history = surfels[neighbor].irradiance_samples;
-			// During relighting, pool fresh batches and let MSME own the temporal
-			// history. Reusing old means here recursively delays the new lighting.
-			float settled = (p.source_bvh_state.w > 0.5 ? 0.0 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
+			// Retain a stable prior during relighting. Abruptly dropping this term to
+			// zero was the main source of the former 64-frame flashing phase.
+			float history_trust = mix(0.75, 0.20, clamp(p.source_bvh_state.w, 0.0, 1.0));
+			float settled = history_trust * smoothstep(0.0, p.gi.w, history.w);
 			sum += mix(batch.rgb, history.rgb, settled) * w;
 			weights += w;
 			history_fraction += settled * w;

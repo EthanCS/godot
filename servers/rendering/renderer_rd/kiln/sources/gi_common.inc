@@ -22,7 +22,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 fake_light2_color; // legacy second lobe; project sky cloud RGB / coverage
     vec4 fake_light2_direction; // legacy direction; x = project sky saturation
     vec4 ground_escape;    // original theme2 downward ray miss contribution, w = solid BRDF compensation
-    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, lighting changing
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
     vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
     mat4 previous_inverse_view_projection;
     vec4 engine_state; // x: signed material normal; y: G-buffer surface available; z: multibounce; w: dynamic rebuild

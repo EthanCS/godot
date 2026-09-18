@@ -58,14 +58,12 @@ void main() {
 		data.mean *= estimator_scale;
 		data.shortMean *= estimator_scale;
 		data.variance *= estimator_scale * estimator_scale;
-		// Gradual TOD needs a quiet short-term estimate; a measured scene step
-		// temporarily widens that window's bandwidth, then decays it smoothly.
-		float short_blend = p.source_bvh_state.w > 0.5 ? mix(0.08, 0.4, p.gi.y) : 0.15;
-		if (p.source_bvh_state.w > 0.5) {
-			// Sleeping surfels still feed multibounce. Keep the same response in
-			// elapsed frames when their updates are staggered (up to 16 frames).
-			short_blend = 1.0 - pow(1.0 - short_blend, clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0));
-		}
+		// A continuous bandwidth avoids switching the estimator between two
+		// visibly different modes. Compensate every staggered update for elapsed
+		// frames so offscreen transport follows the same time constant.
+		float lighting_response = clamp(p.source_bvh_state.w, 0.0, 1.0);
+		float short_blend = mix(0.12, 0.35, lighting_response);
+		short_blend = 1.0 - pow(1.0 - short_blend, clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0));
 		MSME(sample_value.rgb * estimator_scale, data, short_blend);
 		data.mean /= estimator_scale;
 		data.shortMean /= estimator_scale;
@@ -90,18 +88,27 @@ void main() {
 		// Catch up to the filtered short mean only where local estimates disagree.
 		// The former global blend used the raw batch, bypassing firefly suppression
 		// and variance reduction every frame of a continuously advancing TOD.
-		if (p.source_bvh_state.w > 0.5) {
-			vec3 error = abs(data.shortMean - s.irradiance_samples.rgb);
-			// EMA standard-error approximation; shared batches are correlated, so
-			// this is a response heuristic, not an independent-sample confidence test.
-			vec3 standard_error = sqrt(max(data.variance, vec3(1e-8)) * short_blend / (2.0 - short_blend));
-			// The imported variance floor must not classify a fading signal as
-			// permanently uncertain. Bound that uncertainty in relative units,
-			// including all-off, without replacing filtered light with raw rays.
-			standard_error = min(standard_error, max(max(data.shortMean, s.irradiance_samples.rgb), vec3(1e-6)) * 0.1);
-			float change = dot(vec3(0.299, 0.587, 0.114), error / max(standard_error, vec3(1e-7)));
-			float response = smoothstep(0.25, 1.0, change);
-			data.mean = mix(data.mean, data.shortMean, response);
+		vec3 error = abs(data.shortMean - s.irradiance_samples.rgb);
+		// EMA standard-error approximation; shared batches are correlated, so
+		// this is a response heuristic, not an independent-sample confidence test.
+		vec3 standard_error = sqrt(max(data.variance, vec3(1e-8)) * short_blend / (2.0 - short_blend));
+		// The imported variance floor must not classify a fading signal as
+		// permanently uncertain. Bound that uncertainty in relative units,
+		// including all-off, without replacing filtered light with raw rays.
+		standard_error = min(standard_error, max(max(data.shortMean, s.irradiance_samples.rgb), vec3(1e-6)) * 0.1);
+		float change = dot(vec3(0.299, 0.587, 0.114), error / max(standard_error, vec3(1e-7)));
+		float local_change = smoothstep(0.25, 1.0, change);
+		// MSME inconsistency outlives the global lighting impulse. Let a coherent
+		// local disagreement finish converging after the impulse decays, while a
+		// stationary noisy surfel (mean ~= short mean) receives no extra bandwidth.
+		float persistent_change = smoothstep(0.20, 0.40, data.inconsistency) * local_change;
+		float change_response = max(lighting_response, persistent_change * 0.5);
+		if (change_response > 0.001) {
+			// Never replace the long mean wholesale with a noisy short window. A
+			// bounded catch-up reaches an abrupt step quickly without flashing and
+			// gives continuous TOD only the small bandwidth it requested.
+			float catchup = change_response * mix(0.08, 0.50, local_change);
+			data.mean = mix(data.mean, data.shortMean, catchup);
 		}
 	}
 	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));

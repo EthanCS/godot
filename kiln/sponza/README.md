@@ -75,8 +75,10 @@ CLI options after `--`: `--still`, `--no-gi`, `--no-aa`, `--rays=2`,
 `--surfel-two-bounce`, `--size=1280x720`, `--frames=600`,
 `--output=<temp-directory>`.
 Ray quality 1–8 supplies the nominal 4–32 rays per scheduled surfel. The GPU
-redistributes these requests by variance and caps primary diffuse rays at
-196,608 per frame (`--surfel-ray-budget=0` removes the cap). Shadow and
+redistributes these requests by variance and cache age; newborn and high-variance
+surfels may receive up to 32 actual rays while stable entries are decimated. The
+correctness-first default caps primary diffuse rays at 2,097,152 per frame
+(`--surfel-ray-budget=0` removes the cap). Shadow and
 cache-miss continuation rays are additional work, included in measured time.
 `--raw-cache` disables screen/temporal diffuse reconstruction.
 `--no-irradiance-sharing` disables cache sharing for an independent comparison.
@@ -127,6 +129,12 @@ Static GI smoothness also has a dedicated test, `res://tests/gi_noise.gd`, and
 `kiln/tools/check_gi_noise.py <before> <after>`. It measures spatial blotches on
 an untextured floor patch in addition to frame-to-frame variation. See the
 [smoothness report](../docs/GI-SMOOTHNESS-2026-09-17.md) for captures and scope.
+
+Per-frame continuous-TOD and camera-disocclusion stability is covered by
+`res://tests/diffuse_stability.gd`; analyze its 120-frame sequences with
+`kiln/tools/check_diffuse_stability.py <capture-directory>`. The moving metric is
+descriptive because genuine parallax and disocclusion dominate raw pixel deltas;
+the saved sequence still requires visual review.
 
 For a TOD gallery, run `--tod-suite`, then `kiln/tools/check_tod.py <directory>`.
 `--tod-video` captures 480 PNG frames of a 24-hour cycle.

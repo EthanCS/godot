@@ -151,7 +151,7 @@ void KilnGI::View::free_cache() {
 	storage.clear();
 	capacities.clear();
 	frames = index = stationary_samples = 0;
-	motion_remaining = lighting_remaining = 0;
+	motion_remaining = 0;
 	lighting_response = 0;
 	previous_local_lights.clear();
 	geometry_version = dynamic_version = light_version = material_version = texture_version = 0;
@@ -539,19 +539,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		upload("local_lights", world.local_lights);
 		upload("light_grid", world.light_grid);
 	}
-	if (changed_light) {
-		// Request fresh transport during changes, but let each surfel's MSME
-		// distinguish a consistent lighting change from Monte Carlo variance.
-		// An empty cache has no stale lighting to flush. Treating initial scene
-		// upload/reset as relighting kept the high-response estimator active
-		// for 32 frames, repeatedly discarding useful cold-start samples.
-		state->lighting_remaining = state->frames == 0 || changed_world ? 0 : 64;
-		state->epoch++;
-	} else if (state->frames == 0) {
-		state->lighting_remaining = 0;
-	} else if (state->lighting_remaining) {
-		state->lighting_remaining--;
-	}
 	Vector3 sun_radiance = world.sun_color * world.sun_energy;
 	Vector3 sky_radiance = world.sky_horizon * world.sky_energy;
 	Vector3 sky_zenith = world.sky_zenith * world.sky_energy;
@@ -567,7 +554,22 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	if (changed_dynamic || changed_material || world.local_lights != state->previous_local_lights) {
 		lighting_delta = 1.0f;
 	}
-	state->lighting_response = state->lighting_remaining ? MAX(state->lighting_response * 0.96f, CLAMP((lighting_delta - 0.02f) / 0.18f, 0.0f, 1.0f)) : 0.0f;
+	// Light revisions may arrive every frame during a continuous TOD animation.
+	// Convert the measured magnitude into a continuous bandwidth request instead
+	// of entering a fixed-duration estimator mode. Abrupt steps still receive a
+	// strong but smoothly decaying response; small TOD increments remain quiet.
+	if (state->frames == 0 || changed_world) {
+		state->lighting_response = 0.0f;
+	} else {
+		float requested_response = CLAMP(lighting_delta * 4.0f, 0.0f, 1.0f);
+		state->lighting_response = MAX(requested_response, state->lighting_response * 0.94f);
+		if (state->lighting_response < 0.001f) {
+			state->lighting_response = 0.0f;
+		}
+	}
+	if (changed_light) {
+		state->epoch++;
+	}
 	state->previous_sun_direction = world.sun_direction;
 	state->previous_sun_radiance = sun_radiance;
 	state->previous_sky_radiance = sky_radiance;
@@ -579,7 +581,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	} else if (state->motion_remaining) {
 		state->motion_remaining--;
 	}
-	bool moving = camera_moved || state->motion_remaining || state->lighting_remaining;
+	bool moving = camera_moved || state->motion_remaining || state->lighting_response > 0.01f;
 	if (moving) {
 		state->stationary_samples = 0;
 	}
@@ -600,8 +602,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	// stationary confidence can accumulate to the full quality budget.
 	bool reproject = camera_moved || scene->taa_jitter != Vector2() || scene->prev_taa_jitter != Vector2();
 	bool reconstruct_diffuse = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_reconstruction", true);
-	v(state->lighting_remaining ? MAX(4, world.rays) : world.rays, reproject, world.ao_quality, reconstruct_diffuse);
-	int surfel_ray_budget = CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_ray_budget", 196608)), 0, 8388608);
+	v(world.rays, reproject, world.ao_quality, reconstruct_diffuse);
+	// Correctness-first default. The scheduler still spends only requested rays,
+	// but newly born and high-variance surfels may now use their full request.
+	int surfel_ray_budget = CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_ray_budget", 2097152)), 0, 8388608);
 	vec(world.world.bounds.position, surfel_ray_budget);
 	vec(world.world.bounds.size, state->slots);
 	int specular_rays = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_specular", true) ? CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_rays", 2)), 1, 8) : 0;
@@ -648,7 +652,8 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	vec(world.procedural_sky ? world.cloud_color : Vector3(), world.procedural_sky ? world.cloud_coverage : 0);
 	v(world.sky_saturation, 1, 0, 0);
 	v(0, 0, 0, 1);
-	v(world.world.node_count, world.world.triangle_count, world.enabled, state->lighting_remaining > 0);
+	// w is a continuous lighting-response request, not a binary relighting mode.
+	v(world.world.node_count, world.world.triangle_count, world.enabled, state->lighting_response);
 	v(world.dynamic.node_count, world.dynamic.triangle_count, emitter_count, world.world.power + world.dynamic.power);
 	MaterialStorage::store_camera(state->previous_vp.inverse(), params + at);
 	at += 16;
@@ -709,8 +714,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		rd->buffer_clear(state->storage["counters"], 0, 16 + 262144 * 4);
 		surfel_pass(SURFEL_UPDATE, true, false);
 		build_grid();
-		surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
-		build_grid();
 		rd->buffer_clear(state->storage["ray_schedule"], 0, 16);
 		surfel_pass(SURFEL_SCHEDULE, false, false);
 		surfel_pass(SURFEL_TRACE, true, false, query_tlas);
@@ -719,6 +722,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		// Enabling a denoiser must not replace the GI algorithm or launch another
 		// diffuse path tracer. Both modes resolve the same world-space cache.
 		surfel_pass(SURFEL_EVALUATE, false, true);
+		// Match the reference admission order: evaluate the already integrated
+		// cache first, then create surfels for the following frame. A newborn must
+		// never expose its first few rays in the same frame it was allocated.
+		surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
 		if (specular_rays > 0) trace_specular(T("specular_raw"), T("fresnel_raw"), false);
 	} else {
 		rd->texture_clear(T("raw"), Color(0, 0, 0, 0), 0, 1, 0, 1);
@@ -770,7 +777,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		if (!has_surface && changed_dynamic) {
 			reset = true;
 		}
-		use_nrd = state->nrd->denoise(scene, state->previous_projection, state->previous_camera, state->frames, reset, state->lighting_remaining > 0, nrd_checkerboard, nrd_diffuse_iterations,
+		use_nrd = state->nrd->denoise(scene, state->previous_projection, state->previous_camera, state->frames, reset, state->lighting_response > 0.25f, nrd_checkerboard, nrd_diffuse_iterations,
 				T("nrd_motion"), T("nrd_normal"), T("nrd_depth"), T("nrd_diffuse_raw"), T("nrd_base"), T("nrd_fresnel"), T("diffuse"), T("specular"), T("fresnel"));
 		if (!use_nrd) publish_diffuse(reconstruct_diffuse);
 		RENDER_TIMESTAMP("Kiln / between passes");
@@ -922,7 +929,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["frame"] = state->frames;
 			metadata["moving"] = moving;
 			metadata["lighting_response"] = state->lighting_response;
-			metadata["relighting_frames"] = state->lighting_remaining;
+			// Retained for capture-schema compatibility. Relighting no longer uses
+			// a fixed frame countdown; lighting_response records the live bandwidth.
+			metadata["relighting_frames"] = 0;
 			metadata["screen_history_valid"] = state->frames > 0 && !initialize;
 			metadata["stationary_samples"] = state->stationary_samples;
 			metadata["geometry_version"] = world.geometry_version;
@@ -954,6 +963,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	statistics["width"] = state->size.x;
 	statistics["height"] = state->size.y;
 	statistics["moving"] = moving;
+	statistics["lighting_response"] = state->lighting_response;
 	statistics["stationary_samples"] = state->stationary_samples;
 	statistics["gi_enabled"] = world.enabled;
 	statistics["gi_algorithm"] = "Surfel GI (SurfelPlus adaptation)";

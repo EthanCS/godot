@@ -14,13 +14,17 @@ void main() {
 	}
 	float d = texelFetch(depth, pixel, 0).r;
 	vec4 value = vec4(0);
+	float coverage = 0.0;
 	if (d > 1e-7 && p.source_bvh_state.z > 0.5) {
 		vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
 		vec3 normal = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
-		float coverage;
 		value = surfel_gather(position, normal, false, coverage);
-		value.a = coverage; // Diagnostic confidence retains geometric coverage.
+		// value.a is sampled-lighting support after admission; geometric coverage
+		// alone must not claim that an unresolved newborn is display-ready.
+		value.a = min(value.a, coverage);
 	}
-	imageStore(diffuse, pixel, vec4(value.rgb, 1));
-	imageStore(confidence, pixel, vec4(min(value.a, 1.0) * 256.0));
+	imageStore(diffuse, pixel, vec4(value.rgb, min(value.a, 1.0)));
+	// Preserve the established diagnostic contract: confidence.bin stores
+	// geometric coverage, while raw diffuse alpha carries lighting admission.
+	imageStore(confidence, pixel, vec4(min(coverage, 1.0) * 256.0));
 }
