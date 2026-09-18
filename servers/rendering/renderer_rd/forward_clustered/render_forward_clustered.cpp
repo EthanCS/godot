@@ -2317,7 +2317,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 			kiln_gi = memnew(RendererRD::KilnGI);
 		}
 		RENDER_TIMESTAMP("Kiln GI Forward+");
-		kiln_forward_gi_ready = kiln_gi->process(rb, p_render_data->scene_data, p_render_data->environment, rb_data->get_normal_roughness(), false);
+		kiln_forward_gi_ready = kiln_gi->process(rb, p_render_data->scene_data, p_render_data->environment, rb_data->get_normal_roughness(), dfg_lut.texture, false);
 	}
 
 	RENDER_TIMESTAMP("Render Opaque Pass");
@@ -2359,7 +2359,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 				kiln_gi = memnew(RendererRD::KilnGI);
 			}
 			RENDER_TIMESTAMP("Kiln GI");
-			gi_ready = kiln_gi->process(rb, p_render_data->scene_data, p_render_data->environment, rb->get_texture(RB_SCOPE_KILN, SNAME("normal_roughness")));
+			gi_ready = kiln_gi->process(rb, p_render_data->scene_data, p_render_data->environment, rb->get_texture(RB_SCOPE_KILN, SNAME("normal_roughness")), dfg_lut.texture);
 		}
 		RENDER_TIMESTAMP("Kiln deferred lighting");
 		SceneShaderForwardClustered::ShaderSpecialization resolve_specialization = base_specialization;
@@ -5298,6 +5298,10 @@ RenderForwardClustered::RenderForwardClustered(bool p_kiln_deferred) :
 	GLOBAL_DEF("rendering/kiln/surfel_multibounce", true);
 	GLOBAL_DEF("rendering/kiln/surfel_specular", true);
 	GLOBAL_DEF("rendering/kiln/nrd", true);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/nrd_diffuse_iterations", PROPERTY_HINT_RANGE, "2,5,1"), 4);
+	GLOBAL_DEF("rendering/kiln/nrd_reference", false);
+	GLOBAL_DEF("rendering/kiln/nrd_specular_checkerboard", false);
+	GLOBAL_DEF("rendering/kiln/nrd_combined_specular", true);
 	GLOBAL_DEF("rendering/kiln/specular_checkerboard", true);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/specular_rays", PROPERTY_HINT_RANGE, "1,8,1"), 2);
 	GLOBAL_DEF(PropertyInfo(Variant::FLOAT, "rendering/kiln/surfel_debug_radius", PROPERTY_HINT_RANGE, "0.15,1,0.05"), 0.45);

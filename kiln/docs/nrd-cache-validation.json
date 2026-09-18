@@ -1,0 +1,508 @@
+{
+  "date": "2026-09-18",
+  "hardware": "NVIDIA GeForce RTX 5070 Ti / Windows Vulkan 1.4.341",
+  "sdk": {
+    "version": "4.17.3",
+    "commit": "792eff196afdd350fd9c3f862119017ccb438a0e"
+  },
+  "artifact_root": "G:\\Temp\\kiln-nrd-cache-20260918",
+  "source_sha256": {
+    "kiln/README.md": "b210e607489ec22b91af8dc8e83e4baa3f48e2957adb46964d225f1eaad9e663",
+    "kiln/docs/NRD-CACHE-DIFFUSE-2026-09-18.md": "c34bfb8beddd6310256096219e24d1022df85ab931448d77e08fbb48eed8b671",
+    "kiln/docs/NRD.md": "f17e2a924539b87f14ca61e5c69ff370e8ae641698d5a1de86f5de38e5c85e22",
+    "kiln/sponza/README.md": "cfad2bb38d2081519d5f293ba60c2eeb10953f3e9f409716288bb236f225caf0",
+    "kiln/sponza/sponza.gd": "7d6e05dbec0dcfa58dff8abe2c173ae87afdd3fc608811e43bbf06922bb6bef4",
+    "kiln/sponza/tests/nrd_cache.gd": "bed912d28c0ceae6813fbfe151bbfbfcc849300de52a8f159219f2fd826c7039",
+    "kiln/tools/benchmark_sponza.py": "782fb07782f3103fb8f990adc6a89e4f4e651db5d5a19afb9ffacca85aed3f65",
+    "kiln/tools/check_nrd_cache.py": "77e1e8a47fcaaf3a0d4b23af48aa9cdbc080a510db52666d610e8f87197e34ff",
+    "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp": "7691e3a1e631c7e58820e6a6f4c471989d8c1990df137f9d3588938d88dbb84d",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.cpp": "77b2b2bc636a8ba617f9a5c79431d12b43030f874038381f9aa63001988c585d",
+    "servers/rendering/renderer_rd/kiln/kiln_gi.h": "d70ad3629b955d2199ff87dc20ad05fac364252a16afa8810334501d0b620eb3",
+    "servers/rendering/renderer_rd/kiln/kiln_nrd.cpp": "e73457d32489b2a526411d7476a588251e51efaad9f393aaee962de3cfa3e001",
+    "servers/rendering/renderer_rd/kiln/kiln_nrd.h": "7d4401217230272ba7b1a18eeacab1fd3b95b5df39ded82078b72f58ae19f158",
+    "servers/rendering/renderer_rd/kiln/sources/nrd_prepare.comp": "1bf6bbcb7cbfb5cbc729d811c6c14ceae7488cb3a08a2e6569080c4942c92f83",
+    "servers/rendering/renderer_rd/kiln/sources/nrd_resolve.comp": "fbff51535af4cc84d7443688b4f3c25e2ac18830b600a393ce8b5164484d129a",
+    "servers/rendering/renderer_rd/kiln/sources/surfel_publish.comp": "5a998e35ae05ffdce13b4201d3c1e416c2683b8505af7ba98b4bec92ae4513c4",
+    "servers/rendering/renderer_rd/shaders/kiln_gi.glsl": "c4b3c02c02101f1f054bb1e1b43a6f4eff6518f566fd2b852b613cbfd494ed44"
+  },
+  "binary_sha256": {
+    "bin\\godot.windows.editor.x86_64.mono.exe": "4b66738e7e5a6c470a7e64efe02f05e2f4bccc92f2f1aac52133678e57bcd2f8",
+    "bin\\godot.windows.template_release.x86_64.mono.exe": "7cc29a598d64005f43265dfbeb35b935845a894cec8bf61837aa7a22d75b9ab8",
+    "G:\\Temp\\kiln-nrd-cache-20260918\\sponza-nrd.exe": "fc4fcd30c41fe8692cba26716487ba29d80f98a3aceee51872c46c93c265333d"
+  },
+  "implemented": "Full-rate cache RGB -> RELAX_DIFFUSE, no hit-distance preblur/reconstruction, original reconstruction replaced, no new diffuse rays",
+  "compiled": [
+    "Windows x86_64 Mono production editor",
+    "Windows x86_64 Mono production template_release"
+  ],
+  "shader_validation": {
+    "native_variants": "passed, including imported-source hashes",
+    "adapted_nrd_diffuse_spirv_modules": 8,
+    "target": "vulkan1.2"
+  },
+  "quality": {
+    "editor-1080": {
+      "passed": true,
+      "checks": 322,
+      "failed": [],
+      "measurements": {
+        "converged": {
+          "coverage": 0.9999892702188095,
+          "primary_rays": 76887,
+          "floor": {
+            "raw": {
+              "mean": 0.04444989412257433,
+              "relative_residual": 0.02030105241364297
+            },
+            "diffuse": {
+              "mean": 0.04428304900997571,
+              "relative_residual": 0.018626742708867064
+            },
+            "diffuse_reference": {
+              "mean": 0.04435696503794382,
+              "relative_residual": 0.019249560151691585
+            },
+            "residual_reduction": 0.0323548921594341,
+            "energy_ratio": 0.9983336094364238
+          }
+        },
+        "motion_000": {
+          "coverage": 0.9998756119404733,
+          "primary_rays": 121599,
+          "motion_p95_uv": 5.960464477539063e-08
+        },
+        "motion_045": {
+          "coverage": 0.9999990354938272,
+          "primary_rays": 91343,
+          "motion_p95_uv": 5.960464477539063e-08
+        },
+        "motion_090": {
+          "coverage": 0.999931037808642,
+          "primary_rays": 196608,
+          "motion_p95_uv": 5.960464477539063e-08
+        },
+        "motion_135": {
+          "coverage": 0.9999985532407407,
+          "primary_rays": 196608,
+          "motion_p95_uv": 5.960464477539063e-08
+        },
+        "motion_end": {
+          "coverage": 0.999964313271605,
+          "primary_rays": 157848,
+          "motion_p95_uv": 5.960464477539063e-08
+        },
+        "nrd_off": {
+          "coverage": 0.9999941470866393,
+          "primary_rays": 76879
+        },
+        "nrd_on_again": {
+          "coverage": 0.9999926842864814,
+          "primary_rays": 77152
+        },
+        "odd_resize": {
+          "coverage": 0.9999902743602961,
+          "primary_rays": 39808
+        },
+        "resize_restored": {
+          "coverage": 0.9999946348686714,
+          "primary_rays": 77160,
+          "floor": {
+            "raw": {
+              "mean": 0.043392935998711794,
+              "relative_residual": 0.04127335191149641
+            },
+            "diffuse": {
+              "mean": 0.04319057721179692,
+              "relative_residual": 0.03675978914427272
+            },
+            "diffuse_reference": {
+              "mean": 0.043316920713658565,
+              "relative_residual": 0.03719588892221533
+            },
+            "residual_reduction": 0.01172440800795449,
+            "energy_ratio": 0.997083276009003
+          }
+        },
+        "returned": {
+          "coverage": 0.999996586000358,
+          "primary_rays": 141456,
+          "floor": {
+            "raw": {
+              "mean": 0.044199025497687464,
+              "relative_residual": 0.031094457759695247
+            },
+            "diffuse": {
+              "mean": 0.044000300636296154,
+              "relative_residual": 0.026818350296870734
+            },
+            "diffuse_reference": {
+              "mean": 0.04411416275576474,
+              "relative_residual": 0.02771486610642919
+            },
+            "residual_reduction": 0.03234783116453466,
+            "energy_ratio": 0.9974189214448208
+          }
+        },
+        "still": {
+          "coverage": 0.999990245339467,
+          "primary_rays": 77144,
+          "floor": {
+            "raw": {
+              "mean": 0.04423343812187588,
+              "relative_residual": 0.031191741192986667
+            },
+            "diffuse": {
+              "mean": 0.04403656579133332,
+              "relative_residual": 0.027745984762098136
+            },
+            "diffuse_reference": {
+              "mean": 0.044152351375003215,
+              "relative_residual": 0.028603360119441177
+            },
+            "residual_reduction": 0.029974637726576048,
+            "energy_ratio": 0.9973775896398702
+          }
+        },
+        "sunset": {
+          "coverage": 0.9999887825726048,
+          "primary_rays": 196608,
+          "floor": {
+            "raw": {
+              "mean": 0.0041991291219619755,
+              "relative_residual": 0.06342382294926396
+            },
+            "diffuse": {
+              "mean": 0.004341291971389058,
+              "relative_residual": 0.04847467469007609
+            },
+            "diffuse_reference": {
+              "mean": 0.004204365559907413,
+              "relative_residual": 0.057326716636399294
+            },
+            "residual_reduction": 0.15441390098212338,
+            "energy_ratio": 1.0325676750821497
+          }
+        },
+        "floor_temporal": {
+          "raw": {
+            "relative_temporal_std": 0.002287400983050481,
+            "samples": 16
+          },
+          "diffuse": {
+            "relative_temporal_std": 0.0014003717599653056,
+            "samples": 16
+          },
+          "diffuse_reference": {
+            "relative_temporal_std": 0.0018391047294164925,
+            "samples": 16
+          },
+          "reduction": 0.23855790398102406
+        }
+      }
+    },
+    "noaa": {
+      "passed": true,
+      "checks": 322,
+      "failed": [],
+      "measurements": {
+        "converged": {
+          "coverage": 0.9998634426117576,
+          "primary_rays": 32992,
+          "floor": {
+            "raw": {
+              "mean": 0.04430783563670321,
+              "relative_residual": 0.01972231449384136
+            },
+            "diffuse": {
+              "mean": 0.044144525323349504,
+              "relative_residual": 0.019149814432974546
+            },
+            "diffuse_reference": {
+              "mean": 0.04426530349812091,
+              "relative_residual": 0.01877348485940192
+            },
+            "residual_reduction": -0.02004580270477363,
+            "energy_ratio": 0.9972714933542355
+          }
+        },
+        "motion_000": {
+          "coverage": 0.999313146608076,
+          "primary_rays": 71200,
+          "motion_p95_uv": 0.0
+        },
+        "motion_045": {
+          "coverage": 1.0,
+          "primary_rays": 67216,
+          "motion_p95_uv": 0.0
+        },
+        "motion_090": {
+          "coverage": 0.9997627314814815,
+          "primary_rays": 124984,
+          "motion_p95_uv": 0.0
+        },
+        "motion_135": {
+          "coverage": 0.9999247685185185,
+          "primary_rays": 125919,
+          "motion_p95_uv": 0.0
+        },
+        "motion_end": {
+          "coverage": 0.9998032407407408,
+          "primary_rays": 92704,
+          "motion_p95_uv": 0.0
+        },
+        "nrd_off": {
+          "coverage": 0.9998575901522615,
+          "primary_rays": 32912
+        },
+        "nrd_on_again": {
+          "coverage": 0.9998575901522615,
+          "primary_rays": 33023
+        },
+        "odd_resize": {
+          "coverage": 0.9999007926858922,
+          "primary_rays": 33224
+        },
+        "resize_restored": {
+          "coverage": 0.9998575901522615,
+          "primary_rays": 33024,
+          "floor": {
+            "raw": {
+              "mean": 0.04443443145446054,
+              "relative_residual": 0.045357833543197605
+            },
+            "diffuse": {
+              "mean": 0.044292796561040286,
+              "relative_residual": 0.039699411755950535
+            },
+            "diffuse_reference": {
+              "mean": 0.044404105269252064,
+              "relative_residual": 0.037500295780730386
+            },
+            "residual_reduction": -0.0586426301296048,
+            "energy_ratio": 0.9974932788863363
+          }
+        },
+        "returned": {
+          "coverage": 0.9998770983505818,
+          "primary_rays": 56728,
+          "floor": {
+            "raw": {
+              "mean": 0.044295712767301425,
+              "relative_residual": 0.0307397462837035
+            },
+            "diffuse": {
+              "mean": 0.04410747666129233,
+              "relative_residual": 0.02571532879298218
+            },
+            "diffuse_reference": {
+              "mean": 0.0442400223224191,
+              "relative_residual": 0.02599302567022491
+            },
+            "residual_reduction": 0.010683514907648184,
+            "energy_ratio": 0.9970039422638447
+          }
+        },
+        "still": {
+          "coverage": 0.9998634426117576,
+          "primary_rays": 33088,
+          "floor": {
+            "raw": {
+              "mean": 0.04410155264190086,
+              "relative_residual": 0.031677172392622244
+            },
+            "diffuse": {
+              "mean": 0.0439209205487933,
+              "relative_residual": 0.02645262915074571
+            },
+            "diffuse_reference": {
+              "mean": 0.04405118757076089,
+              "relative_residual": 0.027053424459864747
+            },
+            "residual_reduction": 0.022207736030251946,
+            "energy_ratio": 0.9970428261041013
+          }
+        },
+        "sunset": {
+          "coverage": 0.9998634426117576,
+          "primary_rays": 132160,
+          "floor": {
+            "raw": {
+              "mean": 0.00429390388585174,
+              "relative_residual": 0.04796507471568066
+            },
+            "diffuse": {
+              "mean": 0.004418471783811285,
+              "relative_residual": 0.038345405970002716
+            },
+            "diffuse_reference": {
+              "mean": 0.004295806945678885,
+              "relative_residual": 0.04041290678185019
+            },
+            "residual_reduction": 0.05115941852457906,
+            "energy_ratio": 1.0285545509105776
+          }
+        },
+        "floor_temporal": {
+          "raw": {
+            "relative_temporal_std": 0.0018673893985261347,
+            "samples": 16
+          },
+          "diffuse": {
+            "relative_temporal_std": 0.0019068267755320118,
+            "samples": 16
+          },
+          "diffuse_reference": {
+            "relative_temporal_std": 0.0015360092673676337,
+            "samples": 16
+          },
+          "reduction": -0.24141619197381137
+        }
+      }
+    }
+  },
+  "performance": {
+    "release-static-off": {
+      "mean_ms": 4.813220588235294,
+      "median_ms": 4.779,
+      "p95_ms": 5.2280999999999995,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": false,
+      "gi": true
+    },
+    "release-static-on": {
+      "mean_ms": 5.1154,
+      "median_ms": 5.064500000000001,
+      "p95_ms": 5.59005,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": true,
+      "gi": true
+    },
+    "release-moving-off": {
+      "mean_ms": 5.852586274509805,
+      "median_ms": 5.8675,
+      "p95_ms": 6.584249999999999,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": false,
+      "gi": true
+    },
+    "release-moving-on": {
+      "mean_ms": 6.074796078431372,
+      "median_ms": 5.997,
+      "p95_ms": 6.8761,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": true,
+      "gi": true
+    },
+    "release-static-on-repeat": {
+      "mean_ms": 5.11527156862745,
+      "median_ms": 5.0585,
+      "p95_ms": 5.6151,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": true,
+      "gi": true
+    },
+    "release-static-off-repeat": {
+      "mean_ms": 4.961357843137255,
+      "median_ms": 4.933,
+      "p95_ms": 5.3744499999999995,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": false,
+      "gi": true
+    },
+    "release-moving-on-repeat": {
+      "mean_ms": 6.057468627450981,
+      "median_ms": 5.992,
+      "p95_ms": 6.7932,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": true,
+      "gi": true
+    },
+    "release-moving-off-repeat": {
+      "mean_ms": 5.745974509803922,
+      "median_ms": 5.7025,
+      "p95_ms": 6.4731499999999995,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": false,
+      "gi": true
+    },
+    "release-static-gi-off": {
+      "mean_ms": 1.8123970588235294,
+      "median_ms": 1.7765,
+      "p95_ms": 2.0391,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": false,
+      "gi": false
+    },
+    "release-moving-gi-off": {
+      "mean_ms": 1.88403431372549,
+      "median_ms": 1.851,
+      "p95_ms": 2.1232,
+      "measured_frames": 1020,
+      "profile_frame": 1198,
+      "nrd": false,
+      "gi": false
+    }
+  },
+  "timing_scope": "Release full 1920x1080, TAA, sun/sky diffuse; 180 warmup + 1020 measured frames; no diagnostics/profiling/build/concurrent render work",
+  "visual_review": [
+    "1080p same-input raw/baseline/NRD still, converged and moving geometry",
+    "sunset and returned camera",
+    "1080p exported lit frame",
+    "960x540 Forward+ lit smoke"
+  ],
+  "validation_log_errors": {
+    "build-editor.log": [],
+    "build-template.log": [],
+    "build-v1.log": [],
+    "check-1080.log": [],
+    "check-noaa.log": [],
+    "check-shaders.log": [],
+    "check-v1.log": [],
+    "editor-baseline-static.log": [],
+    "editor-nrd-static.log": [],
+    "export.log": [],
+    "forward-smoke.log": [],
+    "profile-baseline.log": [],
+    "profile-nrd.log": [],
+    "release-capture.log": [],
+    "release-moving-gi-off.log": [],
+    "release-moving-off-repeat.log": [],
+    "release-moving-off.log": [],
+    "release-moving-on-repeat.log": [],
+    "release-moving-on.log": [],
+    "release-static-gi-off.log": [],
+    "release-static-off-repeat.log": [],
+    "release-static-off.log": [],
+    "release-static-on-repeat.log": [],
+    "release-static-on.log": [],
+    "test-1080-editor.log": [],
+    "test-noaa.log": [],
+    "test-v1.log": []
+  },
+  "not_validated": [
+    "indirect specular",
+    "local/emissive quality",
+    "dynamic-object quality",
+    "Metal",
+    "D3D12",
+    "Linux",
+    "AMD/Intel",
+    "Mobile/Compatibility"
+  ],
+  "limitations": [
+    "Persistent cache blotches remain; historical 35% spatial gate remains unpassed.",
+    "No-TAA convergence and temporal variation regress in measured run.",
+    "Sunset NRD mean is 3.26% higher, consistent with additional temporal lag.",
+    "Quality metrics are descriptive, not path-traced reference error."
+  ],
+  "excluded_launch": "test-1080.log: release template ignored --script, no suite completion/captures; process stopped and editor suite plus normal exported capture substituted."
+}

@@ -4,6 +4,8 @@ layout(set=0,binding=1) uniform sampler2D depth;
 layout(set=0,binding=6,rgba16f) uniform image2D diffuse;
 layout(set=0,binding=7,rgba16f) uniform image2D specular;
 layout(set=0,binding=8,rgba16f) uniform image2D fresnel;
+layout(set=0,binding=9) uniform sampler2D specular_basis;
+layout(push_constant,std430) uniform ResolveSettings { int combined_specular; } settings;
 layout(local_size_x=8,local_size_y=8) in;
 void main() {
     ivec2 pixel=ivec2(gl_GlobalInvocationID.xy);
@@ -12,6 +14,17 @@ void main() {
     // NRD leaves out-of-range pixels untouched, so explicitly clear the sky.
     bool valid=texelFetch(depth,pixel,0).r>1e-7;
     imageStore(diffuse,pixel,vec4(valid?max(imageLoad(diffuse,pixel).rgb,vec3(0)):vec3(0),1));
-    imageStore(specular,pixel,vec4(valid && p.debug.w>0.5?max(imageLoad(specular,pixel).rgb,vec3(0)):vec3(0),1));
-    imageStore(fresnel,pixel,vec4(valid && p.debug.w>0.5?max(imageLoad(fresnel,pixel).rgb,vec3(0)):vec3(0),1));
+    vec3 a=valid && p.debug.w>0.5?max(imageLoad(specular,pixel).rgb,vec3(0)):vec3(0);
+    vec3 b=vec3(0);
+    if(settings.combined_specular!=0) {
+        // Re-express the denoised radiance in the existing material basis.
+        // With an identity denoiser, F0*A + F90*B reproduces the traced signal.
+        vec2 basis=texelFetch(specular_basis,pixel,0).xy;
+        b=a*basis.y;
+        a*=basis.x;
+    } else if(valid && p.debug.w>0.5) {
+        b=max(imageLoad(fresnel,pixel).rgb,vec3(0));
+    }
+    imageStore(specular,pixel,vec4(a,1));
+    imageStore(fresnel,pixel,vec4(b,1));
 }

@@ -1,5 +1,30 @@
 # NRD indirect lighting
 
+**Latest: [full-rate reflections and roughness review](NRD-REFLECTIONS-2026-09-18.md).**
+Deferred's primary G-buffer now enables DFG-based material demodulation and a
+single RELAX_SPECULAR signal. Full-rate two-ray specular is the normal NRD mode;
+checkerboarding is opt-in after measured brightness and recovery differences.
+Forward+ retains two Schlick signals because its prepass lacks primary material
+data. The diffuse contract below is unchanged. Reflection measurements in the
+new report supersede the earlier unvalidated-reflection scope statement.
+
+**Previous diffuse validation: [cache diffuse + RELAX](NRD-CACHE-DIFFUSE-2026-09-18.md).**
+Diffuse always comes from the surfel cache. The adapter declares full-rate
+`RELAX_DIFFUSE`, plus the optional specular signals described above when
+reflections are enabled. Diffuse preblur and hit-distance reconstruction are off:
+the pinned RELAX implementation does not consume diffuse hit distance in this
+configuration. Its unused alpha is zero; no distance or screen rays are invented.
+Toggling NRD does not clear the diffuse cache. NRD replaces the original diffuse
+screen/temporal filter. The new report separates actual improvements from
+regressions; it does not claim that cache blotches have been solved.
+That GPU test covers sun/sky diffuse. Reflection, local/emissive and
+non-Windows/non-Vulkan quality were not revalidated by that test.
+
+The implementation description and results below document the **previous
+diffuse-plus-specular NRD revision**, retained as historical evidence. They do
+not validate the current adapter or describe current diffuse
+transport.
+
 Kiln integrates **NVIDIA NRD v4.17.3**, release commit
 `792eff196afdd350fd9c3f862119017ccb438a0e`.
 The SDK is an optional external dependency under the NVIDIA RTX SDKs LICENSE,

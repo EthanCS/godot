@@ -9,6 +9,7 @@ layout(set = 0, binding = 9, rgba32f) uniform writeonly image2D current_history;
 layout(set = 0, binding = 10, rgba32f) uniform writeonly image2D current_geometry;
 layout(set = 0, binding = 11) uniform sampler2D previous_history;
 layout(set = 0, binding = 12) uniform sampler2D previous_geometry;
+layout(push_constant, std430) uniform PublishSettings { int temporal_enabled; } settings;
 layout(local_size_x = 8, local_size_y = 8) in;
 float pack_normal(vec3 n) {
 	n /= abs(n.x) + abs(n.y) + abs(n.z);
@@ -24,7 +25,7 @@ void main() {
 	float d = texelFetch(depth, pixel, 0).r;
 	vec3 value = texelFetch(current_diffuse, pixel, 0).rgb;
 	vec3 n = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
-	if (d > 1e-7 && p.size_frame.w > 0.5 && p.source_bvh_state.z > 0.5) {
+	if (settings.temporal_enabled != 0 && d > 1e-7 && p.size_frame.w > 0.5 && p.source_bvh_state.z > 0.5) {
 		vec3 wp = world_position((vec2(pixel) + 0.5) / vec2(size), d);
 		vec4 clip = p.previous_view_projection * vec4(wp, 1);
 		ivec2 old = ivec2((clip.xy / clip.w * 0.5 + 0.5) * vec2(size));

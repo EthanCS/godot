@@ -35,6 +35,8 @@ class KilnGI {
 		NRD_PREPARE,
 		NRD_DIFFUSE,
 		NRD_RESOLVE,
+		SURFEL_SPATIAL,
+		SURFEL_SCHEDULE,
 		STAGE_COUNT,
 		QUERY_VALIDATE = STAGE_COUNT };
 	KilnGiShaderRD shader, hardware_shader;
@@ -78,6 +80,9 @@ public:
 		RID parameters;
 		KilnNRD *nrd = nullptr;
 		bool nrd_active = false;
+		bool nrd_checkerboard = false;
+		bool nrd_specular = false;
+		bool nrd_combined_specular = false;
 		RID ray_albedo;
 		RID environment;
 		RID hardware_vertices[2], hardware_blas[2], hardware_tlas;
@@ -92,7 +97,7 @@ public:
 		void free_data() override;
 		~View() { free_data(); }
 	};
-	bool process(Ref<RenderSceneBuffersRD> p_buffers, RenderSceneDataRD *p_scene, RID p_environment, RID p_normal, bool p_signed_normal = true);
+	bool process(Ref<RenderSceneBuffersRD> p_buffers, RenderSceneDataRD *p_scene, RID p_environment, RID p_normal, RID p_dfg, bool p_signed_normal = true);
 	KilnGI();
 	~KilnGI();
 };

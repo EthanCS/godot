@@ -1,9 +1,13 @@
 # Sponza Surfel GI benchmark
 
-Windows/Vulkan builds with the optional SDK use **NRD 4.17.3** for indirect
-diffuse and specular. `run.ps1 -NoNRD` / `--no-nrd` selects the prior filter for
-comparison. The HUD reports actual NRD activation. Build, license and validation
-details: [NRD integration](../docs/NRD.md).
+Indirect diffuse now always comes from the persistent surfel cache, with
+variance-driven irradiance sharing before MSME. Optional **NRD 4.17.3** handles
+cache diffuse through RELAX_DIFFUSE and the independent reflection signals;
+enabling it never starts a screen diffuse ray tracer.
+The current sun/sky diffuse audit and measured limits are in
+[the GIBS review](../docs/SURFEL-GIBS-REVIEW-2026-09-17.md).
+The subsequent [reflection review](../docs/NRD-REFLECTIONS-2026-09-18.md) covers
+roughness 0.06/0.18/0.45/0.85 with full-rate specular and NRD.
 
 Sponza is the active acceptance scene for standard G-buffer deferred rendering and
 Surfel GI. GI uses original mesh triangles: no simplified mesh, proxy import
@@ -37,8 +41,15 @@ The original floor material is duplicated at runtime, preserving its texture.
 Default roughness is 0.18 with metallic 0 and specular 0.5. `-DryFloor` / `--dry-floor`
 sets roughness 0.85; `--roughness=0.06` gives a nearly smooth floor.
 `-NoSpecular` / `--no-specular` isolates diffuse GI without disabling it.
+`run.ps1 -Still -Roughness 0.06` shows a sharper floor. The right panel also has
+a floor-roughness slider and independent indirect-specular/NRD switches.
 `--specular-rays=1..8` sets the independent reflection budget (default 2).
-Roughness >= 0.45 uses alternating half-rate samples only where adjacent
+With NRD enabled, normal rendering traces both samples at every valid pixel.
+`--nrd-checkerboard` explicitly enables horizontal half-rate NRD input; it is
+faster but has measured brightness/recovery differences. `--nrd-reference`
+forces full rate. `--nrd-separate-specular` is the older two-denoiser comparison,
+not the default deferred path. Forward+ retains the separate basis denoisers.
+Without NRD, roughness >= 0.45 uses alternating half-rate samples only where adjacent
 receivers agree in depth, normal and roughness. Wet/sharp reflections and edges
 keep full-rate rays. `-FullSpecularRate` / `--full-specular-rate` disables this
 reuse; the engine setting is `rendering/kiln/specular_checkerboard`.
@@ -47,7 +58,17 @@ CLI options after `--`: `--still`, `--no-gi`, `--no-aa`, `--rays=2`,
 `--multi-light`, `--hour=12`, `--software`, `--hardware`,
 `--surfel-two-bounce`, `--size=1280x720`, `--frames=600`,
 `--output=<temp-directory>`.
-Ray quality 1–8 selects 4–32 rays per updated surfel.
+Ray quality 1–8 supplies the nominal 4–32 rays per scheduled surfel. The GPU
+redistributes these requests by variance and caps primary diffuse rays at
+196,608 per frame (`--surfel-ray-budget=0` removes the cap). Shadow and
+cache-miss continuation rays are additional work, included in measured time.
+`--raw-cache` disables screen/temporal diffuse reconstruction.
+`--no-irradiance-sharing` disables cache sharing for an independent comparison.
+Use `run.ps1 -NoSpecular` for diffuse with NRD; add `-NoNRD` for the original
+screen filter. `--nrd-diffuse-iterations=2..5` selects RELAX A-trous iterations
+(default 4). `--raw-cache` bypasses both post-filter paths.
+The [cache/NRD comparison](../docs/NRD-CACHE-DIFFUSE-2026-09-18.md) documents
+the input contract and measured quality/performance limitations.
 On macOS, use the arm64 engine with `--rendering-driver metal`; supported Apple
 GPUs automatically select native Metal hardware ray queries. See
 [Metal requirements and validation](../docs/METAL-RAY-QUERY.md). `--software`
@@ -56,6 +77,10 @@ still selects the compute BVH for diagnostic comparisons.
 Compare identical renderer options and quality; no performance result is implied.
 For reproducible paired runs, use `kiln/tools/benchmark_sponza.py --engine <exe>
 --output <temporary-directory>`; add `--embedded` for an exported executable.
+Add `--diffuse-only` to restrict the cases to diffuse GI and matched GI-off runs.
+Use `--compare-nrd` instead for paired diffuse NRD on/off runs and GI-off controls.
+`--compare-reflections` sweeps four roughness values with full-rate two-ray
+reflections, NRD on/off, diffuse/GI-off controls and the older NRD adapter.
 This uses 180 warmup frames and 300 measured frames per short case at 1080p,
 plus a 3600-frame moving regression to catch close-geometry allocation spikes.
 The [optimization report](../docs/GI-OPTIMIZATION-2026-09-17.md) separates

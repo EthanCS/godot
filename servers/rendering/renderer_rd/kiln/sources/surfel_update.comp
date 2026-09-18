@@ -13,7 +13,9 @@ void main() {
 	uint frame = uint(p.size_frame.z);
 	if (s.anchor.z != 0u) {
 		uint tri = s.anchor.x - 1u;
-		if (tri >= uint(p.source_bvh_state.y + p.dynamic_scene.y) || frame - s.anchor.y > 240u || (p.engine_state.w > 0.5 && tri >= uint(p.source_bvh_state.y))) {
+		bool pressure = spawn_claims[CELL_CAPACITY] > SURFEL_CAPACITY * 4u / 5u;
+		uint lifetime = pressure ? 32u : 240u;
+		if (tri >= uint(p.source_bvh_state.y + p.dynamic_scene.y) || frame - s.anchor.y > lifetime || (p.engine_state.w > 0.5 && tri >= uint(p.source_bvh_state.y))) {
 			s.anchor.z = 0u;
 		} else {
 			Triangle t = world_triangle(int(tri));
@@ -36,12 +38,13 @@ void main() {
 			// One visibility write per surfel replaces millions of contended
 			// per-pixel atomicMax operations in the irradiance resolve.
 			if (visible) s.anchor.y = frame;
-			// Reclaim hidden entries promptly so a full cache does not leave
-			// newly revealed surfaces without GI throughout a camera turn.
-			if (!visible && frame - s.anchor.y > 8u) {
-				s.anchor.z = 0u;
+			// Retain offscreen transport for the bounded 240-frame lifetime above.
+			// Eight-frame eviction repeatedly destroyed converged secondary light.
+			// Sleeping entries keep their last visible footprint, avoiding support
+			// growth behind the camera and unnecessary overlap-list traffic.
+			if (visible) {
+				s.position_radius.w = clamp(length(view_position.xyz) * 20.0 / (abs(p.projection[1][1]) * p.size_frame.y), 0.12, 0.7);
 			}
-			s.position_radius.w = clamp(length(view_position.xyz) * 20.0 / (abs(p.projection[1][1]) * p.size_frame.y), 0.12, 0.7);
 		}
 	}
 	surfels[id] = s;

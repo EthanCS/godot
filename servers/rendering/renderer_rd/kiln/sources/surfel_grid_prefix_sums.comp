@@ -5,6 +5,7 @@ layout(local_size_x = 8, local_size_y = 8) in;
 shared uint scan[64];
 void main() {
 	uint lane = gl_LocalInvocationIndex;
+	if (lane == 0u) spawn_claims[CELL_CAPACITY] = alive_count + min(spawn_count, free_count);
 	uint first = lane * 64u;
 	uint total = 0u;
 	for (uint i = 0u; i < 64u; i++) total += grid_sums[first + i];

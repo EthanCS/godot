@@ -13,10 +13,15 @@ struct Surfel {
 	vec4 irradiance_samples;
 	vec4 short_mean_vbbr;
 	vec4 variance_inconsistency;
-	uvec4 anchor; // source triangle + 1, last seen frame, alive, reserved
-	vec4 barycentric; // triangle barycentric u/v, signed plane offset, reserved
+	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
+	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
 	vec4 local_normal; // original raster normal in the source triangle frame
 };
+#ifdef STAGE_SURFEL_SPATIAL
+layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
+	vec4 shared_samples[];
+};
+#endif
 // Reflect actual stage access into RD/Metal resource dependencies. Readers must
 // not advertise writes, which unnecessarily serialize independent GI passes.
 #if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_INTEGRATE)
@@ -44,7 +49,7 @@ struct Surfel {
 #else
 #define FREE_SLOT_ACCESS readonly
 #endif
-#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE)
+#if defined(STAGE_SURFEL_UPDATE) || defined(STAGE_SURFEL_GENERATE) || defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_GRID_PREFIX_SUMS)
 #define COUNTER_ACCESS
 #else
 #define COUNTER_ACCESS readonly
@@ -69,7 +74,7 @@ layout(set = 0, binding = 24, std430) COUNTER_ACCESS buffer Counters {
 	uint spawn_count;
 	uint alive_count;
 	uint traced_count;
-	uint spawn_claims[]; // per-frame world-space allocation deduplication
+	uint spawn_claims[]; // CELL_CAPACITY claims, then persistent previous occupancy
 };
 #undef SURFEL_ACCESS
 #undef CELL_HEAD_ACCESS
@@ -113,9 +118,10 @@ float surfel_weight(Surfel s, vec3 position, vec3 normal) {
 	float w = max(0.0, 1.0 - length(delta) / radius) * max(0.0, alignment);
 	return w * w * (3.0 - 2.0 * w);
 }
-vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only) {
+vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float coverage) {
 	vec3 sum = vec3(0);
-	float weight = 0.0, coverage = 0.0;
+	float weight = 0.0;
+	coverage = 0.0;
 	for (uint level = 0u; level < 3u; level++) {
 		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
 		uvec2 cell = cell_heads[key];
@@ -136,11 +142,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only) {
 			coverage += w;
 			if (!coverage_only) {
 				vec4 irradiance = surfels[id].irradiance_samples;
-				float confidence = min(1.0, irradiance.w / 16.0);
+				float confidence = smoothstep(0.0, 64.0, irradiance.w);
+
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
 		}
 	}
-	return vec4(weight > 1e-6 ? sum / weight : vec3(0), coverage);
+	// A newly allocated surfel covers geometry but has no lighting yet. Only
+	// sampled contributors may terminate a secondary path at the cache.
+	return vec4(weight > 1e-6 ? sum / weight : vec3(0), coverage_only ? coverage : weight);
+}
+vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only) {
+	float coverage;
+	return surfel_gather(position, normal, coverage_only, coverage);
 }

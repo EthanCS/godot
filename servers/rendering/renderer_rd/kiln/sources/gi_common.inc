@@ -7,13 +7,13 @@ layout(set=0,binding=0,std140) uniform Parameters {
     mat4 previous_view_projection;
     vec4 size_frame;       // full width, height, frame, history valid
     vec4 gi;               // AO radius, intensity, stationary batch (-1 moving), convergence batches
-    vec4 quality;          // rays, history reprojection (camera motion or TAA jitter), AO quality (0 off / 1..3), history position threshold
-    vec4 voxel_min;        // source scene bounds minimum xyz (query diagnostics)
+    vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
+    vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; w: epoch
+    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
-    vec4 sky_color;        // linear RGB, fallback receiver albedo
+    vec4 sky_color;        // linear RGB, irradiance sharing enabled
     vec4 debug;            // debug mode, display disk radius scale, illumination display gain, reserved
     vec4 indirect_tint;    // original linear color_library.indirect_light_tint, w = pixel albedo available
     vec4 sky_high;         // RGB, mode: 0 constant / 1 legacy / 2 rendering/sky

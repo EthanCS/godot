@@ -2,8 +2,21 @@
 // @GI_COMMON@
 // @BVH@
 // @SURFEL_DATA@
+// @SURFEL_MISS@
 layout(set = 0, binding = 28, std430) writeonly buffer RayResults {
 	vec4 ray_results[];
+};
+layout(set = 0, binding = 37, std430) buffer RayGuiding {
+	vec2 ray_guiding[]; // 4x4 cosine-domain bins per surfel: radiance mean, samples
+};
+layout(set = 0, binding = 38, std430) writeonly buffer SampleHistory {
+	vec4 sample_history[]; // latest independent batch RGB, frame + 1
+};
+layout(set = 0, binding = 39, std430) readonly buffer RaySchedule {
+	uint requested_weight;
+	uint nominal_rays;
+	uvec2 reserved;
+	uvec2 ray_schedule[];
 };
 layout(local_size_x = 8, local_size_y = 8) in;
 void main() {
@@ -16,19 +29,49 @@ void main() {
 	if (s.anchor.z == 0u) {
 		return;
 	}
-	bool changing = p.source_bvh_state.w > 0.5;
-	if (!changing && s.normal_age.w > 64.0 && ((id + uint(p.size_frame.z)) & 3u) != 0u) {
-		return;
-	}
+	// A recycled slot can receive zero rays under a very small user budget.
+	// Do not expose the previous occupant's batch to neighboring surfels.
+	if (s.irradiance_samples.w == 0.0) sample_history[id] = vec4(0);
+	// GIBS slide 78: normalize per-surfel requests to a global primary-ray budget.
+	// Differences of adjacent prefix endpoints conserve the budget, including
+	// integer rounding. Allocation changes ray density, never radiance magnitude.
+	uvec2 request = ray_schedule[id];
+	uint budget = p.voxel_min.w > 0.0 ? min(nominal_rays, uint(p.voxel_min.w)) : nominal_rays;
+	float scale = float(budget) / max(float(requested_weight), 1.0);
+	uint count = min(32u, uint(floor(float(request.y + request.x) * scale)) - uint(floor(float(request.y) * scale)));
+	if (count == 0u) return;
 	uint seed = surfel_hash(id ^ uint(p.size_frame.z) * 1664525u);
-	uint count = uint(clamp(p.quality.x * 4.0, 4.0, 32.0));
-	float rotation = random_float(seed);
+	uint rotation_seed = surfel_hash(id ^ 0x68bc21ebu);
+	vec2 rotation = random_pair(rotation_seed);
+	float distribution[16];
+	float total = 0.0;
+	for (uint bin = 0u; bin < 16u; bin++) {
+		if (s.irradiance_samples.w == 0.0) ray_guiding[id * 16u + bin] = vec2(0.05, 0);
+		distribution[bin] = max(ray_guiding[id * 16u + bin].x, 0.0001);
+		total += distribution[bin];
+	}
+	// Keep 25% uniform probability, including after abrupt illumination changes.
+	// The frozen per-batch CDF and explicit PDF preserve the cosine estimator.
+	float accumulated = 0.0;
+	for (uint bin = 0u; bin < 16u; bin++) {
+		accumulated += mix(total / 16.0, distribution[bin], 0.75);
+		distribution[bin] = accumulated;
+	}
 	vec3 sum = vec3(0);
 	for (uint i = 0u; i < count; i++) {
-		// Stratify the cosine hemisphere instead of letting a short batch
-		// cluster by chance. A fresh rotation/jitter keeps each batch unbiased
-		// and independent of the surfel layout, including non-power-of-two counts.
-		vec2 xi = vec2((float(i) + random_float(seed)) / float(count), fract(float(bitfieldReverse(i)) * (1.0 / 4294967296.0) + rotation));
+		// A progressive 2D additive sequence with a per-surfel random shift.
+		// The sequence advances only for actual samples, so temporal decimation
+		// cannot repeatedly select the same subset or restart convergence.
+		uint index = s.anchor.w + i;
+		// Fixed-point phases retain 24 fractional bits even in a long session.
+		vec2 xi = fract(rotation + vec2((index * 3242174889u) >> 8u, (index * 2447445413u) >> 8u) * (1.0 / 16777216.0));
+		float target = xi.x * total;
+		uint bin = 0u;
+		while (bin < 15u && target >= distribution[bin]) bin++;
+		float lower = bin == 0u ? 0.0 : distribution[bin - 1u];
+		float bin_weight = distribution[bin] - lower;
+		float direction_pdf = 16.0 * bin_weight / total;
+		xi = (vec2(bin & 3u, bin >> 2u) + vec2(clamp((target - lower) / bin_weight, 0.0, 0.999999), xi.y)) * 0.25;
 		vec3 direction = cosine_direction(s.normal_age.xyz, xi);
 		vec3 origin = s.position_radius.xyz + s.normal_age.xyz * 0.025;
 		int triangle;
@@ -48,21 +91,24 @@ void main() {
 			if (p.engine_state.z > 0.5 && cached.a > 0.1) {
 				incident += cached.rgb;
 			} else {
-				incident += sky_at_surface(hit, normal, random_pair(seed));
-				vec3 ed;
-				vec3 ex = vec3(random_pair(seed), random_float(seed));
-				incident += emitter_sample(hit, normal, ex, ed) * max(0.0, dot(normal, ed)) / PI;
+				incident += surfel_miss_irradiance(hit, normal, seed);
 			}
 			// Emissive surfaces are sampled explicitly below; do not double count.
 			value = clamp(hit_albedo(triangle, hit), vec3(0), vec3(0.95)) * incident;
 		} else {
 			value = environment_radiance(direction);
 		}
+		vec2 guide = ray_guiding[id * 16u + bin];
+		guide.y = min(guide.y + 1.0, 64.0);
+		guide.x = mix(guide.x, luminance(value), 1.0 / guide.y);
+		ray_guiding[id * 16u + bin] = guide;
+		value /= direction_pdf;
 		vec3 emitter_direction;
 		vec3 ex = vec3(random_pair(seed), random_float(seed));
 		value += emitter_sample(s.position_radius.xyz, s.normal_age.xyz, ex, emitter_direction) * max(0.0, dot(s.normal_age.xyz, emitter_direction)) / PI;
 		sum += min(max(value, vec3(0)), vec3(64));
 	}
 	ray_results[id] = vec4(sum / float(count), float(count));
+	sample_history[id] = vec4(sum / float(count), p.size_frame.z + 1.0);
 	atomicAdd(traced_count, count);
 }

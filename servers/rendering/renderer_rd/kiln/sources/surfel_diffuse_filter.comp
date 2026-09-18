@@ -9,18 +9,35 @@ layout(push_constant, std430) uniform FilterSettings {
 	int step_size;
 } settings;
 layout(local_size_x = 8, local_size_y = 8) in;
+shared vec4 tile_position[256];
+shared vec4 tile_normal[256];
+shared vec4 tile_light[256];
 
 void main() {
 	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+	// The two production strides are 1 and 2. Reconstruct the shared halo once
+	// per workgroup, preserving the same 25 taps, weights and rejection tests.
+	int halo = settings.step_size * 2, width = 8 + halo * 2;
+	ivec2 origin = ivec2(gl_WorkGroupID.xy) * 8 - halo;
+	for (uint i = gl_LocalInvocationIndex; i < uint(width * width); i += 64u) {
+		ivec2 q = clamp(origin + ivec2(int(i) % width, int(i) / width), ivec2(0), size - 1);
+		float qd = texelFetch(depth, q, 0).r;
+		tile_position[i] = vec4(world_position((vec2(q) + 0.5) / vec2(size), qd), qd);
+		tile_normal[i] = vec4(safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, q)), 0);
+		vec3 light = texelFetch(input_diffuse, q, 0).rgb;
+		tile_light[i] = vec4(light, luminance(light));
+	}
+	barrier();
 	if (any(greaterThanEqual(pixel, size))) return;
-	float d = texelFetch(depth, pixel, 0).r;
-	vec3 center = texelFetch(input_diffuse, pixel, 0).rgb;
+	int center_index = (int(gl_LocalInvocationID.y) + halo) * width + int(gl_LocalInvocationID.x) + halo;
+	float d = tile_position[center_index].w;
+	vec3 center = tile_light[center_index].rgb;
 	if (d <= 1e-7 || p.source_bvh_state.z < 0.5) {
 		imageStore(output_diffuse, pixel, vec4(0));
 		return;
 	}
-	vec3 position = world_position((vec2(pixel) + 0.5) / vec2(size), d);
-	vec3 n = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, pixel));
+	vec3 position = tile_position[center_index].xyz;
+	vec3 n = tile_normal[center_index].xyz;
 	// Match the cache's world-space support scale. Filtering irradiance before
 	// material composition preserves albedo/normal-map detail. Geometric plane
 	// tests keep thin walls, silhouettes and separate receivers apart.
@@ -34,15 +51,16 @@ void main() {
 		for (int x = -2; x <= 2; x++) {
 			ivec2 q = pixel + ivec2(x, y) * settings.step_size;
 			if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, size))) continue;
-			float qd = texelFetch(depth, q, 0).r;
+			int qi = center_index + (y * width + x) * settings.step_size;
+			float qd = tile_position[qi].w;
 			if (qd <= 1e-7) continue;
-			vec3 qn = safe_normalize(mat3(p.inv_view) * surfel_view_normal(normals, depth, q));
+			vec3 qn = tile_normal[qi].xyz;
 			float alignment = dot(n, qn);
 			if (alignment < 0.9) continue;
-			vec3 delta = world_position((vec2(q) + 0.5) / vec2(size), qd) - position;
+			vec3 delta = tile_position[qi].xyz - position;
 			if (max(abs(dot(delta, n)), abs(dot(delta, qn))) > plane_limit || length(delta) > radius * 2.0) continue;
-			vec3 value = texelFetch(input_diffuse, q, 0).rgb;
-			float ql = luminance(value);
+			vec3 value = tile_light[qi].rgb;
+			float ql = tile_light[qi].w;
 			float w = kernel[x + 2] * kernel[y + 2] * pow(max(alignment, 0.0), 16.0);
 			// A broad radiance gate removes stochastic cache blotches while
 			// limiting diffusion across high-contrast indirect-light boundaries.

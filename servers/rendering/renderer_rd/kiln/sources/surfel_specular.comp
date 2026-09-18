@@ -41,6 +41,12 @@ void trace_pixel(ivec2 pixel, uint lane, out vec4 output_base, out vec4 output_f
 	if (any(greaterThanEqual(pixel, size))) {
 		return;
 	}
+	// NRD reconstructs complementary diffuse/specular checkerboards itself.
+	// Skip an entire parity group, including sharp receivers; retain a full-rate
+	// reference mode for thin features and fast disocclusions.
+	if (p.voxel_state.z > 1.5 && ((pixel.x ^ pixel.y ^ int(p.size_frame.z)) & 1) != 1) {
+		return;
+	}
 	float d = texelFetch(depth, pixel, 0).r;
 	// Rough lobes already use a 5x5 spatial filter. Alternate half their samples
 	// each frame, only across a verified matching horizontal receiver. Sharp

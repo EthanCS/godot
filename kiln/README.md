@@ -71,8 +71,20 @@ is historical. Spatial blotches and temporal flicker are now checked separately.
 Historical proxy/SH and Mac non-GI measurements remain as historical records.
 They do not validate this implementation or establish a performance improvement.
 
-The optional [NRD 4.17.3 integration](docs/NRD.md) now denoises both indirect
-diffuse and specular on Windows/Vulkan builds with the external SDK. Diffuse uses
-fresh screen-pixel rays with the surfel cache for secondary lighting. NRD has its
-own license; its SDK source is not vendored here. The earlier performance figures
-above describe the previous cache/filter path, not NRD.
+The current [GIBS-based diffuse revision](docs/SURFEL-GIBS-REVIEW-2026-09-17.md)
+restores cache-based diffuse in every mode, shares incoming irradiance before
+MSME, guides rays and enforces a variance-weighted global primary-ray budget.
+The optional [NRD adapter](docs/NRD.md) now also processes full-resolution cache
+diffuse with RELAX_DIFFUSE, replacing the original screen reconstruction and
+temporal filter. It never replaces diffuse GI with screen-pixel ray tracing.
+See the [cache/NRD comparison](docs/NRD-CACHE-DIFFUSE-2026-09-18.md) for measured
+benefits, regressions and cost. NRD has its own
+license; its SDK source is not vendored here. The figures above are historical;
+the new report separates diffuse-only measurements from the older full-GI runs.
+
+The [reflection roughness review](docs/NRD-REFLECTIONS-2026-09-18.md) adds current
+sun/sky specular measurements. Deferred now demodulates the sampled reflection
+with its actual primary material and DFG, runs one RELAX_SPECULAR instance and
+restores the material basis. Normal NRD uses full-rate two-ray reflections;
+checkerboarding is an explicit option with documented quality loss. Sponza's
+panel exposes floor roughness, indirect specular and NRD controls.

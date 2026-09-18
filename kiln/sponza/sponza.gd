@@ -83,8 +83,16 @@ func _ready() -> void:
 		if arg == "--metal-native-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", true)
 		if arg == "--metal-translated-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", false)
 		if arg == "--no-specular": ProjectSettings.set_setting("rendering/kiln/surfel_specular", false)
+		if arg.begins_with("--surfel-ray-budget="): ProjectSettings.set_setting("rendering/kiln/surfel_ray_budget", int(arg.get_slice("=", 1)))
+		if arg == "--no-irradiance-sharing": ProjectSettings.set_setting("rendering/kiln/surfel_irradiance_sharing", false)
+		if arg == "--raw-cache": ProjectSettings.set_setting("rendering/kiln/surfel_reconstruction", false)
 		if arg == "--no-nrd": ProjectSettings.set_setting("rendering/kiln/nrd", false)
+		if arg == "--nrd-diffuse-validate": ProjectSettings.set_setting("rendering/kiln/nrd_diffuse_validation", true)
+		if arg.begins_with("--nrd-diffuse-iterations="): ProjectSettings.set_setting("rendering/kiln/nrd_diffuse_iterations", int(arg.get_slice("=", 1)))
 		if arg == "--nrd": ProjectSettings.set_setting("rendering/kiln/nrd", true)
+		if arg == "--nrd-reference": ProjectSettings.set_setting("rendering/kiln/nrd_reference", true)
+		if arg == "--nrd-checkerboard": ProjectSettings.set_setting("rendering/kiln/nrd_specular_checkerboard", true)
+		if arg == "--nrd-separate-specular": ProjectSettings.set_setting("rendering/kiln/nrd_combined_specular", false)
 		if arg == "--full-specular-rate": ProjectSettings.set_setting("rendering/kiln/specular_checkerboard", false)
 		if arg.begins_with("--specular-rays="): ProjectSettings.set_setting("rendering/kiln/specular_rays", int(arg.get_slice("=", 1)))
 		if arg == "--suite": suite = true
@@ -282,6 +290,24 @@ func _build_debug_controls() -> void:
 	debug_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	debug_description.add_theme_font_size_override("font_size", 14)
 	column.add_child(debug_description)
+	var roughness_label := Label.new()
+	roughness_label.text = "Floor roughness: %.2f" % floor_material.roughness
+	column.add_child(roughness_label)
+	var roughness_slider := HSlider.new()
+	roughness_slider.min_value = 0.02
+	roughness_slider.max_value = 1.0
+	roughness_slider.step = 0.01
+	roughness_slider.value = floor_material.roughness
+	roughness_slider.value_changed.connect(func(value: float):
+		floor_material.roughness = value
+		roughness_label.text = "Floor roughness: %.2f" % value)
+	column.add_child(roughness_slider)
+	for setting in ["surfel_specular", "nrd"]:
+		var toggle := CheckButton.new()
+		toggle.text = "Indirect specular" if setting == "surfel_specular" else "NRD denoising"
+		toggle.button_pressed = ProjectSettings.get_setting("rendering/kiln/" + setting, true)
+		toggle.toggled.connect(func(enabled: bool): ProjectSettings.set_setting("rendering/kiln/" + setting, enabled))
+		column.add_child(toggle)
 	for property in ["surfel_debug_radius", "surfel_debug_gain"]:
 		var row := HBoxContainer.new()
 		column.add_child(row)
@@ -319,7 +345,7 @@ func _set_debug_view(mode: int) -> void:
 	debug_mode = mode
 	ProjectSettings.set_setting("rendering/kiln/debug_view", mode)
 	# Categorical colors and individual disks must not accumulate TAA trails.
-	get_viewport().use_taa = not no_taa and mode < 13
+	get_viewport().use_taa = not no_taa and (mode < 13 or mode == 28)
 	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if mode >= 13 else Environment.TONE_MAPPER_FILMIC
 	if is_instance_valid(debug_selector):
 		debug_selector.select(debug_selector.get_item_index(mode))

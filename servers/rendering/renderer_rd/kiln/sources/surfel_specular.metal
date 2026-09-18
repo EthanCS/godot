@@ -159,7 +159,7 @@ struct Scene {
 		return tracer.intersect(ray(origin, direction, 0.006f, maximum), tlas, 255u).type != intersection_type::none;
 	}
 	float4 gather(float3 position, float3 normal) const {
-		float3 sum(0); float weight = 0.0f, coverage = 0.0f;
+		float3 sum(0); float weight = 0.0f;
 		for (uint level = 0; level < 3; ++level) {
 			int3 c = int3(floor(position / (0.25f * float(1u << level))));
 			uint key = hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & 262143u;
@@ -177,14 +177,13 @@ struct Scene {
 				if (alignment < 0.85f || abs(dot(delta, sn)) > max(0.012f, sphere.w * 0.06f)) continue;
 				float w = (1.0f - sqrt(squared) / sphere.w) * max(0.0f, alignment);
 				w = w * w * (3.0f - 2.0f * w);
-				coverage += w;
 				float4 irradiance = surfels[id].irradiance_samples;
-				float confidence = min(1.0f, irradiance.w / 16.0f);
+				float confidence = smoothstep(0.0f, 64.0f, irradiance.w);
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
 		}
-		return float4(weight > 1e-6f ? sum / weight : float3(0), coverage);
+		return float4(weight > 1e-6f ? sum / weight : float3(0), weight);
 	}
 	float3 local_unoccluded(uint id, float3 position, float3 normal, thread float3 &direction, thread float &distance) const {
 		float4 pr = local_lights[2u + id * 4u], color = local_lights[3u + id * 4u], cone = local_lights[4u + id * 4u];

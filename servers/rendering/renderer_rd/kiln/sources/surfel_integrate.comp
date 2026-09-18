@@ -13,6 +13,9 @@ struct MSMEData {
 layout(set = 0, binding = 28, std430) readonly buffer RayResults {
 	vec4 ray_results[];
 };
+layout(set = 0, binding = 36, std430) readonly buffer SharedSamples {
+	vec4 shared_samples[];
+};
 layout(local_size_x = 8, local_size_y = 8) in;
 void main() {
 	uint id = gl_GlobalInvocationID.y * 256u + gl_GlobalInvocationID.x;
@@ -27,6 +30,7 @@ void main() {
 	if (s.anchor.z == 0u) {
 		return;
 	}
+	sample_value.rgb = shared_samples[id].rgb;
 	MSMEData data;
 	data.mean = s.irradiance_samples.rgb;
 	data.shortMean = s.short_mean_vbbr.rgb;
@@ -36,11 +40,23 @@ void main() {
 	if (s.irradiance_samples.w == 0.0) {
 		data.mean = sample_value.rgb;
 		data.shortMean = sample_value.rgb;
-		data.variance = vec3(1);
+		// Unit variance takes dozens of updates to decay on dark receivers;
+		// after temporal decimation it can freeze the noisy bootstrap for seconds.
+		data.variance = max(sample_value.rgb * sample_value.rgb, vec3(1e-6));
 		data.inconsistency = 0;
 		data.vbbr = 1;
 	} else {
-		MSME(sample_value.rgb, data, 0.15);
+		// The reference estimator's absolute variance/firefly floors assume a
+		// different signal scale. Kiln stores irradiance/pi, commonly < 0.1.
+		// Evaluate in scaled units, retaining the original imported estimator.
+		const float estimator_scale = 32.0;
+		data.mean *= estimator_scale;
+		data.shortMean *= estimator_scale;
+		data.variance *= estimator_scale * estimator_scale;
+		MSME(sample_value.rgb * estimator_scale, data, 0.15);
+		data.mean /= estimator_scale;
+		data.shortMean /= estimator_scale;
+		data.variance /= estimator_scale * estimator_scale;
 		// MSME already selects a variance-aware convergence rate and suppresses
 		// fireflies. Mixing the unfiltered batch in again imposed a permanent
 		// noise floor, even on a stationary surface with thousands of rays.
@@ -52,11 +68,21 @@ void main() {
 		}
 		// Explicit scene changes shorten the long-term estimator, including all-off.
 		if (p.source_bvh_state.w > 0.5) {
-			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 0.25);
+			// Preserve a per-frame decay after staggered updates. A constant 0.25
+			// per update otherwise doubles relighting lag when updating every other frame.
+			float elapsed = clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0);
+			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 1.0 - pow(0.75, elapsed));
 		}
 	}
 	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));
 	s.short_mean_vbbr = vec4(data.shortMean, data.vbbr);
 	s.variance_inconsistency = vec4(data.variance, data.inconsistency);
-	surfels[id] = s;
+	s.anchor.w += uint(sample_value.w);
+	s.barycentric.w = p.size_frame.z;
+	// Only estimator fields change; geometry belongs to the update/spawn passes.
+	surfels[id].irradiance_samples = s.irradiance_samples;
+	surfels[id].short_mean_vbbr = s.short_mean_vbbr;
+	surfels[id].variance_inconsistency = s.variance_inconsistency;
+	surfels[id].anchor.w = s.anchor.w;
+	surfels[id].barycentric.w = s.barycentric.w;
 }
