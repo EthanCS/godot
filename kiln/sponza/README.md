@@ -87,6 +87,8 @@ re-enables adaptive selection. The corresponding project settings are
 `surfel_motion_ray_budget` and `surfel_bootstrap_ray_budget` under
 `rendering/kiln/`. Shadow and
 cache-miss continuation rays are additional work, included in measured time.
+`--surfel-diameter=12..40` overrides the 20-pixel target projected diameter for
+controlled density comparisons; larger values allocate fewer, broader surfels.
 See the [adaptive budget report](../docs/SURFEL-ADAPTIVE-BUDGET-2026-09-18.md)
 for real-GPU image loss, performance and unverified scope.
 `--raw-cache` disables screen/temporal diffuse reconstruction.
@@ -144,6 +146,11 @@ Per-frame continuous-TOD and camera-disocclusion stability is covered by
 `kiln/tools/check_diffuse_stability.py <capture-directory>`. The moving metric is
 descriptive because genuine parallax and disocclusion dominate raw pixel deltas;
 the saved sequence still requires visual review.
+The upper-gallery transition regression `res://tests/upstairs_stability.gd`
+first matures the ground-floor cache, then jumps into two previously unseen
+second-floor corridors and records the first 120 raw-diffuse and composed
+frames. Analyze it with `kiln/tools/check_upstairs_stability.py
+<capture-directory>` to expose one-frame dark 8x8 allocation blocks.
 
 For a TOD gallery, run `--tod-suite`, then `kiln/tools/check_tod.py <directory>`.
 `--tod-video` captures 480 PNG frames of a 24-hour cycle.

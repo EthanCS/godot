@@ -8,6 +8,7 @@ using namespace metal::raytracing;
 
 constant uint reflection_ray_count [[function_constant(0)]];
 constant float PI = 3.14159265358979323846f;
+constant uint CELL_LINK_ID_MASK = 262143u;
 
 struct Parameters {
 	float4x4 projection, inv_projection, inv_view, view, previous_view_projection;
@@ -160,13 +161,19 @@ struct Scene {
 	}
 	float4 gather(float3 position, float3 normal) const {
 		float3 sum(0); float weight = 0.0f;
+		uint candidates = 0u;
 		for (uint level = 0; level < 3; ++level) {
+			if (candidates >= 32u) break;
 			int3 c = int3(floor(position / (0.25f * float(1u << level))));
-			uint key = hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & 262143u;
+			uint hash_value = hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+			uint key = hash_value & CELL_LINK_ID_MASK;
 			uint2 cell = cell_heads[key];
 			uint offset = cell.y + grid_sums[key / 64u];
 			for (uint i = 0; i < cell.x; ++i) {
-				uint id = cell_links[offset + i];
+				if (candidates >= 32u) break;
+				uint link = cell_links[offset + i];
+				if (((link ^ hash_value) & ~CELL_LINK_ID_MASK) != 0u) continue;
+				uint id = link & CELL_LINK_ID_MASK;
 				float4 sphere = surfels[id].position_radius;
 				float3 delta = position - sphere.xyz;
 				float squared = dot(delta, delta);
@@ -179,6 +186,9 @@ struct Scene {
 				w = w * w * (3.0f - 2.0f * w);
 				float4 irradiance = surfels[id].irradiance_samples;
 				float confidence = smoothstep(0.0f, 64.0f, irradiance.w);
+				if (confidence <= 1e-4f) continue;
+				// Only a compatible, admitted lighting contributor consumes the cap.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}

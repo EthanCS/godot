@@ -20,7 +20,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -403,6 +403,22 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -457,7 +473,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -485,6 +501,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -492,7 +511,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -518,14 +546,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -546,7 +578,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -602,7 +639,7 @@ void main() {
 			// Sleeping entries keep their last visible footprint, avoiding support
 			// growth behind the camera and unnecessary overlap-list traffic.
 			if (visible) {
-				s.position_radius.w = clamp(length(view_position.xyz) * 20.0 / (abs(p.projection[1][1]) * p.size_frame.y), 0.12, 0.7);
+				s.position_radius.w = clamp(length(view_position.xyz) * p.voxel_state.x / (abs(p.projection[1][1]) * p.size_frame.y), 0.12, 0.7);
 			}
 		}
 	}
@@ -630,7 +667,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -770,6 +807,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -824,7 +877,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -852,6 +905,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -859,7 +915,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -885,14 +950,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -913,7 +982,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -939,7 +1013,7 @@ void main() {
 	float spacing = cell_size(level);
 	ivec3 lo = ivec3(floor((sphere.xyz - sphere.w) / spacing));
 	ivec3 hi = ivec3(floor((sphere.xyz + sphere.w) / spacing));
-	uint keys[27];
+	uint hashes[27];
 	uint count = 0u;
 	for (int z = lo.z; z <= hi.z; z++) {
 		for (int y = lo.y; y <= hi.y; y++) {
@@ -954,16 +1028,17 @@ void main() {
 				float extent = dot(abs(normal), vec3(spacing * 0.5));
 				float plane = abs(dot(cell_min + spacing * 0.5 - sphere.xyz, normal));
 				if (plane > extent + max(0.012, sphere.w * 0.06)) continue;
-				uint key = cell_hash(ivec3(x, y, z), level);
-				// A hash collision among this surfel's own cells must not insert it
-				// twice into the same bucket (which would double its contribution).
+				uint hash_value = cell_hash_value(ivec3(x, y, z), level);
+				uint key = hash_value & CELL_LINK_ID_MASK;
+				// A rare full-hash collision among this surfel's own cells must not
+				// insert the same packed fingerprint twice.
 				bool duplicate = false;
-				for (uint i = 0u; i < count; i++) duplicate = duplicate || keys[i] == key;
+				for (uint i = 0u; i < count; i++) duplicate = duplicate || hashes[i] == hash_value;
 				if (duplicate) continue;
-				keys[count++] = key;
+				hashes[count++] = hash_value;
 				uint entry = atomicAdd(cell_heads[key].x, 1u);
 #ifdef STAGE_SURFEL_GRID_SCATTER
-				cell_links[cell_heads[key].y + grid_sums[key / 64u] + entry] = id;
+				cell_links[cell_heads[key].y + grid_sums[key / 64u] + entry] = cell_link_pack(id, hash_value);
 #endif
 			}
 		}
@@ -987,7 +1062,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -1370,6 +1445,22 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -1424,7 +1515,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -1452,6 +1543,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -1459,7 +1553,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -1485,14 +1588,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -1513,7 +1620,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -1588,7 +1700,7 @@ void main() {
 		return;
 	}
 	float camera_distance = length((p.view * vec4(hit, 1)).xyz);
-	float radius = clamp(camera_distance * 20.0 / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
+	float radius = clamp(camera_distance * p.voxel_state.x / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
 	// Screen tiles can project onto the same tiny surface when the camera is
 	// close to geometry. The pre-spawn grid cannot see another tile's new entry.
 	// Claim a world-space subcell before allocation to prevent thousands of
@@ -1642,7 +1754,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -2025,6 +2137,22 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -2079,7 +2207,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -2107,6 +2235,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -2114,7 +2245,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -2140,14 +2280,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -2168,7 +2312,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -2356,7 +2505,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -2496,6 +2645,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -2550,7 +2715,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -2578,6 +2743,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -2585,7 +2753,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -2611,14 +2788,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -2639,7 +2820,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -2848,7 +3034,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -2988,6 +3174,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -3042,7 +3244,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -3070,6 +3272,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -3077,7 +3282,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -3103,14 +3317,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -3131,7 +3349,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -3203,7 +3426,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -3426,7 +3649,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -3809,6 +4032,22 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -3863,7 +4102,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -3891,6 +4130,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -3898,7 +4140,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -3924,14 +4175,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -3952,7 +4207,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -4167,7 +4427,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -4427,7 +4687,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -4567,6 +4827,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -4621,7 +4897,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -4649,6 +4925,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -4656,7 +4935,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -4682,14 +4970,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -4710,7 +5002,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -4775,11 +5072,14 @@ void main() {
 		uint dominant = INVALID_SURFEL, disk = INVALID_SURFEL;
 		float disk_edge = 0.0;
 		for (uint level = 0u; level < 3u; level++) {
-			uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+			uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+			uint key = hash_value & CELL_LINK_ID_MASK;
 			uvec2 cell = cell_heads[key];
 			uint offset = cell.y + grid_sums[key / 64u];
 			for (uint i = 0u; i < cell.x; i++) {
-				uint id = cell_links[offset + i];
+				uint link = cell_links[offset + i];
+				if (!cell_link_matches(link, hash_value)) continue;
+				uint id = cell_link_id(link);
 				uint index = id + 1u;
 				Surfel s = surfels[id];
 				if (surfel_level(s.position_radius.w) == level) {
@@ -4883,7 +5183,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -5049,7 +5349,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -5223,7 +5523,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -5482,7 +5782,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -5724,7 +6024,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -5864,6 +6164,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -5918,7 +6234,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -5946,6 +6262,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -5953,7 +6272,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -5979,14 +6307,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -6007,7 +6339,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -6057,7 +6394,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -6197,6 +6534,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -6251,7 +6604,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -6279,6 +6632,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -6286,7 +6642,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -6312,14 +6677,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -6340,7 +6709,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -6395,7 +6769,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -6535,6 +6909,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -6589,7 +6979,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -6617,6 +7007,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -6624,7 +7017,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -6650,14 +7052,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -6678,7 +7084,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -6702,7 +7113,7 @@ void main() {
 	float spacing = cell_size(level);
 	ivec3 lo = ivec3(floor((sphere.xyz - sphere.w) / spacing));
 	ivec3 hi = ivec3(floor((sphere.xyz + sphere.w) / spacing));
-	uint keys[27];
+	uint hashes[27];
 	uint count = 0u;
 	for (int z = lo.z; z <= hi.z; z++) {
 		for (int y = lo.y; y <= hi.y; y++) {
@@ -6717,16 +7128,17 @@ void main() {
 				float extent = dot(abs(normal), vec3(spacing * 0.5));
 				float plane = abs(dot(cell_min + spacing * 0.5 - sphere.xyz, normal));
 				if (plane > extent + max(0.012, sphere.w * 0.06)) continue;
-				uint key = cell_hash(ivec3(x, y, z), level);
-				// A hash collision among this surfel's own cells must not insert it
-				// twice into the same bucket (which would double its contribution).
+				uint hash_value = cell_hash_value(ivec3(x, y, z), level);
+				uint key = hash_value & CELL_LINK_ID_MASK;
+				// A rare full-hash collision among this surfel's own cells must not
+				// insert the same packed fingerprint twice.
 				bool duplicate = false;
-				for (uint i = 0u; i < count; i++) duplicate = duplicate || keys[i] == key;
+				for (uint i = 0u; i < count; i++) duplicate = duplicate || hashes[i] == hash_value;
 				if (duplicate) continue;
-				keys[count++] = key;
+				hashes[count++] = hash_value;
 				uint entry = atomicAdd(cell_heads[key].x, 1u);
 #ifdef STAGE_SURFEL_GRID_SCATTER
-				cell_links[cell_heads[key].y + grid_sums[key / 64u] + entry] = id;
+				cell_links[cell_heads[key].y + grid_sums[key / 64u] + entry] = cell_link_pack(id, hash_value);
 #endif
 			}
 		}
@@ -6750,7 +7162,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -6934,7 +7346,7 @@ void main() {
 	// Match the cache's world-space support scale. Filtering irradiance before
 	// material composition preserves albedo/normal-map detail. Geometric plane
 	// tests keep thin walls, silhouettes and separate receivers apart.
-	float radius = clamp(length((p.view * vec4(position, 1)).xyz) * 20.0 / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
+	float radius = clamp(length((p.view * vec4(position, 1)).xyz) * p.voxel_state.x / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
 	float plane_limit = max(0.012, radius * 0.06);
 	float center_luma = luminance(center);
 	vec3 sum = vec3(0);
@@ -6989,7 +7401,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -7213,7 +7625,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -7596,6 +8008,22 @@ vec3 local_light_sample(vec3 position,vec3 normal,float xi){
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -7650,7 +8078,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -7678,6 +8106,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -7685,7 +8116,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -7711,14 +8151,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -7739,7 +8183,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -7862,7 +8311,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -8038,7 +8487,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -8178,6 +8627,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -8232,7 +8697,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -8260,6 +8725,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -8267,7 +8735,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -8293,14 +8770,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -8321,7 +8802,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -8345,11 +8831,14 @@ vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 	float weights = 0.0;
 	history_fraction = 0.0;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
 		for (uint i = 0u; i < cell.x; i++) {
-			uint neighbor = cell_links[offset + i];
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint neighbor = cell_link_id(link);
 			vec4 sphere = surfels[neighbor].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float d2 = dot(delta, delta);
@@ -8433,7 +8922,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled
@@ -8573,6 +9062,22 @@ uint hilbert_index(uvec2 pixel) {
 const uint CELL_CAPACITY = 262144u;
 const float CELL_SIZE = 0.25;
 const uint INVALID_SURFEL = 0u; // linked lists store index + 1 so zero-fill clears them
+// Surfel capacity is at most 2^18. Keep the upper 14 link bits as a fingerprint
+// of the full cell hash so different world cells sharing an 18-bit bucket do not
+// consume each other's bounded candidate budget.
+const uint CELL_LINK_ID_MASK = CELL_CAPACITY - 1u;
+#if defined(STAGE_SURFEL_EVALUATE)
+// Match Webgiya's bounded screen resolve. The limit is shared across all three
+// radius levels, rather than being applied independently to every hash cell.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 64u;
+#elif defined(STAGE_SURFEL_TRACE) || defined(STAGE_SURFEL_SPECULAR) || defined(STAGE_NRD_DIFFUSE)
+// Secondary-hit lighting is less sensitive to an exhaustive cache search and
+// is invoked once per ray, so keep its candidate work tightly bounded.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 32u;
+#else
+// Surfel generation retains complete traversal for allocation coverage tests.
+const uint SURFEL_GATHER_CANDIDATE_LIMIT = 0u;
+#endif
 struct Surfel {
 	vec4 position_radius;
 	vec4 normal_age;
@@ -8627,7 +9132,7 @@ layout(set = 0, binding = 21, std430) CELL_HEAD_ACCESS buffer CellHeads {
 	uvec2 cell_heads[]; // count, block-local exclusive offset
 };
 layout(set = 0, binding = 22, std430) CELL_LINK_ACCESS buffer CellLinks {
-	uint cell_links[]; // compact indices, at most 27 references per surfel
+	uint cell_links[]; // upper cell fingerprint + lower surfel ID, at most 27 references per surfel
 };
 layout(set = 0, binding = 35, std430) GRID_SUM_ACCESS buffer GridSums {
 	uint grid_sums[];
@@ -8655,6 +9160,9 @@ uint surfel_hash(uint x) {
 	x *= 0x846ca68bu;
 	return x ^ (x >> 16);
 }
+uint cell_hash_value(ivec3 c, uint level) {
+	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u);
+}
 uint surfel_level(float radius) {
 	return radius <= CELL_SIZE ? 0u : (radius <= CELL_SIZE * 2.0 ? 1u : 2u);
 }
@@ -8662,7 +9170,16 @@ float cell_size(uint level) {
 	return CELL_SIZE * float(1u << level);
 }
 uint cell_hash(ivec3 c, uint level) {
-	return surfel_hash(uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u ^ level * 2654435761u) & (CELL_CAPACITY - 1u);
+	return cell_hash_value(c, level) & CELL_LINK_ID_MASK;
+}
+uint cell_link_pack(uint id, uint hash_value) {
+	return (hash_value & ~CELL_LINK_ID_MASK) | id;
+}
+bool cell_link_matches(uint link, uint hash_value) {
+	return ((link ^ hash_value) & ~CELL_LINK_ID_MASK) == 0u;
+}
+uint cell_link_id(uint link) {
+	return link & CELL_LINK_ID_MASK;
 }
 float random_float(inout uint seed) {
 	seed = surfel_hash(seed + 0x9e3779b9u);
@@ -8688,14 +9205,18 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 	vec3 sum = vec3(0);
 	float weight = 0.0;
 	coverage = 0.0;
+	uint candidates = 0u;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
-		// Every overlapping surfel is indexed here. No neighbor traversal and no
-		// truncation: hash collisions only add candidates, never drop coverage.
 		for (uint i = 0u; i < cell.x; i++) {
-			uint id = cell_links[offset + i];
+			if (SURFEL_GATHER_CANDIDATE_LIMIT > 0u && candidates >= SURFEL_GATHER_CANDIDATE_LIMIT) break;
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint id = cell_link_id(link);
 			vec4 sphere = surfels[id].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float distance_squared = dot(delta, delta);
@@ -8716,7 +9237,12 @@ vec4 surfel_gather(vec3 position, vec3 normal, bool coverage_only, out float cov
 				// in roughly two frames, without a 256-sample full-amplitude flash.
 				float admission_samples = clamp(p.gi.w, 16.0, 64.0);
 				float confidence = smoothstep(0.0, admission_samples, irradiance.w);
+				if (confidence <= 1e-4) continue;
 
+				// Bound usable lighting contributors, not raw hash-list entries. An
+				// exact-cell entry can still belong to the wrong side of a wall or to
+				// an unresolved newborn; neither may consume the 32/64 query budget.
+				candidates++;
 				sum += irradiance.rgb * w * confidence;
 				weight += w * confidence;
 			}
@@ -8794,7 +9320,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled

@@ -5301,6 +5301,7 @@ RenderForwardClustered::RenderForwardClustered(bool p_kiln_deferred) :
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_stationary_ray_budget", PROPERTY_HINT_RANGE, "65536,8388608,65536"), 393216);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_motion_ray_budget", PROPERTY_HINT_RANGE, "65536,8388608,65536"), 524288);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/surfel_bootstrap_ray_budget", PROPERTY_HINT_RANGE, "65536,8388608,65536"), 1048576);
+	GLOBAL_DEF(PropertyInfo(Variant::FLOAT, "rendering/kiln/surfel_target_diameter_pixels", PROPERTY_HINT_RANGE, "12,40,1"), 20.0);
 	GLOBAL_DEF("rendering/kiln/surfel_specular", true);
 	GLOBAL_DEF("rendering/kiln/nrd", false);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/kiln/nrd_diffuse_iterations", PROPERTY_HINT_RANGE, "2,5,1"), 4);

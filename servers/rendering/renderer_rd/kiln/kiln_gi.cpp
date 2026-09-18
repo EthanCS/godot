@@ -575,7 +575,14 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	state->previous_sky_radiance = sky_radiance;
 	state->previous_sky_zenith = sky_zenith;
 	state->previous_local_lights = world.local_lights;
-	bool camera_moved = state->frames > 0 && (scene->cam_transform != state->previous_camera || scene->cam_projection != state->previous_projection);
+	bool camera_projection_changed = state->frames > 0 && scene->cam_projection != state->previous_projection;
+	bool camera_moved = state->frames > 0 && (scene->cam_transform != state->previous_camera || camera_projection_changed);
+	float camera_translation = state->frames > 0 ? scene->cam_transform.origin.distance_to(state->previous_camera.origin) : 0.0f;
+	float camera_rotation = state->frames > 0 ? scene->cam_transform.basis.get_rotation_quaternion().angle_to(state->previous_camera.basis.get_rotation_quaternion()) : 0.0f;
+	// A routine walk exposes only a narrow strip and the normal generation pass
+	// keeps up. Reserve the corrective pass for actual disocclusion jumps so the
+	// common moving-camera path does not pay for another grid rebuild every frame.
+	bool camera_disocclusion = initialize || state->frames < 8 || camera_projection_changed || camera_translation > 0.20f || camera_rotation > Math::deg_to_rad(4.0f);
 	if (camera_moved) {
 		state->motion_remaining = 8;
 	} else if (state->motion_remaining) {
@@ -673,7 +680,8 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	params[83] = state->frames > 0 && !initialize;
 	bool nrd_checkerboard = use_nrd && specular_rays > 0 && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd_specular_checkerboard", false)) && !bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd_reference", false));
 	bool specular_checkerboard = ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_checkerboard", true);
-	v(world.world.triangle_count, specular_checkerboard && !use_nrd, use_nrd ? (nrd_checkerboard ? 2 : 1) : 0, state->epoch);
+	float surfel_target_diameter = CLAMP(float(ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_target_diameter_pixels", 20.0)), 12.0f, 40.0f);
+	v(surfel_target_diameter, specular_checkerboard && !use_nrd, use_nrd ? (nrd_checkerboard ? 2 : 1) : 0, state->epoch);
 	vec(world.sun_direction, world.sun_energy * Math::PI);
 	vec(world.sun_color, world.sky_energy);
 	bool irradiance_sharing = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_irradiance_sharing", true);
@@ -748,9 +756,36 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			surfel_pass(SURFEL_GRID_PREFIX_SUMS, false, false);
 			surfel_pass(SURFEL_GRID_SCATTER, false, false);
 		};
-		rd->buffer_clear(state->storage["counters"], 0, 16 + 262144 * 4);
-		surfel_pass(SURFEL_UPDATE, true, false);
-		build_grid();
+		bool generation_needs_current_grid = initialize || state->frames == 0 || changed_world || changed_dynamic;
+		if (generation_needs_current_grid) {
+			// There is no safe previous grid on initialization or after geometry
+			// changes. Build the updated live cache before looking for holes.
+			rd->buffer_clear(state->storage["counters"], 0, 16 + 262144 * 4);
+			surfel_pass(SURFEL_UPDATE, true, false);
+			build_grid();
+			surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
+			build_grid();
+		} else {
+			// Match Webgiya's frame order: find holes against the complete previous
+			// grid, allocate from the unused tail of its free-slot list, then update
+			// and rebuild once so newborns are traced and resolved this frame. The
+			// prior spawn_count skips slots allocated from that list last frame.
+			rd->buffer_clear(state->storage["counters"], 16, 262144 * 4);
+			surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
+			rd->buffer_clear(state->storage["counters"], 0, 16 + 262144 * 4);
+			surfel_pass(SURFEL_UPDATE, true, false);
+			build_grid();
+		}
+		// A single 8x8 election can cover only one disconnected receiver and its
+		// hash claim can collide with another proposal. On a large camera
+		// disocclusion, make one corrective pass against the rebuilt grid.
+		// Clearing only the transient claims lets genuine remaining holes allocate;
+		// spawn/free/alive counters and the persistent occupancy stay intact.
+		if (camera_disocclusion) {
+			rd->buffer_clear(state->storage["counters"], 16, 262144 * 4);
+			surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
+			build_grid();
+		}
 		rd->buffer_clear(state->storage["ray_schedule"], 0, 16);
 		surfel_pass(SURFEL_SCHEDULE, false, false);
 		surfel_pass(SURFEL_TRACE, true, false, query_tlas);
@@ -759,10 +794,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		// Enabling a denoiser must not replace the GI algorithm or launch another
 		// diffuse path tracer. Both modes resolve the same world-space cache.
 		surfel_pass(SURFEL_EVALUATE, false, true);
-		// Match the reference admission order: evaluate the already integrated
-		// cache first, then create surfels for the following frame. A newborn must
-		// never expose its first few rays in the same frame it was allocated.
-		surfel_pass(SURFEL_GENERATE, true, true, query_tlas);
 		if (specular_rays > 0) trace_specular(T("specular_raw"), T("fresnel_raw"), false);
 	} else {
 		rd->texture_clear(T("raw"), Color(0, 0, 0, 0), 0, 1, 0, 1);
@@ -860,6 +891,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			metadata["gi_algorithm"] = "Surfel GI (SurfelPlus adaptation)";
 			metadata["surfel_multibounce"] = multibounce;
 			metadata["surfel_reconstruction"] = reconstruct_diffuse;
+			metadata["surfel_target_diameter_pixels"] = surfel_target_diameter;
 			metadata["surfel_ray_budget"] = surfel_ray_budget;
 			metadata["surfel_ray_budget_configured"] = configured_surfel_ray_budget;
 			metadata["surfel_ray_budget_adaptive"] = adaptive_surfel_budget;
@@ -1010,6 +1042,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	statistics["surfel_capacity"] = state->slots;
 	statistics["surfel_multibounce"] = multibounce;
 	statistics["surfel_reconstruction"] = reconstruct_diffuse;
+	statistics["surfel_target_diameter_pixels"] = surfel_target_diameter;
 	statistics["surfel_ray_budget"] = surfel_ray_budget;
 	statistics["surfel_ray_budget_configured"] = configured_surfel_ray_budget;
 	statistics["surfel_ray_budget_adaptive"] = adaptive_surfel_budget;

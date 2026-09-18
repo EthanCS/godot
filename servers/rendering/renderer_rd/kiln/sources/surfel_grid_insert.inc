@@ -3,7 +3,7 @@
 	float spacing = cell_size(level);
 	ivec3 lo = ivec3(floor((sphere.xyz - sphere.w) / spacing));
 	ivec3 hi = ivec3(floor((sphere.xyz + sphere.w) / spacing));
-	uint keys[27];
+	uint hashes[27];
 	uint count = 0u;
 	for (int z = lo.z; z <= hi.z; z++) {
 		for (int y = lo.y; y <= hi.y; y++) {
@@ -18,16 +18,17 @@
 				float extent = dot(abs(normal), vec3(spacing * 0.5));
 				float plane = abs(dot(cell_min + spacing * 0.5 - sphere.xyz, normal));
 				if (plane > extent + max(0.012, sphere.w * 0.06)) continue;
-				uint key = cell_hash(ivec3(x, y, z), level);
-				// A hash collision among this surfel's own cells must not insert it
-				// twice into the same bucket (which would double its contribution).
+				uint hash_value = cell_hash_value(ivec3(x, y, z), level);
+				uint key = hash_value & CELL_LINK_ID_MASK;
+				// A rare full-hash collision among this surfel's own cells must not
+				// insert the same packed fingerprint twice.
 				bool duplicate = false;
-				for (uint i = 0u; i < count; i++) duplicate = duplicate || keys[i] == key;
+				for (uint i = 0u; i < count; i++) duplicate = duplicate || hashes[i] == hash_value;
 				if (duplicate) continue;
-				keys[count++] = key;
+				hashes[count++] = hash_value;
 				uint entry = atomicAdd(cell_heads[key].x, 1u);
 #ifdef STAGE_SURFEL_GRID_SCATTER
-				cell_links[cell_heads[key].y + grid_sums[key / 64u] + entry] = id;
+				cell_links[cell_heads[key].y + grid_sums[key / 64u] + entry] = cell_link_pack(id, hash_value);
 #endif
 			}
 		}

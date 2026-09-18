@@ -98,6 +98,14 @@ diffuse-only frame time falls 33.1% static and 8.8% moving; image comparisons,
 build scope and the existing multibounce-tail failure are recorded separately.
 With the same default two-ray reflections on both sides, whole-frame reductions
 are 24.7% static and 6.1% moving in the same editor A/B.
+The subsequent [bounded-candidate follow-up](docs/SURFEL-CANDIDATE-CAPS-2026-09-18.md)
+limits usable ray-hit surfel contributors to 32 and screen resolve to 64. Compact
+links retain a full-cell fingerprint so unrelated world cells sharing a hash
+bucket cannot consume that budget. The follow-up also moves allocation before
+same-frame sampling/resolve and adds a bounded repair pass for large camera
+disocclusions; this removes the reported large upper-corridor black blocks. The
+report records the original cap A/B, final moving cost, density sweeps, exact
+transition captures and remaining small first-frame dropout separately.
 See the [cache/NRD comparison](docs/NRD-CACHE-DIFFUSE-2026-09-18.md) for measured
 benefits, regressions and cost. NRD has its own
 license; its SDK source is not vendored here. The figures above are historical;

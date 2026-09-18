@@ -90,6 +90,7 @@ func _ready() -> void:
 		if arg == "--adaptive-budget": ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", true)
 		if arg == "--no-adaptive-budget": ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", false)
 		if arg == "--no-irradiance-sharing": ProjectSettings.set_setting("rendering/kiln/surfel_irradiance_sharing", false)
+		if arg.begins_with("--surfel-diameter="): ProjectSettings.set_setting("rendering/kiln/surfel_target_diameter_pixels", float(arg.get_slice("=", 1)))
 		if arg == "--raw-cache": ProjectSettings.set_setting("rendering/kiln/surfel_reconstruction", false)
 		if arg == "--no-nrd": ProjectSettings.set_setting("rendering/kiln/nrd", false)
 		if arg == "--nrd-diffuse-validate": ProjectSettings.set_setting("rendering/kiln/nrd_diffuse_validation", true)

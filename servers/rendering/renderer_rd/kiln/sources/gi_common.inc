@@ -10,7 +10,7 @@ layout(set=0,binding=0,std140) uniform Parameters {
     vec4 quality;          // rays, history reprojection, AO quality, diffuse reconstruction enabled
     vec4 voxel_min;        // source bounds minimum xyz; w: primary surfel ray budget (0 unlimited)
     vec4 voxel_size;       // source scene bounds size xyz, surfel pool capacity
-    vec4 voxel_state;      // x: triangle count; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
+    vec4 voxel_state;      // x: target surfel diameter in pixels; y: rough reflection checkerboard; z: NRD off/full/checkerboard (0/1/2); w: epoch
     vec4 sun_direction;    // direction TO sun, energy
     vec4 sun_color;        // linear RGB, sky energy
     vec4 sky_color;        // linear RGB, irradiance sharing enabled

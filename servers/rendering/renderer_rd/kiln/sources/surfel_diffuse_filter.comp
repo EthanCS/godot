@@ -40,7 +40,7 @@ void main() {
 	// Match the cache's world-space support scale. Filtering irradiance before
 	// material composition preserves albedo/normal-map detail. Geometric plane
 	// tests keep thin walls, silhouettes and separate receivers apart.
-	float radius = clamp(length((p.view * vec4(position, 1)).xyz) * 20.0 / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
+	float radius = clamp(length((p.view * vec4(position, 1)).xyz) * p.voxel_state.x / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
 	float plane_limit = max(0.012, radius * 0.06);
 	float center_luma = luminance(center);
 	vec3 sum = vec3(0);

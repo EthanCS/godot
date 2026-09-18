@@ -10,11 +10,14 @@ vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 	float weights = 0.0;
 	history_fraction = 0.0;
 	for (uint level = 0u; level < 3u; level++) {
-		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
+		uint hash_value = cell_hash_value(ivec3(floor(position / cell_size(level))), level);
+		uint key = hash_value & CELL_LINK_ID_MASK;
 		uvec2 cell = cell_heads[key];
 		uint offset = cell.y + grid_sums[key / 64u];
 		for (uint i = 0u; i < cell.x; i++) {
-			uint neighbor = cell_links[offset + i];
+			uint link = cell_links[offset + i];
+			if (!cell_link_matches(link, hash_value)) continue;
+			uint neighbor = cell_link_id(link);
 			vec4 sphere = surfels[neighbor].position_radius;
 			vec3 delta = position - sphere.xyz;
 			float d2 = dot(delta, delta);

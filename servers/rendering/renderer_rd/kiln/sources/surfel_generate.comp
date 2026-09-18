@@ -49,7 +49,7 @@ void main() {
 		return;
 	}
 	float camera_distance = length((p.view * vec4(hit, 1)).xyz);
-	float radius = clamp(camera_distance * 20.0 / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
+	float radius = clamp(camera_distance * p.voxel_state.x / (abs(p.projection[1][1]) * float(size.y)), 0.12, 0.7);
 	// Screen tiles can project onto the same tiny surface when the camera is
 	// close to geometry. The pre-spawn grid cannot see another tile's new entry.
 	// Claim a world-space subcell before allocation to prevent thousands of

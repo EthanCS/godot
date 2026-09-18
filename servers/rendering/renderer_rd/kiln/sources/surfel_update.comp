@@ -43,7 +43,7 @@ void main() {
 			// Sleeping entries keep their last visible footprint, avoiding support
 			// growth behind the camera and unnecessary overlap-list traffic.
 			if (visible) {
-				s.position_radius.w = clamp(length(view_position.xyz) * 20.0 / (abs(p.projection[1][1]) * p.size_frame.y), 0.12, 0.7);
+				s.position_radius.w = clamp(length(view_position.xyz) * p.voxel_state.x / (abs(p.projection[1][1]) * p.size_frame.y), 0.12, 0.7);
 			}
 		}
 	}
