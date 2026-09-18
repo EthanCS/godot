@@ -36,9 +36,11 @@ TOD_GRID = [
 
 
 def load_hdr_f32(directory: Path) -> tuple[np.ndarray, dict]:
+    """Loads the HDR window capture and converts the raw sum to a mean."""
     meta = json.loads((directory / 'kajiya_hdr.f32.meta.json').read_text())
     data = np.fromfile(directory / 'kajiya_hdr.f32', dtype='<f4')
     img = data.reshape(meta['height'], meta['width'], meta['channels'])
+    img = img / max(1, meta['hdr_frame_count'])
     return img, meta
 
 
@@ -66,8 +68,9 @@ def run_kajiya(out_dir: Path, theta_deg: float, phi_deg: float, frames: int, wid
         '--scene', 'cornell_box',
         '--width', str(width), '--height', str(height),
         '--no-vsync', '--no-debug', '--no-car',
-        '--sun-theta', str(math.radians(theta_deg)),
-        '--sun-phi', str(math.radians(phi_deg)),
+        # equals form: negative values would otherwise parse as flags
+        f'--sun-theta={math.radians(theta_deg)}',
+        f'--sun-phi={math.radians(phi_deg)}',
         '--frames', str(frames),
         '--hdr-out', str(out_dir / 'kajiya_hdr.f32'),
         '--screenshot', str(out_dir / 'kajiya_final.png'),
@@ -122,7 +125,7 @@ def main() -> int:
     args = parser.parse_args()
 
     width, height = (int(v) for v in args.size.split('x'))
-    output = Path(args.output)
+    output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
 
     angles = TOD_GRID
