@@ -1,0 +1,7 @@
+# Asset payloads are fetched by kiln/tools/fetch_cornell.py (hash-pinned).
+assets/
+# Import cache and captures.
+.godot/
+captures/
+run_log.txt
+*.tmp
