@@ -13,6 +13,6 @@ void main() {
 	int face = px.z;
 	vec2 uv = (vec2(px.x, px.y) + 0.5) / float(KAJIYA_SKY_DIMS);
 	vec3 dir = kajiya_cube_face_rotation(face, vec3(uv * 2.0 - 1.0, -1.0));
-	vec3 output = kajiya_atmosphere_default(normalize(dir), p.sun_direction.xyz, vec3(0.0), vec3(1.0));
-	imageStore(sky_cube, px, vec4(output, 1.0));
+	vec3 radiance = kajiya_atmosphere_default(normalize(dir), p.sun_direction.xyz, vec3(0.0), vec3(1.0));
+	imageStore(sky_cube, px, vec4(radiance, 1.0));
 }

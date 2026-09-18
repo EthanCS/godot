@@ -26,7 +26,7 @@ void main() {
 	if (0u == idx_within_group) {
 		gs_px_min_score_loc_packed = 0xffffffffu;
 		gs_px_max_score_loc_packed = 0u;
-		imageStore(tile_alloc_tex, ivec2(group_id), uvec2(0u, 0u));
+		imageStore(tile_alloc_tex, ivec2(group_id), uvec4(0u));
 		imageStore(tile_irradiance_tex, ivec2(group_id), vec4(0.0));
 	}
 
@@ -62,7 +62,7 @@ void main() {
 	vec3 geometric_normal_ws = safe_normalize(mat3(p.inv_view) * safe_normalize(n_view));
 
 	ivec3 pt_grid_coord = kajiya_surfel_pos_to_grid_coord(pt_ws, prev_eye_pos);
-	const uint4 pt_c4 = kajiya_surfel_grid_coord_to_c4(pt_grid_coord);
+	const uvec4 pt_c4 = kajiya_surfel_grid_coord_to_c4(pt_grid_coord);
 	const uint pt_c4_hash = kajiya_surfel_grid_c4_to_hash(pt_c4);
 
 	float px_score = 0.0;
@@ -193,7 +193,7 @@ void main() {
 	barrier();
 
 	if (gs_px_min_score_loc_packed == px_min_score_loc_packed && px_min_score_loc_packed != 0xffffffffu) {
-		imageStore(tile_alloc_tex, ivec2(group_id), uvec2(px_min_score_loc_packed, cell_idx));
+		imageStore(tile_alloc_tex, ivec2(group_id), uvec4(px_min_score_loc_packed, cell_idx, 0u, 0u));
 		imageStore(tile_irradiance_tex, ivec2(group_id), vec4(total_color, total_weight));
 	}
 }

@@ -10291,8 +10291,8 @@ void main() {
 	int face = px.z;
 	vec2 uv = (vec2(px.x, px.y) + 0.5) / float(KAJIYA_SKY_DIMS);
 	vec3 dir = kajiya_cube_face_rotation(face, vec3(uv * 2.0 - 1.0, -1.0));
-	vec3 output = kajiya_atmosphere_default(normalize(dir), p.sun_direction.xyz, vec3(0.0), vec3(1.0));
-	imageStore(sky_cube, px, vec4(output, 1.0));
+	vec3 radiance = kajiya_atmosphere_default(normalize(dir), p.sun_direction.xyz, vec3(0.0), vec3(1.0));
+	imageStore(sky_cube, px, vec4(radiance, 1.0));
 }
 
 #endif
@@ -10849,18 +10849,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -10931,7 +10925,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -11006,12 +11001,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -11615,18 +11604,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -11697,7 +11680,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -11772,12 +11756,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -11839,7 +11817,7 @@ void main() {
 	if (0u == idx_within_group) {
 		gs_px_min_score_loc_packed = 0xffffffffu;
 		gs_px_max_score_loc_packed = 0u;
-		imageStore(tile_alloc_tex, ivec2(group_id), uvec2(0u, 0u));
+		imageStore(tile_alloc_tex, ivec2(group_id), uvec4(0u));
 		imageStore(tile_irradiance_tex, ivec2(group_id), vec4(0.0));
 	}
 
@@ -11875,7 +11853,7 @@ void main() {
 	vec3 geometric_normal_ws = safe_normalize(mat3(p.inv_view) * safe_normalize(n_view));
 
 	ivec3 pt_grid_coord = kajiya_surfel_pos_to_grid_coord(pt_ws, prev_eye_pos);
-	const uint4 pt_c4 = kajiya_surfel_grid_coord_to_c4(pt_grid_coord);
+	const uvec4 pt_c4 = kajiya_surfel_grid_coord_to_c4(pt_grid_coord);
 	const uint pt_c4_hash = kajiya_surfel_grid_c4_to_hash(pt_c4);
 
 	float px_score = 0.0;
@@ -12006,7 +11984,7 @@ void main() {
 	barrier();
 
 	if (gs_px_min_score_loc_packed == px_min_score_loc_packed && px_min_score_loc_packed != 0xffffffffu) {
-		imageStore(tile_alloc_tex, ivec2(group_id), uvec2(px_min_score_loc_packed, cell_idx));
+		imageStore(tile_alloc_tex, ivec2(group_id), uvec4(px_min_score_loc_packed, cell_idx, 0u, 0u));
 		imageStore(tile_irradiance_tex, ivec2(group_id), vec4(total_color, total_weight));
 	}
 }
@@ -12568,18 +12546,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -12650,7 +12622,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -12725,12 +12698,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -13341,18 +13308,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -13423,7 +13384,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -13498,12 +13460,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -14121,18 +14077,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -14203,7 +14153,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -14278,12 +14229,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -14954,18 +14899,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -15036,7 +14975,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -15111,12 +15051,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -15728,18 +15662,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -15810,7 +15738,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -15885,12 +15814,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -15962,6 +15885,9 @@ void main() {
 
 #ifdef STAGE_KAJIYA_SURFEL_SCAN
 
+#ifndef KAJIYA_MAX_SURFEL_CELLS
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#endif
 // kajiya inclusive_prefix_scan.hlsl: shared-memory Blelloch-style inclusive scan
 // over 1024-entry segments. One workgroup per segment. Loads beyond the cell
 // buffer return 0 and stores are dropped (the reference scans a full 1M range
@@ -16488,6 +16414,9 @@ void main() {
 
 #ifdef STAGE_KAJIYA_SURFEL_SCAN_SEGMENTS
 
+#ifndef KAJIYA_MAX_SURFEL_CELLS
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#endif
 // kajiya inclusive_prefix_scan_segments.hlsl: scan the per-segment sums.
 // Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
 layout(set=0,binding=0,std140) uniform Parameters {
@@ -17007,6 +16936,9 @@ void main() {
 
 #ifdef STAGE_KAJIYA_SURFEL_SCAN_MERGE
 
+#ifndef KAJIYA_MAX_SURFEL_CELLS
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#endif
 // kajiya inclusive_prefix_scan_merge.hlsl: add the previous segment sums.
 // Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
 layout(set=0,binding=0,std140) uniform Parameters {
@@ -18064,18 +17996,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -18146,7 +18072,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -18221,12 +18148,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -19349,8 +19270,8 @@ void kajiya_apply_metalness_to_brdfs(inout KajiyaSpecularBrdf specular_brdf, ino
 	diffuse_brdf.albedo = max(0.0, 1.0 - metalness) * albedo;
 
 	const vec3 albedo_boost = kajiya_metalness_albedo_boost(metalness, albedo);
-	specular_brdf.albedo = min(1.0, specular_brdf.albedo * albedo_boost);
-	diffuse_brdf.albedo = min(1.0, diffuse_brdf.albedo * albedo_boost);
+	specular_brdf.albedo = min(specular_brdf.albedo * albedo_boost, vec3(1.0));
+	diffuse_brdf.albedo = min(diffuse_brdf.albedo * albedo_boost, vec3(1.0));
 }
 
 struct KajiyaLayeredBrdf {
@@ -19505,18 +19426,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -19587,7 +19502,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -19662,12 +19578,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 
@@ -20419,18 +20329,12 @@ bool kajiya_surfel_life_needs_aging(uint life) {
 #else
 #define KAJIYA_IRRADIANCE_ACCESS readonly
 #endif
-#ifdef STAGE_KAJIYA_SURFEL_TRACE
+#if defined(STAGE_KAJIYA_SURFEL_TRACE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_AUX_ACCESS
 #else
 #define KAJIYA_AUX_ACCESS readonly
 #endif
-#if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_AGE) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_LIFE_ACCESS
-#elif defined(STAGE_KAJIYA_SURFEL_LOOKUP_DEBUG)
-#define KAJIYA_LIFE_ACCESS
-#else
-#define KAJIYA_LIFE_ACCESS readonly
-#endif
 #if defined(STAGE_KAJIYA_SURFEL_FIND_MISSING) || defined(STAGE_KAJIYA_SURFEL_ALLOCATE)
 #define KAJIYA_PROPOSAL_ACCESS
 #else
@@ -20501,7 +20405,8 @@ uvec4 kajiya_surfel_grid_coord_to_c4(ivec3 coord) {
 }
 
 uint kajiya_surfel_grid_c4_to_hash(uvec4 c4) {
-	return dot(c4, uvec4(1u, KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS, KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS));
+	// GLSL has no integer dot(); the reference relies on HLSL's uint4 dot.
+	return c4.x + c4.y * KAJIYA_SURFEL_CS + c4.z * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS) + c4.w * (KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS * KAJIYA_SURFEL_CS);
 }
 
 uint kajiya_surfel_grid_coord_to_hash(ivec3 coord) {
@@ -20576,12 +20481,6 @@ KajiyaSurfelGridMinMax kajiya_get_surfel_grid_box_min_max(vec3 position) {
 }
 
 // ---- lookup.hlsl ----
-// Writes to surfel_life_buf require the KAJIYA_LIFE_ACCESS-qualified binding; the
-// ray-tracing stages define KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE to skip it.
-#if !defined(KAJIYA_LIFE_ACCESS) && !defined(KAJIYA_SURFEL_LOOKUP_DONT_KEEP_ALIVE)
-#define KAJIYA_LIFE_ACCESS
-#endif
-
 vec3 kajiya_lookup_surfel_gi(vec3 pt_ws, vec3 normal_ws) {
 	const uint cell_idx = kajiya_surfel_grid_coord_to_hash(kajiya_surfel_pos_to_grid_coord(pt_ws, kajiya_get_eye_position()));
 

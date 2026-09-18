@@ -286,8 +286,8 @@ void kajiya_apply_metalness_to_brdfs(inout KajiyaSpecularBrdf specular_brdf, ino
 	diffuse_brdf.albedo = max(0.0, 1.0 - metalness) * albedo;
 
 	const vec3 albedo_boost = kajiya_metalness_albedo_boost(metalness, albedo);
-	specular_brdf.albedo = min(1.0, specular_brdf.albedo * albedo_boost);
-	diffuse_brdf.albedo = min(1.0, diffuse_brdf.albedo * albedo_boost);
+	specular_brdf.albedo = min(specular_brdf.albedo * albedo_boost, vec3(1.0));
+	diffuse_brdf.albedo = min(diffuse_brdf.albedo * albedo_boost, vec3(1.0));
 }
 
 struct KajiyaLayeredBrdf {

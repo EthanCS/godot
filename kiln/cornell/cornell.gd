@@ -25,6 +25,7 @@ var with_car := true
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
+		if arg == "--kajiya": ProjectSettings.set_setting("rendering/kiln/kajiya_mode", true)
 		if arg.begins_with("--sun-theta="): sun_theta = float(arg.get_slice("=", 1))
 		if arg.begins_with("--sun-phi="): sun_phi = float(arg.get_slice("=", 1))
 		if arg.begins_with("--frames="): frames = int(arg.get_slice("=", 1))

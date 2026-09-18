@@ -1,4 +1,7 @@
 #version 450
+#ifndef KAJIYA_MAX_SURFEL_CELLS
+#define KAJIYA_MAX_SURFEL_CELLS 262144u
+#endif
 // kajiya inclusive_prefix_scan_segments.hlsl: scan the per-segment sums.
 // @GI_COMMON@
 // @KAJIYA_COMMON@

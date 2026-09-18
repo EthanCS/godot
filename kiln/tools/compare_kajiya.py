@@ -79,7 +79,7 @@ def run_kajiya(out_dir: Path, theta_deg: float, phi_deg: float, frames: int, wid
     subprocess.run(cmd, cwd=KAJIYA, check=True, stdout=subprocess.DEVNULL)
 
 
-def run_kiln(out_dir: Path, theta_deg: float, phi_deg: float, frames: int, width: int, height: int) -> None:
+def run_kiln(out_dir: Path, theta_deg: float, phi_deg: float, frames: int, width: int, height: int, kajiya_mode: bool = True) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         str(GODOT_EXE),
@@ -93,6 +93,7 @@ def run_kiln(out_dir: Path, theta_deg: float, phi_deg: float, frames: int, width
         f'--output={out_dir}',
         f'--size={width}x{height}',
         '--no-car',
+        *(('--kajiya',) if kajiya_mode else ()),
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
     (out_dir / 'color.png').replace(out_dir / 'kiln_final.png')

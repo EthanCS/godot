@@ -843,7 +843,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		dispatch(KAJIYA_SURFEL_SLOT_CELLS, Size2i(kmax / 64, 1), kbase());
 		{
 			std::vector<Binding> b = kbase();
-			kappend(b, { B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"), S(19, ksky), S(20, dfg) });
+			kappend(b, { B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), B(18, "emitters"), B(25, "local_lights"), B(26, "light_grid"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates"), S(19, ksky), S(20, dfg) });
 			dispatch(KAJIYA_SURFEL_TRACE, Size2i(kmax / 64, 1), b, 0, 1, query_tlas);
 		}
 		{
