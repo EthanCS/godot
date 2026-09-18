@@ -1,0 +1,784 @@
+{
+  "date": "2026-09-18",
+  "hardware": "Apple M5, macOS, Metal 4.0 hardware ray queries; real-window GPU captures",
+  "scope": "Cold-cache, sun/sky Sponza, 1920x1080, no NRD/specular, raw indirect diffuse values, TAA disabled by debug mode 25. Diagnostic readbacks do not measure FPS.",
+  "source_head": "d892937a7752697d4f9ce3fad37058bdd4a3b52e with uncommitted changes",
+  "binary_sha256": {
+    "before_editor": "7ddbbf54daf3dcf1c0241976330ae47704f51ca665eff312e787868ad23df62d",
+    "after_editor": "be92f192d31f343dad5c24bba34f27abefd485c4e358d273c0595896d0c96acd",
+    "after_release_template": "4b592b06494db64b165a8b4f1807a718c82497ddc43bf91ddbd7e0c94f9baf23"
+  },
+  "references": {
+    "gibs": "https://advances.realtimerendering.com/s2021/SIGGRAPH%20Advances%202021%20-%20Surfel%20GI.pdf",
+    "surfelgi": "https://github.com/W298/SurfelGI/tree/8361942f7d799632b32d37356b8057814456a8a2",
+    "reference_runtime_executed": false
+  },
+  "captures": "/tmp/kiln-convergence-20260918",
+  "first_pair": {
+    "scope": "Compare cold-cache linear diffuse at equal frame and primary-ray budgets.\n\nThe late frame is a convergence reference, not path-traced ground truth.\nReadbacks stall rendering, so this reports frames rather than wall-clock speed.\n",
+    "checks_passed": true,
+    "checks": {
+      "before_1_ray_budget": true,
+      "before_1_capture_frame": true,
+      "before_4_ray_budget": true,
+      "before_4_capture_frame": true,
+      "before_8_ray_budget": true,
+      "before_8_capture_frame": true,
+      "before_16_ray_budget": true,
+      "before_16_capture_frame": true,
+      "before_32_ray_budget": true,
+      "before_32_capture_frame": true,
+      "before_64_ray_budget": true,
+      "before_64_capture_frame": true,
+      "before_128_ray_budget": true,
+      "before_128_capture_frame": true,
+      "before_240_ray_budget": true,
+      "before_240_capture_frame": true,
+      "before_512_ray_budget": true,
+      "before_512_capture_frame": true,
+      "after_1_ray_budget": true,
+      "after_1_capture_frame": true,
+      "after_4_ray_budget": true,
+      "after_4_capture_frame": true,
+      "after_8_ray_budget": true,
+      "after_8_capture_frame": true,
+      "after_16_ray_budget": true,
+      "after_16_capture_frame": true,
+      "after_32_ray_budget": true,
+      "after_32_capture_frame": true,
+      "after_64_ray_budget": true,
+      "after_64_capture_frame": true,
+      "after_128_ray_budget": true,
+      "after_128_capture_frame": true,
+      "after_240_ray_budget": true,
+      "after_240_capture_frame": true,
+      "after_512_ray_budget": true,
+      "after_512_capture_frame": true,
+      "1_matching_setup": true,
+      "4_matching_setup": true,
+      "8_matching_setup": true,
+      "16_matching_setup": true,
+      "32_matching_setup": true,
+      "64_matching_setup": true,
+      "128_matching_setup": true,
+      "240_matching_setup": true,
+      "512_matching_setup": true
+    },
+    "measurements": {
+      "before": {
+        "1": {
+          "metadata": {
+            "frame": 0,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 186288,
+            "surfel_alive": 11643,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.0456167011956339,
+          "relative_residual": 0.2345784429901865,
+          "relative_rmse_to_512": 0.3211419210161685,
+          "energy_ratio_to_512": 0.9124062776591594
+        },
+        "4": {
+          "metadata": {
+            "frame": 3,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 28357,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.04737055163270027,
+          "relative_residual": 0.10059496711467487,
+          "relative_rmse_to_512": 0.1510515887383822,
+          "energy_ratio_to_512": 0.9474860643800759
+        },
+        "8": {
+          "metadata": {
+            "frame": 7,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 33400,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.051736660311750574,
+          "relative_residual": 0.06253716775650364,
+          "relative_rmse_to_512": 0.11115313375314666,
+          "energy_ratio_to_512": 1.0348151535797334
+        },
+        "16": {
+          "metadata": {
+            "frame": 15,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34165,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05132562995364003,
+          "relative_residual": 0.06323022017548116,
+          "relative_rmse_to_512": 0.10140124239182312,
+          "energy_ratio_to_512": 1.026593895373442
+        },
+        "32": {
+          "metadata": {
+            "frame": 31,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34205,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050334195718663974,
+          "relative_residual": 0.05457045329700172,
+          "relative_rmse_to_512": 0.08376819152676586,
+          "energy_ratio_to_512": 1.0067636403096465
+        },
+        "64": {
+          "metadata": {
+            "frame": 63,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34209,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.049965859110827474,
+          "relative_residual": 0.028932781933501843,
+          "relative_rmse_to_512": 0.04238538300336319,
+          "energy_ratio_to_512": 0.9993963247328272
+        },
+        "128": {
+          "metadata": {
+            "frame": 127,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34209,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.049972632893325014,
+          "relative_residual": 0.012663216299117156,
+          "relative_rmse_to_512": 0.01904233367442561,
+          "energy_ratio_to_512": 0.9995318111119881
+        },
+        "240": {
+          "metadata": {
+            "frame": 239,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34209,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050031984602698296,
+          "relative_residual": 0.007145871549093175,
+          "relative_rmse_to_512": 0.007389617859610448,
+          "energy_ratio_to_512": 1.0007189393085172
+        },
+        "512": {
+          "metadata": {
+            "frame": 511,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34209,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.049996040483924184,
+          "relative_residual": 0.00644498241299355,
+          "relative_rmse_to_512": 0.0,
+          "energy_ratio_to_512": 1.0
+        }
+      },
+      "after": {
+        "1": {
+          "metadata": {
+            "frame": 0,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 93144,
+            "surfel_alive": 11643,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05424581248932971,
+          "relative_residual": 0.3042587925374474,
+          "relative_rmse_to_512": 0.4623175676933734,
+          "energy_ratio_to_512": 1.0829433352161906
+        },
+        "4": {
+          "metadata": {
+            "frame": 3,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196607,
+            "surfel_alive": 28322,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05172529997042966,
+          "relative_residual": 0.09840219833493652,
+          "relative_rmse_to_512": 0.1582673114731414,
+          "energy_ratio_to_512": 1.032624755616914
+        },
+        "8": {
+          "metadata": {
+            "frame": 7,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196607,
+            "surfel_alive": 33366,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05104294043714151,
+          "relative_residual": 0.06387548878714892,
+          "relative_rmse_to_512": 0.10157587285787927,
+          "energy_ratio_to_512": 1.0190023822965588
+        },
+        "16": {
+          "metadata": {
+            "frame": 15,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34145,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.052273750998374835,
+          "relative_residual": 0.037669326633341826,
+          "relative_rmse_to_512": 0.0795913447507978,
+          "energy_ratio_to_512": 1.0435738290688512
+        },
+        "32": {
+          "metadata": {
+            "frame": 31,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34186,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05089294123433581,
+          "relative_residual": 0.019849942892741054,
+          "relative_rmse_to_512": 0.038222303161993154,
+          "energy_ratio_to_512": 1.0160078536958832
+        },
+        "64": {
+          "metadata": {
+            "frame": 63,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34190,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05022120911036308,
+          "relative_residual": 0.010080626187814587,
+          "relative_rmse_to_512": 0.015785731872236784,
+          "energy_ratio_to_512": 1.0025976420440628
+        },
+        "128": {
+          "metadata": {
+            "frame": 127,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34190,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05019126689032467,
+          "relative_residual": 0.00731238243664071,
+          "relative_rmse_to_512": 0.007744384686854411,
+          "energy_ratio_to_512": 1.0019998866387299
+        },
+        "240": {
+          "metadata": {
+            "frame": 239,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34190,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05014288795964503,
+          "relative_residual": 0.006543932197930621,
+          "relative_rmse_to_512": 0.003819967206106689,
+          "energy_ratio_to_512": 1.0010340675618248
+        },
+        "512": {
+          "metadata": {
+            "frame": 511,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196607,
+            "surfel_alive": 34190,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05009109038793843,
+          "relative_residual": 0.006572990037924752,
+          "relative_rmse_to_512": 0.0,
+          "energy_ratio_to_512": 1.0
+        }
+      }
+    }
+  },
+  "repeat_pair": {
+    "scope": "Compare cold-cache linear diffuse at equal frame and primary-ray budgets.\n\nThe late frame is a convergence reference, not path-traced ground truth.\nReadbacks stall rendering, so this reports frames rather than wall-clock speed.\n",
+    "checks_passed": true,
+    "checks": {
+      "before_1_ray_budget": true,
+      "before_1_capture_frame": true,
+      "before_4_ray_budget": true,
+      "before_4_capture_frame": true,
+      "before_8_ray_budget": true,
+      "before_8_capture_frame": true,
+      "before_16_ray_budget": true,
+      "before_16_capture_frame": true,
+      "before_32_ray_budget": true,
+      "before_32_capture_frame": true,
+      "before_64_ray_budget": true,
+      "before_64_capture_frame": true,
+      "before_128_ray_budget": true,
+      "before_128_capture_frame": true,
+      "before_240_ray_budget": true,
+      "before_240_capture_frame": true,
+      "before_512_ray_budget": true,
+      "before_512_capture_frame": true,
+      "after_1_ray_budget": true,
+      "after_1_capture_frame": true,
+      "after_4_ray_budget": true,
+      "after_4_capture_frame": true,
+      "after_8_ray_budget": true,
+      "after_8_capture_frame": true,
+      "after_16_ray_budget": true,
+      "after_16_capture_frame": true,
+      "after_32_ray_budget": true,
+      "after_32_capture_frame": true,
+      "after_64_ray_budget": true,
+      "after_64_capture_frame": true,
+      "after_128_ray_budget": true,
+      "after_128_capture_frame": true,
+      "after_240_ray_budget": true,
+      "after_240_capture_frame": true,
+      "after_512_ray_budget": true,
+      "after_512_capture_frame": true,
+      "1_matching_setup": true,
+      "4_matching_setup": true,
+      "8_matching_setup": true,
+      "16_matching_setup": true,
+      "32_matching_setup": true,
+      "64_matching_setup": true,
+      "128_matching_setup": true,
+      "240_matching_setup": true,
+      "512_matching_setup": true,
+      "no_spurious_material_revision": true,
+      "cold_start_not_relighting": true,
+      "before_temporal_0_frame": true,
+      "before_temporal_1_frame": true,
+      "before_temporal_2_frame": true,
+      "before_temporal_3_frame": true,
+      "before_temporal_4_frame": true,
+      "before_temporal_5_frame": true,
+      "before_temporal_6_frame": true,
+      "before_temporal_7_frame": true,
+      "before_temporal_8_frame": true,
+      "before_temporal_9_frame": true,
+      "before_temporal_10_frame": true,
+      "before_temporal_11_frame": true,
+      "before_temporal_12_frame": true,
+      "before_temporal_13_frame": true,
+      "before_temporal_14_frame": true,
+      "before_temporal_15_frame": true,
+      "after_temporal_0_frame": true,
+      "after_temporal_1_frame": true,
+      "after_temporal_2_frame": true,
+      "after_temporal_3_frame": true,
+      "after_temporal_4_frame": true,
+      "after_temporal_5_frame": true,
+      "after_temporal_6_frame": true,
+      "after_temporal_7_frame": true,
+      "after_temporal_8_frame": true,
+      "after_temporal_9_frame": true,
+      "after_temporal_10_frame": true,
+      "after_temporal_11_frame": true,
+      "after_temporal_12_frame": true,
+      "after_temporal_13_frame": true,
+      "after_temporal_14_frame": true,
+      "after_temporal_15_frame": true
+    },
+    "measurements": {
+      "before": {
+        "1": {
+          "metadata": {
+            "frame": 0,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 186288,
+            "surfel_alive": 11643,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.043418480523816194,
+          "relative_residual": 0.24083212682015276,
+          "relative_rmse_to_512": 0.3219962933234473,
+          "energy_ratio_to_512": 0.8680817846255307
+        },
+        "4": {
+          "metadata": {
+            "frame": 3,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 28371,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.048273657014572195,
+          "relative_residual": 0.08695114152382247,
+          "relative_rmse_to_512": 0.11866475373177926,
+          "energy_ratio_to_512": 0.965153128945273
+        },
+        "8": {
+          "metadata": {
+            "frame": 7,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 33423,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05135943696772896,
+          "relative_residual": 0.06127414615012847,
+          "relative_rmse_to_512": 0.09488178499761755,
+          "energy_ratio_to_512": 1.0268482720359824
+        },
+        "16": {
+          "metadata": {
+            "frame": 15,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196607,
+            "surfel_alive": 34193,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050025689129189053,
+          "relative_residual": 0.055850871577485084,
+          "relative_rmse_to_512": 0.08727833837619865,
+          "energy_ratio_to_512": 1.0001821568253157
+        },
+        "32": {
+          "metadata": {
+            "frame": 31,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34232,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.0499882944117568,
+          "relative_residual": 0.053390677661467906,
+          "relative_rmse_to_512": 0.08415987176686358,
+          "energy_ratio_to_512": 0.9994345103703378
+        },
+        "64": {
+          "metadata": {
+            "frame": 63,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34236,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.049766614672977084,
+          "relative_residual": 0.026255782260958392,
+          "relative_rmse_to_512": 0.04704828646121458,
+          "energy_ratio_to_512": 0.99500238513395
+        },
+        "128": {
+          "metadata": {
+            "frame": 127,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34236,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05002464245635826,
+          "relative_residual": 0.010999748275080504,
+          "relative_rmse_to_512": 0.020119887740647654,
+          "energy_ratio_to_512": 1.0001612303072083
+        },
+        "240": {
+          "metadata": {
+            "frame": 239,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34236,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.04999958510964864,
+          "relative_residual": 0.0070757502611956315,
+          "relative_rmse_to_512": 0.007352496602885666,
+          "energy_ratio_to_512": 0.9996602494809047
+        },
+        "512": {
+          "metadata": {
+            "frame": 511,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34236,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050016578268078586,
+          "relative_residual": 0.006596818055541459,
+          "relative_rmse_to_512": 0.0,
+          "energy_ratio_to_512": 1.0
+        }
+      },
+      "after": {
+        "1": {
+          "metadata": {
+            "frame": 0,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 93144,
+            "surfel_alive": 11643,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.058583902793527376,
+          "relative_residual": 0.3163735297385693,
+          "relative_rmse_to_512": 0.6008752678272543,
+          "energy_ratio_to_512": 1.171526246618655
+        },
+        "4": {
+          "metadata": {
+            "frame": 3,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 28304,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050883926240531556,
+          "relative_residual": 0.10816220658688853,
+          "relative_rmse_to_512": 0.1676352599260095,
+          "energy_ratio_to_512": 1.017546668611102
+        },
+        "8": {
+          "metadata": {
+            "frame": 7,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 33371,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.049926850643842544,
+          "relative_residual": 0.06344817094360644,
+          "relative_rmse_to_512": 0.08956375540731763,
+          "energy_ratio_to_512": 0.9984076367601331
+        },
+        "16": {
+          "metadata": {
+            "frame": 15,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34144,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050789843602417,
+          "relative_residual": 0.04036588526556276,
+          "relative_rmse_to_512": 0.057430043881370255,
+          "energy_ratio_to_512": 1.015665259646411
+        },
+        "32": {
+          "metadata": {
+            "frame": 31,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34185,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.049943942746361,
+          "relative_residual": 0.023739141607388953,
+          "relative_rmse_to_512": 0.03312993964045617,
+          "energy_ratio_to_512": 0.998749434519508
+        },
+        "64": {
+          "metadata": {
+            "frame": 63,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34189,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050006757727950026,
+          "relative_residual": 0.009941161741087588,
+          "relative_rmse_to_512": 0.015692179182473974,
+          "energy_ratio_to_512": 1.0000055713779856
+        },
+        "128": {
+          "metadata": {
+            "frame": 127,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34189,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.05008278112799943,
+          "relative_residual": 0.006869674237279496,
+          "relative_rmse_to_512": 0.008886646194073927,
+          "energy_ratio_to_512": 1.001525842378519
+        },
+        "240": {
+          "metadata": {
+            "frame": 239,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34189,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050051776396777936,
+          "relative_residual": 0.006619179244390152,
+          "relative_rmse_to_512": 0.0043794849279160195,
+          "energy_ratio_to_512": 1.0009058280970644
+        },
+        "512": {
+          "metadata": {
+            "frame": 511,
+            "width": 1920,
+            "height": 1080,
+            "surfel_ray_budget": 196608,
+            "surfel_rays": 196608,
+            "surfel_alive": 34189,
+            "surfel_reconstruction": true
+          },
+          "floor_mean": 0.050006479122953106,
+          "relative_residual": 0.006446675913687218,
+          "relative_rmse_to_512": 0.0,
+          "energy_ratio_to_512": 1.0
+        }
+      }
+    },
+    "temporal": {
+      "before": 0.0002935405761221436,
+      "after": 0.00027851098076492754
+    }
+  },
+  "light_response": {
+    "passed": true,
+    "checks": {
+      "day_finite_nonnegative": true,
+      "day_nrd_off": true,
+      "off_8_finite_nonnegative": true,
+      "off_8_nrd_off": true,
+      "off_32_finite_nonnegative": true,
+      "off_32_nrd_off": true,
+      "off_128_finite_nonnegative": true,
+      "off_128_nrd_off": true,
+      "restored_32_finite_nonnegative": true,
+      "restored_32_nrd_off": true,
+      "restored_128_finite_nonnegative": true,
+      "restored_128_nrd_off": true,
+      "linear_view_finite_nonnegative": true,
+      "linear_view_nrd_off": true,
+      "linear_debug_matches_values": true,
+      "off32_below_1pct": true,
+      "off128_below_0_1pct": true,
+      "restored128_within_5pct": true
+    },
+    "floor_mean": {
+      "day": 0.0500307782792231,
+      "off_8": 0.004341053224305405,
+      "off_32": 1.0463810633677183e-05,
+      "off_128": 1.0429892143041059e-05,
+      "restored_32": 0.050703273890828994,
+      "restored_128": 0.05035737384765887,
+      "linear_view": 0.049866102245857455
+    }
+  },
+  "material_update_assertions": {
+    "passed": true,
+    "count": 6,
+    "log": "/tmp/kiln-convergence-20260918/response.log"
+  },
+  "builds": {
+    "editor": "build-confidence.log",
+    "release_template": "build-template.log",
+    "shader_variants_and_imported_hashes": "shaders-final.log"
+  },
+  "limitations": [
+    "First 1-8 frames remain noisy; first frame receives fewer rays and worsens.",
+    "No path-traced reference: residual contains real gradients.",
+    "No equal-performance comparison with W298/SurfelGI.",
+    "No Windows/Vulkan, Linux, other-GPU or animated-scene runtime validation in this follow-up."
+  ],
+  "release_runtime_smoke": {
+    "deferred": {
+      "resolution": [
+        1280,
+        720
+      ],
+      "view": 25,
+      "frames": 100
+    },
+    "forward_plus": {
+      "resolution": [
+        960,
+        540
+      ],
+      "gi": false,
+      "frames": 100
+    },
+    "real_gpu_and_images_inspected": true,
+    "logs_clean": true,
+    "quality_or_performance_comparison": false
+  },
+  "gpu_ray_validation": {
+    "captures": 34,
+    "queries_per_capture": 2048,
+    "mismatches": 0,
+    "scope": "Final first and repeated startup/temporal captures; hardware ray query vs compute BVH"
+  }
+}

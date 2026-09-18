@@ -30,6 +30,11 @@ void main() {
 	if (s.anchor.z == 0u) {
 		return;
 	}
+	// Preserve uncertainty of the *unshared* ray batch. MSME variance below
+	// describes the pooled signal and must not decide whether pooling is needed.
+	vec3 innovation = sample_value.rgb - s.short_mean_vbbr.rgb;
+	float relative_variance = dot(innovation, innovation) / max(dot(s.short_mean_vbbr.rgb, s.short_mean_vbbr.rgb), 1e-6);
+	s.local_normal.w = mix(s.local_normal.w, min(relative_variance, 16.0), 0.1);
 	sample_value.rgb = shared_samples[id].rgb;
 	MSMEData data;
 	data.mean = s.irradiance_samples.rgb;
@@ -60,18 +65,30 @@ void main() {
 		// MSME already selects a variance-aware convergence rate and suppresses
 		// fireflies. Mixing the unfiltered batch in again imposed a permanent
 		// noise floor, even on a stationary surface with thousands of rays.
-		if (s.irradiance_samples.w < p.gi.w) {
-			// Bootstrap with a running mean so the first random batch does not
-			// leave a persistent bright/dark disk while MSME learns its variance.
+		if (s.irradiance_samples.w < min(p.gi.w * 8.0, 2048.0)) {
+			// A pooled signal can have low short-term variance while its initial
+			// mean is still wrong. Keep bootstrap responsive until enough actual
+			// rays have accumulated; do not freeze the first 256-ray realization
+			// at MSME's minimum blend. Let confidence grow with actual ray count
+			// instead of retaining a fixed short window throughout bootstrap.
 			vec3 bounded_sample = min(sample_value.rgb, data.shortMean + sqrt(max(data.variance, vec3(1e-5))) * 8.0 + 0.1);
-			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, sample_value.w / (s.irradiance_samples.w + sample_value.w));
+			// Neighbor reuse already contains integrated history. Account for it
+			// here too: otherwise 75% reused history makes fresh input four times
+			// weaker than its actual ray-count weight, delaying convergence.
+			float fresh_blend = max(1.0 / 256.0, sample_value.w / (s.irradiance_samples.w + sample_value.w));
+			float blend = fresh_blend / max(1.0 - shared_samples[id].w, 0.25);
+			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, min(blend, 1.0));
 		}
 		// Explicit scene changes shorten the long-term estimator, including all-off.
 		if (p.source_bvh_state.w > 0.5) {
 			// Preserve a per-frame decay after staggered updates. A constant 0.25
 			// per update otherwise doubles relighting lag when updating every other frame.
 			float elapsed = clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0);
-			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 1.0 - pow(0.75, elapsed));
+			// Spatial sharing already contains old lighting. Compensate so a
+			// uniform illumination step retains the same per-frame decay instead
+			// of silently doubling history when neighbor reuse is enabled.
+			float blend = (1.0 - pow(0.75, elapsed)) / max(1.0 - shared_samples[id].w, 0.25);
+			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, min(blend, 1.0));
 		}
 	}
 	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));
@@ -85,4 +102,5 @@ void main() {
 	surfels[id].variance_inconsistency = s.variance_inconsistency;
 	surfels[id].anchor.w = s.anchor.w;
 	surfels[id].barycentric.w = s.barycentric.w;
+	surfels[id].local_normal.w = s.local_normal.w;
 }

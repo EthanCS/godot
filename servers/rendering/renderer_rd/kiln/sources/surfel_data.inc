@@ -15,7 +15,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {

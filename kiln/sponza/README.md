@@ -3,7 +3,8 @@
 Indirect diffuse now always comes from the persistent surfel cache, with
 variance-driven irradiance sharing before MSME. Optional **NRD 4.17.3** handles
 cache diffuse through RELAX_DIFFUSE and the independent reflection signals;
-enabling it never starts a screen diffuse ray tracer.
+enabling it never starts a screen diffuse ray tracer. **NRD is off by default**;
+opt in with `--nrd`, `run.ps1 -NRD`, or the panel switch.
 The current sun/sky diffuse audit and measured limits are in
 [the GIBS review](../docs/SURFEL-GIBS-REVIEW-2026-09-17.md).
 The subsequent [reflection review](../docs/NRD-REFLECTIONS-2026-09-18.md) covers
@@ -15,6 +16,20 @@ metadata or manual generation step is required. See
 [implementation and verified scope](../docs/SURFEL-GI.md).
 
 ## Run
+
+On macOS, rebuild the native arm64 Metal editor, then launch the scene:
+
+~~~sh
+bash kiln/tools/build_macos.sh
+./kiln/sponza/run.command
+~~~
+
+You can also double-click `run.command` in Finder. It works from any working
+directory and uses the rebuilt `bin/godot.macos.editor.arm64` engine.
+Scene options are passed through, for example `./kiln/sponza/run.command --still`.
+Use `./kiln/sponza/run.command --forward-plus --still` for Forward+.
+For a fresh checkout, fetch assets with `python3 kiln/tools/fetch_sponza.py`, then
+import them with `bin/godot.macos.editor.arm64 --headless --editor --import --path kiln/sponza`.
 
 From the repository root:
 
@@ -31,7 +46,8 @@ import/export, never as visual validation.
 
 Space pauses the deterministic 1/60-second timeline. C toggles camera orbit;
 hold RMB and use WASD/QE to fly. G toggles GI; B toggles recursive multibounce.
-F1 shows indirect light, F2 G-buffer instance IDs, F3 geometric normals.
+F1 shows linear indirect diffuse values before material, AO and denoising;
+F2 shows G-buffer instance IDs, F3 geometric normals.
 The debug selector also exposes indirect specular (28). The TOD
 slider pauses the clock; Space resumes it. Default lighting is sun and sky only.
 The optional workload adds eight omni lights, four spots, four local shadows,
@@ -64,11 +80,14 @@ redistributes these requests by variance and caps primary diffuse rays at
 cache-miss continuation rays are additional work, included in measured time.
 `--raw-cache` disables screen/temporal diffuse reconstruction.
 `--no-irradiance-sharing` disables cache sharing for an independent comparison.
-Use `run.ps1 -NoSpecular` for diffuse with NRD; add `-NoNRD` for the original
-screen filter. `--nrd-diffuse-iterations=2..5` selects RELAX A-trous iterations
+Use `run.ps1 -NoSpecular -Still -DebugView 25` to inspect raw diffuse values;
+on macOS use `./kiln/sponza/run.command --no-specular --still --debug-view=25`.
+Add `-NRD` / `--nrd` to opt into the denoiser. `--nrd-diffuse-iterations=2..5` selects RELAX A-trous iterations
 (default 4). `--raw-cache` bypasses both post-filter paths.
 The [cache/NRD comparison](../docs/NRD-CACHE-DIFFUSE-2026-09-18.md) documents
 the input contract and measured quality/performance limitations.
+The [linear diffuse review](../docs/DIFFUSE-VALUES-2026-09-18.md) records the
+subsequent cache-sharing fix and direct numeric floor comparisons.
 On macOS, use the arm64 engine with `--rendering-driver metal`; supported Apple
 GPUs automatically select native Metal hardware ray queries. See
 [Metal requirements and validation](../docs/METAL-RAY-QUERY.md). `--software`

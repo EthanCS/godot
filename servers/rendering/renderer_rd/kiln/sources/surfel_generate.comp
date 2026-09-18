@@ -74,6 +74,6 @@ void main() {
 	vec3 geometric_normal = safe_normalize(cross(t.p1.xyz, t.p2.xyz));
 	vec3 tangent = safe_normalize(t.p1.xyz), bitangent = cross(geometric_normal, tangent);
 	s.barycentric = vec4((da * bb - db * ab) / denom, (db * aa - da * ab) / denom, dot(delta, geometric_normal), 0);
-	s.local_normal = vec4(dot(normal, tangent), dot(normal, bitangent), dot(normal, geometric_normal), 0);
+	s.local_normal = vec4(dot(normal, tangent), dot(normal, bitangent), dot(normal, geometric_normal), 1);
 	surfels[id] = s;
 }

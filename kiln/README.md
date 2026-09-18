@@ -77,6 +77,11 @@ MSME, guides rays and enforces a variance-weighted global primary-ray budget.
 The optional [NRD adapter](docs/NRD.md) now also processes full-resolution cache
 diffuse with RELAX_DIFFUSE, replacing the original screen reconstruction and
 temporal filter. It never replaces diffuse GI with screen-pixel ray tracing.
+NRD defaults to off. The [linear diffuse review](docs/DIFFUSE-VALUES-2026-09-18.md)
+records the subsequent cache-sharing revision using direct irradiance values.
+The [cold-cache convergence follow-up](docs/DIFFUSE-CONVERGENCE-2026-09-18.md)
+fixes false startup relighting and repeated history weighting, with early-frame
+raw-diffuse comparisons and explicit remaining startup noise.
 See the [cache/NRD comparison](docs/NRD-CACHE-DIFFUSE-2026-09-18.md) for measured
 benefits, regressions and cost. NRD has its own
 license; its SDK source is not vendored here. The figures above are historical;

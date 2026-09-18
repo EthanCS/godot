@@ -23,6 +23,8 @@ func run() -> void:
 	await scene.shot("still")
 	for i in 16:
 		await scene.settle(1)
+		if "--capture-diffuse-values" in OS.get_cmdline_user_args():
+			await scene.shot("temporal_%02d" % i)
 		scene.get_viewport().get_texture().get_image().save_png(scene.output.path_join("still_%02d.png" % i))
 	await scene.settle(704)
 	await scene.shot("converged")

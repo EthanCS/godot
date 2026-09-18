@@ -83,7 +83,7 @@ void main() {
 			metrics.w = contributors;
 		} else if (mode == 25u) {
 			vec3 value = texelFetch(raw_diffuse, pixel, 0).rgb;
-			color = 1.0 - exp(-value * p.debug.z);
+			color = value * p.debug.z;
 			metrics.w = luminance(value);
 		} else if (selected != INVALID_SURFEL) {
 			Surfel s = surfels[selected - 1u];

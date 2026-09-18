@@ -149,8 +149,9 @@ capture and Forward+ 960x540 smoke also run successfully. Accepted logs have no
 engine/script or Vulkan validation errors. Headless execution is used for export
 only, never as visual validation.
 
-For interactive diffuse use `kiln/sponza/run.ps1 -NoSpecular -Still`; add `-NoNRD`
-for the baseline. The engine toggle remains `rendering/kiln/nrd`; the default
+NRD now defaults off. For this report's NRD path use
+`kiln/sponza/run.ps1 -NoSpecular -NRD -Still`; omit `-NRD` for the baseline.
+The engine toggle remains `rendering/kiln/nrd`; the default
 diffuse iteration count is `rendering/kiln/nrd_diffuse_iterations=4` (range 2-5).
 
 ```powershell

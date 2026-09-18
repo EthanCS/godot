@@ -17,11 +17,13 @@ void main() {
 	if (id < SURFEL_CAPACITY) {
 		Surfel s = surfels[id];
 		bool changing = p.source_bvh_state.w > 0.5;
-		uint mask = changing ? 1u : (uint(p.size_frame.z) - s.anchor.y > 8u ? 15u : 3u);
+		float variance = s.local_normal.w;
+		// Sample count alone is not convergence. Noisy visible surfels must
+		// not become dormant merely because they have traced 256 rays.
+		uint mask = uint(p.size_frame.z) - s.anchor.y > 8u ? 15u : (changing || variance > 0.03 ? 0u : 3u);
 		bool scheduled = s.irradiance_samples.w < p.gi.w || ((id + uint(p.size_frame.z)) & mask) == 0u;
 		if (s.anchor.z != 0u && scheduled) {
 			nominal = uint(clamp(p.quality.x * 4.0, 4.0, 32.0));
-			float variance = dot(s.variance_inconsistency.rgb, vec3(1)) / max(dot(s.short_mean_vbbr.rgb, s.short_mean_vbbr.rgb), 1e-6);
 			float need = s.irradiance_samples.w < p.gi.w ? 1.0 : smoothstep(0.01, 0.25, variance);
 			weight = uint(round(float(nominal) * mix(0.5, 2.0, need)));
 		}

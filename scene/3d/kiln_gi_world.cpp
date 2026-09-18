@@ -643,6 +643,10 @@ void KilnGIWorld::_notification(int p_what) {
 		if (geometry_changed || material_hash != previous_material) {
 			uint32_t unused_hash = 0, unused_material = 0;
 			collect_roots(dynamic_pass, triangles, unused_hash, unused_material, true);
+			// The first scan may upload texture pages while hashing materials.
+			// Retain the hash of the completed capture, after those uploads;
+			// otherwise the next unchanged frame spuriously triggers relighting.
+			material_hash = unused_material;
 			if (geometry_changed) {
 				geometry = build(triangles);
 				version++;

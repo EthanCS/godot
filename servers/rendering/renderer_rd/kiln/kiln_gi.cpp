@@ -514,8 +514,13 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		// Keep the short lighting estimator active for a full motion window.
 		// Returning to 256-ray accumulation after only eight frames preserves
 		// a visible fraction of the previous illumination after lights turn off.
-		state->lighting_remaining = 32;
+		// An empty cache has no stale lighting to flush. Treating initial scene
+		// upload/reset as relighting kept the high-response estimator active
+		// for 32 frames, repeatedly discarding useful cold-start samples.
+		state->lighting_remaining = state->frames == 0 || changed_world ? 0 : 32;
 		state->epoch++;
+	} else if (state->frames == 0) {
+		state->lighting_remaining = 0;
 	} else if (state->lighting_remaining) {
 		state->lighting_remaining--;
 	}
@@ -552,7 +557,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	vec(world.world.bounds.size, state->slots);
 	int specular_rays = ProjectSettings::get_singleton()->get_setting("rendering/kiln/surfel_specular", true) ? CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/specular_rays", 2)), 1, 8) : 0;
 	int nrd_diffuse_iterations = CLAMP(int(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd_diffuse_iterations", 4)), 2, 5);
-	bool use_nrd = world.enabled && reconstruct_diffuse && KilnNRD::available() && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd", true));
+	bool use_nrd = world.enabled && reconstruct_diffuse && KilnNRD::available() && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd", false));
 	bool combined_specular = buffers->has_texture(SNAME("kiln_deferred"), SNAME("surface")) && specular_rays > 0 && bool(ProjectSettings::get_singleton()->get_setting("rendering/kiln/nrd_combined_specular", true));
 	if (use_nrd && state->nrd && (state->nrd_specular != (specular_rays > 0) || state->nrd_combined_specular != combined_specular)) {
 		memdelete(state->nrd);

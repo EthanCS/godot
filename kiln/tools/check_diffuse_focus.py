@@ -28,7 +28,7 @@ def spatial(root, shot='still', signal='raw'):
     mask = (x > w * .43) & (x < w * .59) & (y > h * .74) & (y < h * .94)
     mask &= (normal[:, :, 1] > .98) & (abs(normal[:, :, 3] - .18) < .01)
     assert mask.sum() > w * h * .015
-    light = rgb @ np.array([.2126, .7152, .0722])
+    light = (rgb * np.array([.2126, .7152, .0722])).sum(2)
     sigma = 8 * w / 960
     radius = int(sigma * 3)
     x = np.arange(-radius, radius + 1)
@@ -69,6 +69,9 @@ for path in sorted(args.directory.iterdir()):
     history = np.fromfile(path / 'sample_history.bin', '<f4').reshape(-1, 4)
     checks[name + '_finite_batches'] = bool(np.isfinite(shared[active]).all() and np.isfinite(history[active]).all())
     checks[name + '_nonnegative_batches'] = bool((shared[active, :3] >= 0).all() and (history[active, :3] >= 0).all())
+    for signal in ('raw', 'diffuse'):
+        value = np.fromfile(path / (signal + '.bin'), '<f2').reshape(h, w, 4)[:, :, :3]
+        checks[name + '_' + signal + '_finite_nonnegative'] = bool(np.isfinite(value).all() and (value >= 0).all())
     if not m['surfel_reconstruction']:
         raw = np.fromfile(path / 'raw.bin', '<f2').reshape(h, w, 4)
         diffuse = np.fromfile(path / 'diffuse.bin', '<f2').reshape(h, w, 4)

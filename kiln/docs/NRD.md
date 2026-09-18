@@ -71,8 +71,8 @@ another pinned SDK checkout; `kiln_nrd=no` builds without it. Its license and
 dependency notices remain in the SDK directory. Build scripts never publish it.
 
 `rendering/kiln/nrd=true` enables NRD when the compiled SDK and Vulkan are present.
-Sponza defaults to that path; use `kiln/sponza/run.ps1 -Still` to inspect it.
-Use `-NoNRD` (CLI `--no-nrd`) for the retained cache/filter baseline. Captures and
+NRD defaults to **off**; use `kiln/sponza/run.ps1 -NRD -Still` to opt in.
+`-NoNRD` (CLI `--no-nrd`) remains an explicit override. Captures and
 runtime statistics report actual `nrd_active`, version and diffuse ray count;
 requesting NRD does not imply it is available on a different build/backend.
 

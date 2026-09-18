@@ -34,7 +34,7 @@ const DEBUG_VIEWS = {
     22: ["Surfel coverage", "Red: no support. Yellow: below 0.65 allocation target. Green: covered. Blue: weight sum >= 2."],
     23: ["Surfel contributors", "Compatible neighbors per pixel. Blue 1 -> green 16 -> red 32+. Magenta: none."],
     24: ["Surfel variance", "MSME relative deviation: sqrt(variance) / max(short mean, 0.01). Blue 0 -> green 2 -> red 4+."],
-    25: ["Raw GI gather", "Full-resolution cache gather before temporal resolve, material reflectance and AO. Uses display gain."],
+    25: ["Indirect diffuse values", "Linear irradiance / PI x gain. Before material, AO, denoising and tone mapping. F1 toggles this view."],
     26: ["Surfel grid levels", "Dominant surfel cell: blue 0.25 m / green 0.50 m / orange 1 m. Lines show world-grid boundaries."],
     27: ["Surfel anchors", "Blue: original static triangles. Orange: original dynamic triangles. No simplified proxy mesh."],
     13: ["Instance IDs", "G-buffer draw-instance IDs."],
@@ -305,7 +305,7 @@ func _build_debug_controls() -> void:
 	for setting in ["surfel_specular", "nrd"]:
 		var toggle := CheckButton.new()
 		toggle.text = "Indirect specular" if setting == "surfel_specular" else "NRD denoising"
-		toggle.button_pressed = ProjectSettings.get_setting("rendering/kiln/" + setting, true)
+		toggle.button_pressed = ProjectSettings.get_setting("rendering/kiln/" + setting, setting != "nrd")
 		toggle.toggled.connect(func(enabled: bool): ProjectSettings.set_setting("rendering/kiln/" + setting, enabled))
 		column.add_child(toggle)
 	for property in ["surfel_debug_radius", "surfel_debug_gain"]:
@@ -438,7 +438,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_SPACE: animate = not animate
 			KEY_C: orbit = not orbit
 			KEY_F1:
-				_set_debug_view(7 if debug_mode != 7 else 0)
+				_set_debug_view(25 if debug_mode != 25 else 0)
 			KEY_ESCAPE:
 				free_camera = false
 				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

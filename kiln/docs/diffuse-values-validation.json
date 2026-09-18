@@ -1,0 +1,1058 @@
+{
+  "numeric_comparison": {
+    "scope": "Linear irradiance/pi before material, AO, exposure, tonemapping and final TAA. Residual includes real gradients; no path-traced reference.",
+    "measurements": {
+      "still_raw": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.04402085815223365,
+            "relative_residual": 0.030579459978257062,
+            "pixels": 65673
+          },
+          "after": {
+            "mean": 0.04448061768106012,
+            "relative_residual": 0.017263290729817683,
+            "pixels": 65673
+          },
+          "residual_reduction": 0.4354612297897865,
+          "energy_ratio": 1.0104441291725055
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.0494834852664505,
+            "relative_residual": 0.022954086458072977,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.050042673336643896,
+            "relative_residual": 0.007892089586196945,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.6561793212458129,
+          "energy_ratio": 1.011300498887303
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.04402085815223365,
+            "relative_residual": 0.04352055768501286,
+            "pixels": 65673
+          },
+          "after": {
+            "mean": 0.04448061768106012,
+            "relative_residual": 0.02498667439944923,
+            "pixels": 65673
+          },
+          "residual_reduction": 0.425865022679756,
+          "energy_ratio": 1.0104441291725055
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.0494834852664505,
+            "relative_residual": 0.053013193655646336,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.050042673336643896,
+            "relative_residual": 0.04658627107604863,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.12123251093575993,
+          "energy_ratio": 1.011300498887303
+        }
+      },
+      "still_diffuse": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.04394545107512099,
+            "relative_residual": 0.028024769173850824,
+            "pixels": 65673
+          },
+          "after": {
+            "mean": 0.04442111159962099,
+            "relative_residual": 0.017068107806561893,
+            "pixels": 65673
+          },
+          "residual_reduction": 0.39096348302887374,
+          "energy_ratio": 1.0108238853593037
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.049389339647730256,
+            "relative_residual": 0.021092896318331493,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.049981658677097154,
+            "relative_residual": 0.007285686863081622,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.6545904956281536,
+          "energy_ratio": 1.0119928517690582
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.04394545107512099,
+            "relative_residual": 0.04142248407973502,
+            "pixels": 65673
+          },
+          "after": {
+            "mean": 0.04442111159962099,
+            "relative_residual": 0.024561658821027562,
+            "pixels": 65673
+          },
+          "residual_reduction": 0.40704524688214494,
+          "energy_ratio": 1.0108238853593037
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.049389339647730256,
+            "relative_residual": 0.05151845882180884,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.049981658677097154,
+            "relative_residual": 0.04583005054884155,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.11041495423304981,
+          "energy_ratio": 1.0119928517690582
+        }
+      },
+      "converged_raw": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.04449793947643561,
+            "relative_residual": 0.02055646907981272,
+            "pixels": 65668
+          },
+          "after": {
+            "mean": 0.044490209747768024,
+            "relative_residual": 0.01694328089906372,
+            "pixels": 65668
+          },
+          "residual_reduction": 0.17576891083387935,
+          "energy_ratio": 0.9998262901887472
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.05012394941524563,
+            "relative_residual": 0.01047819759350578,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04996181882942118,
+            "relative_residual": 0.006668459067015504,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.3635872002310294,
+          "energy_ratio": 0.9967654068022195
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.04449793947643561,
+            "relative_residual": 0.02901243438868316,
+            "pixels": 65668
+          },
+          "after": {
+            "mean": 0.044490209747768024,
+            "relative_residual": 0.024552775337415924,
+            "pixels": 65668
+          },
+          "residual_reduction": 0.15371543771614038,
+          "energy_ratio": 0.9998262901887472
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.05012394941524563,
+            "relative_residual": 0.04783841931745405,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04996181882942118,
+            "relative_residual": 0.04622934344231627,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.03363564051855483,
+          "energy_ratio": 0.9967654068022195
+        }
+      },
+      "converged_diffuse": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.044410239210150276,
+            "relative_residual": 0.01958739373078427,
+            "pixels": 65668
+          },
+          "after": {
+            "mean": 0.04439233976169997,
+            "relative_residual": 0.016831865427700633,
+            "pixels": 65668
+          },
+          "residual_reduction": 0.1406786600073775,
+          "energy_ratio": 0.9995969522171316
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.05002222457528835,
+            "relative_residual": 0.009547408385884198,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04985667133436422,
+            "relative_residual": 0.006290171697785856,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.3411644874135846,
+          "energy_ratio": 0.9966904062678189
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.044410239210150276,
+            "relative_residual": 0.02792942614277268,
+            "pixels": 65668
+          },
+          "after": {
+            "mean": 0.04439233976169997,
+            "relative_residual": 0.02414192715214673,
+            "pixels": 65668
+          },
+          "residual_reduction": 0.13560962446076053,
+          "energy_ratio": 0.9995969522171316
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.05002222457528835,
+            "relative_residual": 0.04695797506092931,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04985667133436422,
+            "relative_residual": 0.0456492386057082,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.027870376725635748,
+          "energy_ratio": 0.9966904062678189
+        }
+      },
+      "returned_raw": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.04452683844025553,
+            "relative_residual": 0.02958763388024051,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.044583536102577453,
+            "relative_residual": 0.01943674497914211,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.3430787653445131,
+          "energy_ratio": 1.001273336807822
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.0499308950256766,
+            "relative_residual": 0.019187888841571563,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04988635316929007,
+            "relative_residual": 0.01006535683817716,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.4754317725475854,
+          "energy_ratio": 0.9991079299427013
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.04452683844025553,
+            "relative_residual": 0.03856604726062966,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.044583536102577453,
+            "relative_residual": 0.02829538340565833,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.26631362518336665,
+          "energy_ratio": 1.001273336807822
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.0499308950256766,
+            "relative_residual": 0.05025491548469791,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04988635316929007,
+            "relative_residual": 0.04919656444227207,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.02105965221945494,
+          "energy_ratio": 0.9991079299427013
+        }
+      },
+      "returned_diffuse": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.04444788014661352,
+            "relative_residual": 0.0261402326862827,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.044509876808392336,
+            "relative_residual": 0.01891502738239226,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.2764017210788611,
+          "energy_ratio": 1.001394817066063
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.049831935156857965,
+            "relative_residual": 0.016762392407231035,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04979469409424189,
+            "relative_residual": 0.00949788744329993,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.43338115392151966,
+          "energy_ratio": 0.9992526667387319
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.04444788014661352,
+            "relative_residual": 0.03559807929280359,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.044509876808392336,
+            "relative_residual": 0.027575391822465777,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.2253685488014422,
+          "energy_ratio": 1.001394817066063
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.049831935156857965,
+            "relative_residual": 0.04889189995182641,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.04979469409424189,
+            "relative_residual": 0.048561715892996585,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.00675334890145729,
+          "energy_ratio": 0.9992526667387319
+        }
+      },
+      "sunset_raw": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.004277999099730748,
+            "relative_residual": 0.0610409073138715,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.004256965139998721,
+            "relative_residual": 0.05477989906157631,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.10257069443776723,
+          "energy_ratio": 0.9950832248343972
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.0039914586977254215,
+            "relative_residual": 0.058151940529755274,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.004021008142592974,
+            "relative_residual": 0.04371535869680243,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.24825623532831054,
+          "energy_ratio": 1.0074031693937837
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.004277999099730748,
+            "relative_residual": 0.09055730982327367,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.004256965139998721,
+            "relative_residual": 0.08117133340812786,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.1036468114331458,
+          "energy_ratio": 0.9950832248343972
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.0039914586977254215,
+            "relative_residual": 0.08860637076176518,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.004021008142592974,
+            "relative_residual": 0.07184772876533863,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.18913585843037517,
+          "energy_ratio": 1.0074031693937837
+        }
+      },
+      "sunset_diffuse": {
+        "historical_sigma8": {
+          "before": {
+            "mean": 0.004281855319410051,
+            "relative_residual": 0.05456989133704492,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.004255793910372749,
+            "relative_residual": 0.049150627786630846,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.09930867402580279,
+          "energy_ratio": 0.9939135241400702
+        },
+        "interior_sigma8": {
+          "before": {
+            "mean": 0.003992339362888539,
+            "relative_residual": 0.05255570368186059,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.004022901560584293,
+            "relative_residual": 0.040105413110320044,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.23689703874781753,
+          "energy_ratio": 1.0076552103711047
+        },
+        "historical_sigma24": {
+          "before": {
+            "mean": 0.004281855319410051,
+            "relative_residual": 0.08494402344055146,
+            "pixels": 65672
+          },
+          "after": {
+            "mean": 0.004255793910372749,
+            "relative_residual": 0.07609600671161951,
+            "pixels": 65672
+          },
+          "residual_reduction": 0.10416291070936012,
+          "energy_ratio": 0.9939135241400702
+        },
+        "interior_sigma24": {
+          "before": {
+            "mean": 0.003992339362888539,
+            "relative_residual": 0.08358930652943819,
+            "pixels": 59512
+          },
+          "after": {
+            "mean": 0.004022901560584293,
+            "relative_residual": 0.06856717011535286,
+            "pixels": 59512
+          },
+          "residual_reduction": 0.1797136145494267,
+          "energy_ratio": 1.0076552103711047
+        }
+      }
+    },
+    "historical_filtered_35pct_gate": true,
+    "temporal": {
+      "raw": {
+        "before_relative_std": 0.0027245954931032217,
+        "after_relative_std": 0.0031259092425827664,
+        "reduction": -0.14729296532105107
+      },
+      "diffuse": {
+        "before_relative_std": 0.0024515690501240913,
+        "after_relative_std": 0.0028300394893392964,
+        "reduction": -0.1543788616502757
+      }
+    }
+  },
+  "focused": {
+    "passed": true,
+    "checks": {
+      "converged_diffuse_only": true,
+      "converged_sun_sky_only": true,
+      "converged_coverage": true,
+      "converged_actual_ray_count": true,
+      "converged_ray_limit": true,
+      "converged_budget": true,
+      "converged_schedule_prefix": true,
+      "converged_finite_batches": true,
+      "converged_nonnegative_batches": true,
+      "converged_raw_finite_nonnegative": true,
+      "converged_diffuse_finite_nonnegative": true,
+      "motion_000_diffuse_only": true,
+      "motion_000_sun_sky_only": true,
+      "motion_000_coverage": true,
+      "motion_000_actual_ray_count": true,
+      "motion_000_ray_limit": true,
+      "motion_000_budget": true,
+      "motion_000_schedule_prefix": true,
+      "motion_000_finite_batches": true,
+      "motion_000_nonnegative_batches": true,
+      "motion_000_raw_finite_nonnegative": true,
+      "motion_000_diffuse_finite_nonnegative": true,
+      "motion_045_diffuse_only": true,
+      "motion_045_sun_sky_only": true,
+      "motion_045_coverage": true,
+      "motion_045_actual_ray_count": true,
+      "motion_045_ray_limit": true,
+      "motion_045_budget": true,
+      "motion_045_schedule_prefix": true,
+      "motion_045_finite_batches": true,
+      "motion_045_nonnegative_batches": true,
+      "motion_045_raw_finite_nonnegative": true,
+      "motion_045_diffuse_finite_nonnegative": true,
+      "motion_090_diffuse_only": true,
+      "motion_090_sun_sky_only": true,
+      "motion_090_coverage": true,
+      "motion_090_actual_ray_count": true,
+      "motion_090_ray_limit": true,
+      "motion_090_budget": true,
+      "motion_090_schedule_prefix": true,
+      "motion_090_finite_batches": true,
+      "motion_090_nonnegative_batches": true,
+      "motion_090_raw_finite_nonnegative": true,
+      "motion_090_diffuse_finite_nonnegative": true,
+      "motion_135_diffuse_only": true,
+      "motion_135_sun_sky_only": true,
+      "motion_135_coverage": true,
+      "motion_135_actual_ray_count": true,
+      "motion_135_ray_limit": true,
+      "motion_135_budget": true,
+      "motion_135_schedule_prefix": true,
+      "motion_135_finite_batches": true,
+      "motion_135_nonnegative_batches": true,
+      "motion_135_raw_finite_nonnegative": true,
+      "motion_135_diffuse_finite_nonnegative": true,
+      "motion_end_diffuse_only": true,
+      "motion_end_sun_sky_only": true,
+      "motion_end_coverage": true,
+      "motion_end_actual_ray_count": true,
+      "motion_end_ray_limit": true,
+      "motion_end_budget": true,
+      "motion_end_schedule_prefix": true,
+      "motion_end_finite_batches": true,
+      "motion_end_nonnegative_batches": true,
+      "motion_end_raw_finite_nonnegative": true,
+      "motion_end_diffuse_finite_nonnegative": true,
+      "odd_resize_diffuse_only": true,
+      "odd_resize_sun_sky_only": true,
+      "odd_resize_coverage": true,
+      "odd_resize_actual_ray_count": true,
+      "odd_resize_ray_limit": true,
+      "odd_resize_budget": true,
+      "odd_resize_schedule_prefix": true,
+      "odd_resize_finite_batches": true,
+      "odd_resize_nonnegative_batches": true,
+      "odd_resize_raw_finite_nonnegative": true,
+      "odd_resize_diffuse_finite_nonnegative": true,
+      "resize_restored_diffuse_only": true,
+      "resize_restored_sun_sky_only": true,
+      "resize_restored_coverage": true,
+      "resize_restored_actual_ray_count": true,
+      "resize_restored_ray_limit": true,
+      "resize_restored_budget": true,
+      "resize_restored_schedule_prefix": true,
+      "resize_restored_finite_batches": true,
+      "resize_restored_nonnegative_batches": true,
+      "resize_restored_raw_finite_nonnegative": true,
+      "resize_restored_diffuse_finite_nonnegative": true,
+      "returned_diffuse_only": true,
+      "returned_sun_sky_only": true,
+      "returned_coverage": true,
+      "returned_actual_ray_count": true,
+      "returned_ray_limit": true,
+      "returned_budget": true,
+      "returned_schedule_prefix": true,
+      "returned_finite_batches": true,
+      "returned_nonnegative_batches": true,
+      "returned_raw_finite_nonnegative": true,
+      "returned_diffuse_finite_nonnegative": true,
+      "still_diffuse_only": true,
+      "still_sun_sky_only": true,
+      "still_coverage": true,
+      "still_actual_ray_count": true,
+      "still_ray_limit": true,
+      "still_budget": true,
+      "still_schedule_prefix": true,
+      "still_finite_batches": true,
+      "still_nonnegative_batches": true,
+      "still_raw_finite_nonnegative": true,
+      "still_diffuse_finite_nonnegative": true,
+      "sunset_diffuse_only": true,
+      "sunset_sun_sky_only": true,
+      "sunset_coverage": true,
+      "sunset_actual_ray_count": true,
+      "sunset_ray_limit": true,
+      "sunset_budget": true,
+      "sunset_schedule_prefix": true,
+      "sunset_finite_batches": true,
+      "sunset_nonnegative_batches": true,
+      "sunset_raw_finite_nonnegative": true,
+      "sunset_diffuse_finite_nonnegative": true,
+      "temporal_00_diffuse_only": true,
+      "temporal_00_sun_sky_only": true,
+      "temporal_00_coverage": true,
+      "temporal_00_actual_ray_count": true,
+      "temporal_00_ray_limit": true,
+      "temporal_00_budget": true,
+      "temporal_00_schedule_prefix": true,
+      "temporal_00_finite_batches": true,
+      "temporal_00_nonnegative_batches": true,
+      "temporal_00_raw_finite_nonnegative": true,
+      "temporal_00_diffuse_finite_nonnegative": true,
+      "temporal_01_diffuse_only": true,
+      "temporal_01_sun_sky_only": true,
+      "temporal_01_coverage": true,
+      "temporal_01_actual_ray_count": true,
+      "temporal_01_ray_limit": true,
+      "temporal_01_budget": true,
+      "temporal_01_schedule_prefix": true,
+      "temporal_01_finite_batches": true,
+      "temporal_01_nonnegative_batches": true,
+      "temporal_01_raw_finite_nonnegative": true,
+      "temporal_01_diffuse_finite_nonnegative": true,
+      "temporal_02_diffuse_only": true,
+      "temporal_02_sun_sky_only": true,
+      "temporal_02_coverage": true,
+      "temporal_02_actual_ray_count": true,
+      "temporal_02_ray_limit": true,
+      "temporal_02_budget": true,
+      "temporal_02_schedule_prefix": true,
+      "temporal_02_finite_batches": true,
+      "temporal_02_nonnegative_batches": true,
+      "temporal_02_raw_finite_nonnegative": true,
+      "temporal_02_diffuse_finite_nonnegative": true,
+      "temporal_03_diffuse_only": true,
+      "temporal_03_sun_sky_only": true,
+      "temporal_03_coverage": true,
+      "temporal_03_actual_ray_count": true,
+      "temporal_03_ray_limit": true,
+      "temporal_03_budget": true,
+      "temporal_03_schedule_prefix": true,
+      "temporal_03_finite_batches": true,
+      "temporal_03_nonnegative_batches": true,
+      "temporal_03_raw_finite_nonnegative": true,
+      "temporal_03_diffuse_finite_nonnegative": true,
+      "temporal_04_diffuse_only": true,
+      "temporal_04_sun_sky_only": true,
+      "temporal_04_coverage": true,
+      "temporal_04_actual_ray_count": true,
+      "temporal_04_ray_limit": true,
+      "temporal_04_budget": true,
+      "temporal_04_schedule_prefix": true,
+      "temporal_04_finite_batches": true,
+      "temporal_04_nonnegative_batches": true,
+      "temporal_04_raw_finite_nonnegative": true,
+      "temporal_04_diffuse_finite_nonnegative": true,
+      "temporal_05_diffuse_only": true,
+      "temporal_05_sun_sky_only": true,
+      "temporal_05_coverage": true,
+      "temporal_05_actual_ray_count": true,
+      "temporal_05_ray_limit": true,
+      "temporal_05_budget": true,
+      "temporal_05_schedule_prefix": true,
+      "temporal_05_finite_batches": true,
+      "temporal_05_nonnegative_batches": true,
+      "temporal_05_raw_finite_nonnegative": true,
+      "temporal_05_diffuse_finite_nonnegative": true,
+      "temporal_06_diffuse_only": true,
+      "temporal_06_sun_sky_only": true,
+      "temporal_06_coverage": true,
+      "temporal_06_actual_ray_count": true,
+      "temporal_06_ray_limit": true,
+      "temporal_06_budget": true,
+      "temporal_06_schedule_prefix": true,
+      "temporal_06_finite_batches": true,
+      "temporal_06_nonnegative_batches": true,
+      "temporal_06_raw_finite_nonnegative": true,
+      "temporal_06_diffuse_finite_nonnegative": true,
+      "temporal_07_diffuse_only": true,
+      "temporal_07_sun_sky_only": true,
+      "temporal_07_coverage": true,
+      "temporal_07_actual_ray_count": true,
+      "temporal_07_ray_limit": true,
+      "temporal_07_budget": true,
+      "temporal_07_schedule_prefix": true,
+      "temporal_07_finite_batches": true,
+      "temporal_07_nonnegative_batches": true,
+      "temporal_07_raw_finite_nonnegative": true,
+      "temporal_07_diffuse_finite_nonnegative": true,
+      "temporal_08_diffuse_only": true,
+      "temporal_08_sun_sky_only": true,
+      "temporal_08_coverage": true,
+      "temporal_08_actual_ray_count": true,
+      "temporal_08_ray_limit": true,
+      "temporal_08_budget": true,
+      "temporal_08_schedule_prefix": true,
+      "temporal_08_finite_batches": true,
+      "temporal_08_nonnegative_batches": true,
+      "temporal_08_raw_finite_nonnegative": true,
+      "temporal_08_diffuse_finite_nonnegative": true,
+      "temporal_09_diffuse_only": true,
+      "temporal_09_sun_sky_only": true,
+      "temporal_09_coverage": true,
+      "temporal_09_actual_ray_count": true,
+      "temporal_09_ray_limit": true,
+      "temporal_09_budget": true,
+      "temporal_09_schedule_prefix": true,
+      "temporal_09_finite_batches": true,
+      "temporal_09_nonnegative_batches": true,
+      "temporal_09_raw_finite_nonnegative": true,
+      "temporal_09_diffuse_finite_nonnegative": true,
+      "temporal_10_diffuse_only": true,
+      "temporal_10_sun_sky_only": true,
+      "temporal_10_coverage": true,
+      "temporal_10_actual_ray_count": true,
+      "temporal_10_ray_limit": true,
+      "temporal_10_budget": true,
+      "temporal_10_schedule_prefix": true,
+      "temporal_10_finite_batches": true,
+      "temporal_10_nonnegative_batches": true,
+      "temporal_10_raw_finite_nonnegative": true,
+      "temporal_10_diffuse_finite_nonnegative": true,
+      "temporal_11_diffuse_only": true,
+      "temporal_11_sun_sky_only": true,
+      "temporal_11_coverage": true,
+      "temporal_11_actual_ray_count": true,
+      "temporal_11_ray_limit": true,
+      "temporal_11_budget": true,
+      "temporal_11_schedule_prefix": true,
+      "temporal_11_finite_batches": true,
+      "temporal_11_nonnegative_batches": true,
+      "temporal_11_raw_finite_nonnegative": true,
+      "temporal_11_diffuse_finite_nonnegative": true,
+      "temporal_12_diffuse_only": true,
+      "temporal_12_sun_sky_only": true,
+      "temporal_12_coverage": true,
+      "temporal_12_actual_ray_count": true,
+      "temporal_12_ray_limit": true,
+      "temporal_12_budget": true,
+      "temporal_12_schedule_prefix": true,
+      "temporal_12_finite_batches": true,
+      "temporal_12_nonnegative_batches": true,
+      "temporal_12_raw_finite_nonnegative": true,
+      "temporal_12_diffuse_finite_nonnegative": true,
+      "temporal_13_diffuse_only": true,
+      "temporal_13_sun_sky_only": true,
+      "temporal_13_coverage": true,
+      "temporal_13_actual_ray_count": true,
+      "temporal_13_ray_limit": true,
+      "temporal_13_budget": true,
+      "temporal_13_schedule_prefix": true,
+      "temporal_13_finite_batches": true,
+      "temporal_13_nonnegative_batches": true,
+      "temporal_13_raw_finite_nonnegative": true,
+      "temporal_13_diffuse_finite_nonnegative": true,
+      "temporal_14_diffuse_only": true,
+      "temporal_14_sun_sky_only": true,
+      "temporal_14_coverage": true,
+      "temporal_14_actual_ray_count": true,
+      "temporal_14_ray_limit": true,
+      "temporal_14_budget": true,
+      "temporal_14_schedule_prefix": true,
+      "temporal_14_finite_batches": true,
+      "temporal_14_nonnegative_batches": true,
+      "temporal_14_raw_finite_nonnegative": true,
+      "temporal_14_diffuse_finite_nonnegative": true,
+      "temporal_15_diffuse_only": true,
+      "temporal_15_sun_sky_only": true,
+      "temporal_15_coverage": true,
+      "temporal_15_actual_ray_count": true,
+      "temporal_15_ray_limit": true,
+      "temporal_15_budget": true,
+      "temporal_15_schedule_prefix": true,
+      "temporal_15_finite_batches": true,
+      "temporal_15_nonnegative_batches": true,
+      "temporal_15_raw_finite_nonnegative": true,
+      "temporal_15_diffuse_finite_nonnegative": true,
+      "odd_dimensions": true,
+      "cache_converges": true,
+      "stationary_display_stability": true
+    },
+    "measurements": {
+      "converged": {
+        "coverage": 0.9999873193495021,
+        "primary_rays": 196608,
+        "nominal_rays": 307344,
+        "surfel_alive": 38486
+      },
+      "motion_000": {
+        "coverage": 0.9999151234417347,
+        "primary_rays": 196608,
+        "nominal_rays": 351896,
+        "surfel_alive": 44062
+      },
+      "motion_045": {
+        "coverage": 0.9999995177469135,
+        "primary_rays": 192680,
+        "nominal_rays": 192680,
+        "surfel_alive": 59803
+      },
+      "motion_090": {
+        "coverage": 0.9999397183641975,
+        "primary_rays": 196608,
+        "nominal_rays": 315288,
+        "surfel_alive": 89049
+      },
+      "motion_135": {
+        "coverage": 0.9999980709876544,
+        "primary_rays": 196608,
+        "nominal_rays": 432632,
+        "surfel_alive": 106678
+      },
+      "motion_end": {
+        "coverage": 0.9999628665123457,
+        "primary_rays": 196608,
+        "nominal_rays": 209112,
+        "surfel_alive": 124982
+      },
+      "odd_resize": {
+        "coverage": 0.9999902743602961,
+        "primary_rays": 158047,
+        "nominal_rays": 158048,
+        "surfel_alive": 19801
+      },
+      "resize_restored": {
+        "coverage": 0.999995122607883,
+        "primary_rays": 196608,
+        "nominal_rays": 307456,
+        "surfel_alive": 38508
+      },
+      "returned": {
+        "coverage": 0.9999926842864814,
+        "primary_rays": 196608,
+        "nominal_rays": 469400,
+        "surfel_alive": 124093
+      },
+      "still": {
+        "coverage": 0.9999878066802809,
+        "primary_rays": 196608,
+        "nominal_rays": 307288,
+        "surfel_alive": 38486
+      },
+      "sunset": {
+        "coverage": 0.9999868317156665,
+        "primary_rays": 196608,
+        "nominal_rays": 615712,
+        "surfel_alive": 38486
+      },
+      "temporal_00": {
+        "coverage": 0.9999858555973548,
+        "primary_rays": 196608,
+        "nominal_rays": 307376,
+        "surfel_alive": 38486
+      },
+      "temporal_01": {
+        "coverage": 0.9999868309449382,
+        "primary_rays": 196607,
+        "nominal_rays": 307336,
+        "surfel_alive": 38486
+      },
+      "temporal_02": {
+        "coverage": 0.9999887821294444,
+        "primary_rays": 196608,
+        "nominal_rays": 307304,
+        "surfel_alive": 38486
+      },
+      "temporal_03": {
+        "coverage": 0.9999878065197076,
+        "primary_rays": 196607,
+        "nominal_rays": 307256,
+        "surfel_alive": 38486
+      },
+      "temporal_04": {
+        "coverage": 0.9999868318312679,
+        "primary_rays": 196608,
+        "nominal_rays": 307328,
+        "surfel_alive": 38486
+      },
+      "temporal_05": {
+        "coverage": 0.9999873193495021,
+        "primary_rays": 196608,
+        "nominal_rays": 307344,
+        "surfel_alive": 38486
+      },
+      "temporal_06": {
+        "coverage": 0.9999902454869526,
+        "primary_rays": 196608,
+        "nominal_rays": 307320,
+        "surfel_alive": 38486
+      },
+      "temporal_07": {
+        "coverage": 0.9999868317156665,
+        "primary_rays": 196608,
+        "nominal_rays": 307296,
+        "surfel_alive": 38486
+      },
+      "temporal_08": {
+        "coverage": 0.9999882947327761,
+        "primary_rays": 196608,
+        "nominal_rays": 307336,
+        "surfel_alive": 38486
+      },
+      "temporal_09": {
+        "coverage": 0.9999882952579701,
+        "primary_rays": 196608,
+        "nominal_rays": 307312,
+        "surfel_alive": 38486
+      },
+      "temporal_10": {
+        "coverage": 0.9999897582857906,
+        "primary_rays": 196608,
+        "nominal_rays": 307344,
+        "surfel_alive": 38486
+      },
+      "temporal_11": {
+        "coverage": 0.9999917090601927,
+        "primary_rays": 196608,
+        "nominal_rays": 307336,
+        "surfel_alive": 38486
+      },
+      "temporal_12": {
+        "coverage": 0.9999897583657082,
+        "primary_rays": 196608,
+        "nominal_rays": 307328,
+        "surfel_alive": 38486
+      },
+      "temporal_13": {
+        "coverage": 0.9999921967891738,
+        "primary_rays": 196607,
+        "nominal_rays": 307304,
+        "surfel_alive": 38486
+      },
+      "temporal_14": {
+        "coverage": 0.9999824425187572,
+        "primary_rays": 196608,
+        "nominal_rays": 307336,
+        "surfel_alive": 38486
+      },
+      "temporal_15": {
+        "coverage": 0.9999878066802809,
+        "primary_rays": 196608,
+        "nominal_rays": 307344,
+        "surfel_alive": 38486
+      },
+      "still_spatial": {
+        "mean": 0.04448061768106012,
+        "relative_residual": 0.017263290729817683,
+        "width": 1920,
+        "height": 1080
+      },
+      "converged_spatial": {
+        "mean": 0.044490209747768024,
+        "relative_residual": 0.01694328089906372,
+        "width": 1920,
+        "height": 1080
+      },
+      "display_temporal_std": 0.0007178690284490585
+    },
+    "scope": "Real GPU sun/sky diffuse only; primary budget excludes shadow/continuation rays. Spatial residual includes real gradients; display stability includes TAA."
+  },
+  "grid": {
+    "passed": true,
+    "alive": 89049,
+    "references": 504981,
+    "brute_force_queries": 2048,
+    "maximum_bucket": 209
+  },
+  "response": {
+    "passed": true,
+    "checks": {
+      "day_finite_nonnegative": true,
+      "day_nrd_off": true,
+      "off_8_finite_nonnegative": true,
+      "off_8_nrd_off": true,
+      "off_32_finite_nonnegative": true,
+      "off_32_nrd_off": true,
+      "off_128_finite_nonnegative": true,
+      "off_128_nrd_off": true,
+      "restored_32_finite_nonnegative": true,
+      "restored_32_nrd_off": true,
+      "restored_128_finite_nonnegative": true,
+      "restored_128_nrd_off": true,
+      "linear_view_finite_nonnegative": true,
+      "linear_view_nrd_off": true,
+      "linear_debug_matches_values": true,
+      "off32_below_1pct": true,
+      "off128_below_0_1pct": true,
+      "restored128_within_5pct": true
+    },
+    "floor_mean": {
+      "day": 0.05007541122262173,
+      "off_8": 0.00434607533243238,
+      "off_32": 1.0508032888474525e-05,
+      "off_128": 1.0473949256355459e-05,
+      "restored_32": 0.05030131338073098,
+      "restored_128": 0.05021493892759418,
+      "linear_view": 0.04980581921150421
+    }
+  },
+  "hardware": "Apple M5",
+  "os": "macOS 26.6.2",
+  "backend": "Metal 4.0 hardware ray query",
+  "capture_root": "/tmp/kiln-blotches-20260918",
+  "source_base": "d892937a7752697d4f9ce3fad37058bdd4a3b52e",
+  "upstream": "ed1daf0bf001b61586d9930840f2f1394092c079",
+  "reference_repository_commit": "8361942f7d799632b32d37356b8057814456a8a2",
+  "compiled": [
+    "macOS arm64 editor",
+    "macOS arm64 template_release",
+    "all native GLSL/SPIR-V variants"
+  ],
+  "not_validated": [
+    "Windows/Vulkan real GPU",
+    "Linux",
+    "AMD/Intel/NVIDIA GPU",
+    "active NRD",
+    "local/emissive workloads",
+    "performance target",
+    "full reflection quality"
+  ],
+  "binaries": {
+    "bin/godot.macos.editor.arm64": "7ddbbf54daf3dcf1c0241976330ae47704f51ca665eff312e787868ad23df62d",
+    "bin/godot.macos.template_release.arm64": "f5336fdc649a2fce65d94f648001664a8bc2d0d99123c186b20cecee5d0ea8c6"
+  },
+  "release_runtime": {
+    "forward_plus": {
+      "rendered": true,
+      "backend": "Metal hardware ray query",
+      "size": [
+        960,
+        540
+      ],
+      "capture": "/tmp/kiln-blotches-20260918/template-forward/final"
+    },
+    "kiln_deferred": {
+      "rendered": true,
+      "backend": "hardware_ray_query",
+      "size": [
+        1280,
+        720
+      ],
+      "linear_debug_matches_raw": true,
+      "nrd_active": false,
+      "capture": "/tmp/kiln-blotches-20260918/template-deferred/final"
+    }
+  },
+  "artifacts": {
+    "raw_comparison": "/tmp/kiln-blotches-20260918/comparison1080/still-values.png",
+    "linear_view": "/tmp/kiln-blotches-20260918/response/linear_view/color.png",
+    "release_linear_view": "/tmp/kiln-blotches-20260918/template-deferred/final/color.png"
+  }
+}

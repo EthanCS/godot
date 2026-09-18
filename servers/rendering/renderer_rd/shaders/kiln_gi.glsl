@@ -411,7 +411,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -771,7 +771,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -1364,7 +1364,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -1592,7 +1592,7 @@ void main() {
 	vec3 geometric_normal = safe_normalize(cross(t.p1.xyz, t.p2.xyz));
 	vec3 tangent = safe_normalize(t.p1.xyz), bitangent = cross(geometric_normal, tangent);
 	s.barycentric = vec4((da * bb - db * ab) / denom, (db * aa - da * ab) / denom, dot(delta, geometric_normal), 0);
-	s.local_normal = vec4(dot(normal, tangent), dot(normal, bitangent), dot(normal, geometric_normal), 0);
+	s.local_normal = vec4(dot(normal, tangent), dot(normal, bitangent), dot(normal, geometric_normal), 1);
 	surfels[id] = s;
 }
 
@@ -2003,7 +2003,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -2458,7 +2458,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -2679,6 +2679,11 @@ void main() {
 	if (s.anchor.z == 0u) {
 		return;
 	}
+	// Preserve uncertainty of the *unshared* ray batch. MSME variance below
+	// describes the pooled signal and must not decide whether pooling is needed.
+	vec3 innovation = sample_value.rgb - s.short_mean_vbbr.rgb;
+	float relative_variance = dot(innovation, innovation) / max(dot(s.short_mean_vbbr.rgb, s.short_mean_vbbr.rgb), 1e-6);
+	s.local_normal.w = mix(s.local_normal.w, min(relative_variance, 16.0), 0.1);
 	sample_value.rgb = shared_samples[id].rgb;
 	MSMEData data;
 	data.mean = s.irradiance_samples.rgb;
@@ -2709,18 +2714,30 @@ void main() {
 		// MSME already selects a variance-aware convergence rate and suppresses
 		// fireflies. Mixing the unfiltered batch in again imposed a permanent
 		// noise floor, even on a stationary surface with thousands of rays.
-		if (s.irradiance_samples.w < p.gi.w) {
-			// Bootstrap with a running mean so the first random batch does not
-			// leave a persistent bright/dark disk while MSME learns its variance.
+		if (s.irradiance_samples.w < min(p.gi.w * 8.0, 2048.0)) {
+			// A pooled signal can have low short-term variance while its initial
+			// mean is still wrong. Keep bootstrap responsive until enough actual
+			// rays have accumulated; do not freeze the first 256-ray realization
+			// at MSME's minimum blend. Let confidence grow with actual ray count
+			// instead of retaining a fixed short window throughout bootstrap.
 			vec3 bounded_sample = min(sample_value.rgb, data.shortMean + sqrt(max(data.variance, vec3(1e-5))) * 8.0 + 0.1);
-			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, sample_value.w / (s.irradiance_samples.w + sample_value.w));
+			// Neighbor reuse already contains integrated history. Account for it
+			// here too: otherwise 75% reused history makes fresh input four times
+			// weaker than its actual ray-count weight, delaying convergence.
+			float fresh_blend = max(1.0 / 256.0, sample_value.w / (s.irradiance_samples.w + sample_value.w));
+			float blend = fresh_blend / max(1.0 - shared_samples[id].w, 0.25);
+			data.mean = mix(s.irradiance_samples.rgb, bounded_sample, min(blend, 1.0));
 		}
 		// Explicit scene changes shorten the long-term estimator, including all-off.
 		if (p.source_bvh_state.w > 0.5) {
 			// Preserve a per-frame decay after staggered updates. A constant 0.25
 			// per update otherwise doubles relighting lag when updating every other frame.
 			float elapsed = clamp(p.size_frame.z - s.barycentric.w, 1.0, 16.0);
-			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, 1.0 - pow(0.75, elapsed));
+			// Spatial sharing already contains old lighting. Compensate so a
+			// uniform illumination step retains the same per-frame decay instead
+			// of silently doubling history when neighbor reuse is enabled.
+			float blend = (1.0 - pow(0.75, elapsed)) / max(1.0 - shared_samples[id].w, 0.25);
+			data.mean = mix(s.irradiance_samples.rgb, sample_value.rgb, min(blend, 1.0));
 		}
 	}
 	s.irradiance_samples = vec4(data.mean, min(4096.0, s.irradiance_samples.w + sample_value.w));
@@ -2734,6 +2751,7 @@ void main() {
 	surfels[id].variance_inconsistency = s.variance_inconsistency;
 	surfels[id].anchor.w = s.anchor.w;
 	surfels[id].barycentric.w = s.barycentric.w;
+	surfels[id].local_normal.w = s.local_normal.w;
 }
 
 #endif
@@ -2900,7 +2918,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -3705,7 +3723,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -4456,7 +4474,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -4694,7 +4712,7 @@ void main() {
 			metrics.w = contributors;
 		} else if (mode == 25u) {
 			vec3 value = texelFetch(raw_diffuse, pixel, 0).rgb;
-			color = 1.0 - exp(-value * p.debug.z);
+			color = value * p.debug.z;
 			metrics.w = luminance(value);
 		} else if (selected != INVALID_SURFEL) {
 			Surfel s = surfels[selected - 1u];
@@ -5746,7 +5764,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -6072,7 +6090,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -6403,7 +6421,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -7450,7 +7468,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -8025,7 +8043,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -8172,9 +8190,10 @@ layout(set = 0, binding = 28, std430) readonly buffer RayResults { vec4 ray_resu
 layout(set = 0, binding = 38, std430) readonly buffer SampleHistory { vec4 sample_history[]; };
 layout(local_size_x = 8, local_size_y = 8) in;
 
-vec4 gather_samples(vec3 position, vec3 normal) {
+vec4 gather_samples(vec3 position, vec3 normal, out float history_fraction) {
 	vec3 sum = vec3(0);
 	float weights = 0.0;
+	history_fraction = 0.0;
 	for (uint level = 0u; level < 3u; level++) {
 		uint key = cell_hash(ivec3(floor(position / cell_size(level))), level);
 		uvec2 cell = cell_heads[key];
@@ -8192,10 +8211,17 @@ vec4 gather_samples(vec3 position, vec3 normal) {
 			if (batch.w == 0.0 || age > 4.0) continue;
 			float w = 1.0 - sqrt(d2) / sphere.w;
 			w = w * w * (3.0 - 2.0 * w) * exp2(-age * 0.25);
-			sum += batch.rgb * w;
+			// Read the previous integrated cache, which is immutable until the
+			// separate integrate dispatch. Sharing only the last few-ray batch
+			// discards the convergence work already done by each neighbor.
+			vec4 history = surfels[neighbor].irradiance_samples;
+			float settled = (p.source_bvh_state.w > 0.5 ? 0.5 : 0.75) * smoothstep(0.0, p.gi.w, history.w);
+			sum += mix(batch.rgb, history.rgb, settled) * w;
 			weights += w;
+			history_fraction += settled * w;
 		}
 	}
+	history_fraction /= max(weights, 1e-6);
 	return vec4(sum / max(weights, 1e-6), weights);
 }
 
@@ -8203,10 +8229,11 @@ void main() {
 	uint id = gl_GlobalInvocationID.y * 256u + gl_GlobalInvocationID.x;
 	if (id >= SURFEL_CAPACITY || ray_results[id].w == 0.0) return;
 	Surfel s = surfels[id];
-	// GIBS, SIGGRAPH 2021 slide 116: share independent incoming-light estimates
-	// BEFORE MSME, stronger at high variance. The immutable batch history includes
-	// staggered neighbors for at most four frames; it never contains filtered means.
-	float relative_variance = dot(s.variance_inconsistency.rgb, vec3(1)) / max(dot(s.short_mean_vbbr.rgb, s.short_mean_vbbr.rgb), 1e-6);
+	// GIBS, SIGGRAPH 2021 slide 116: share neighboring irradiance before MSME.
+	// Keep a fresh spatial batch contribution in gather_samples, bounding the
+	// propagation of old lighting. Drive sharing with pre-sharing uncertainty:
+	// using filtered variance switches sharing off as soon as it starts working.
+	float relative_variance = s.local_normal.w;
 	float sharing = s.irradiance_samples.w < p.gi.w ? 1.0 : smoothstep(0.001, 0.03, relative_variance);
 	if (p.sky_color.w < 0.5) sharing = 0.0;
 	vec3 normal = s.normal_age.xyz;
@@ -8214,21 +8241,27 @@ void main() {
 	vec3 bitangent = cross(normal, tangent);
 	vec3 sum = vec3(0);
 	float total = 0.0;
+	float history_fraction = 0.0;
 	// A bounded tangent-plane kernel. Each query uses the complete overlap list
-	// and rejects incompatible surfaces. No screen blur or recursive light diffusion.
+	// and rejects incompatible surfaces. The retained fresh term limits the
+	// smoothing bias from repeated reuse of neighboring cached estimates.
 	if (sharing > 0.0) {
 		for (int y = -1; y <= 1; y++) {
 			for (int x = -1; x <= 1; x++) {
 				vec3 offset = (tangent * float(x) + bitangent * float(y)) * s.position_radius.w;
-				vec4 light = gather_samples(s.position_radius.xyz + offset, normal);
+				float history;
+				vec4 light = gather_samples(s.position_radius.xyz + offset, normal, history);
 				float w = float((x == 0 ? 2 : 1) * (y == 0 ? 2 : 1)) * min(light.a, 1.0);
 				sum += light.rgb * w;
 				total += w;
+				history_fraction += history * w;
 			}
 		}
 	}
 	vec4 sample_value = ray_results[id];
-	shared_samples[id] = vec4(mix(sample_value.rgb, total > 1e-6 ? sum / total : sample_value.rgb, sharing), sample_value.w);
+	// Alpha records reused history, not ray count (that lives in ray_results).
+	// Integrate compensates bootstrap and relighting for this temporal weight.
+	shared_samples[id] = vec4(mix(sample_value.rgb, total > 1e-6 ? sum / total : sample_value.rgb, sharing), sharing * history_fraction / max(total, 1e-6));
 }
 
 #endif
@@ -8395,7 +8428,7 @@ struct Surfel {
 	vec4 variance_inconsistency;
 	uvec4 anchor; // source triangle + 1, last seen frame, alive, progressive sample index
 	vec4 barycentric; // triangle barycentric u/v, signed plane offset, last sampled frame
-	vec4 local_normal; // original raster normal in the source triangle frame
+	vec4 local_normal; // original raster normal in triangle frame; unshared relative variance
 };
 #ifdef STAGE_SURFEL_SPATIAL
 layout(set = 0, binding = 36, std430) writeonly buffer ResolvedLighting {
@@ -8554,11 +8587,13 @@ void main() {
 	if (id < SURFEL_CAPACITY) {
 		Surfel s = surfels[id];
 		bool changing = p.source_bvh_state.w > 0.5;
-		uint mask = changing ? 1u : (uint(p.size_frame.z) - s.anchor.y > 8u ? 15u : 3u);
+		float variance = s.local_normal.w;
+		// Sample count alone is not convergence. Noisy visible surfels must
+		// not become dormant merely because they have traced 256 rays.
+		uint mask = uint(p.size_frame.z) - s.anchor.y > 8u ? 15u : (changing || variance > 0.03 ? 0u : 3u);
 		bool scheduled = s.irradiance_samples.w < p.gi.w || ((id + uint(p.size_frame.z)) & mask) == 0u;
 		if (s.anchor.z != 0u && scheduled) {
 			nominal = uint(clamp(p.quality.x * 4.0, 4.0, 32.0));
-			float variance = dot(s.variance_inconsistency.rgb, vec3(1)) / max(dot(s.short_mean_vbbr.rgb, s.short_mean_vbbr.rgb), 1e-6);
 			float need = s.irradiance_samples.w < p.gi.w ? 1.0 : smoothstep(0.01, 0.25, variance);
 			weight = uint(round(float(nominal) * mix(0.5, 2.0, need)));
 		}
