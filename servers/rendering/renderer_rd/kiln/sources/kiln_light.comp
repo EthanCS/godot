@@ -45,6 +45,8 @@ void main() {
     vec3 radiance = kiln_layered_evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z) * sun * visibility;
     radiance += texelFetch(emission_tex, px, 0).rgb;
     radiance += texelFetch(diffuse_tex, px, 0).rgb * brdf.diffuse_brdf.albedo * brdf.energy_preservation.preintegrated_transmission_fraction;
-    radiance += texelFetch(reflection_tex, px, 0).rgb * brdf.energy_preservation.preintegrated_reflection;
+    // Temporal reconstruction can undershoot at disocclusions. Negative
+    // indirect radiance must not subtract light during material modulation.
+    radiance += max(texelFetch(reflection_tex, px, 0).rgb, vec3(0)) * brdf.energy_preservation.preintegrated_reflection;
     imageStore(lighting_out, px, vec4(radiance, 1.0));
 }

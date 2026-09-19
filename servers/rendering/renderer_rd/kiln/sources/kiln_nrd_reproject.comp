@@ -1,0 +1,32 @@
+#version 450
+// Reuse the previous NRD diffuse output for secondary-bounce radiance.
+// NRD's alpha is variance, not the legacy RTDGI history length or validity.
+// @GI_COMMON@
+layout(set=0,binding=10) uniform sampler2D history_tex;
+layout(set=0,binding=11) uniform sampler2D reprojection_tex;
+layout(set=0,binding=12,rgba16f) uniform writeonly image2D output_tex;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 px=ivec2(gl_GlobalInvocationID.xy), size=ivec2(p.size_frame.xy);
+    if(any(greaterThanEqual(px,size))) return;
+    vec4 reprojection=texelFetch(reprojection_tex,px,0);
+    uint mask=uint(reprojection.z*15.0+0.5);
+    vec2 pos=vec2(px)+reprojection.xy*p.size_frame.xy;
+    ivec2 base=ivec2(floor(pos));
+    vec2 f=fract(pos);
+    vec3 sum=vec3(0);
+    float weight=0.0;
+    if(p.size_frame.w>0.5) {
+        for(int y=0;y<2;y++) for(int x=0;x<2;x++) {
+            ivec2 sample_px=base+ivec2(x,y);
+            if((mask&(1u<<uint(x+y*2)))==0u || any(lessThan(sample_px,ivec2(0))) || any(greaterThanEqual(sample_px,size))) continue;
+            vec3 value=texelFetch(history_tex,sample_px,0).rgb;
+            if(any(isnan(value)) || any(isinf(value))) continue;
+            float w=(x==0 ? 1.0-f.x : f.x)*(y==0 ? 1.0-f.y : f.y);
+            sum+=max(value,vec3(0))*w;
+            weight+=w;
+        }
+    }
+    // Invalid/disoccluded pixels retain alpha=0 so tracing uses the world cache.
+    imageStore(output_tex,px,weight>1e-5 ? vec4(sum/weight,1) : vec4(0));
+}

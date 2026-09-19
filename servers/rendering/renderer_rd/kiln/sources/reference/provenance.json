@@ -691,7 +691,7 @@
           "sha256": "73e0d3070f0243e529d4d8500efc42ac7bf0b0e671990053bd275f4b73287842"
         }
       ],
-      "port_sha256": "6dc734312aa6c26570396a59cad6386eab3b3351f3e24278694121a3b1e62b26"
+      "port_sha256": "26ab9788e4181fb59b2db9f4acf21f61c6f480504c048f4bb1fd8a1623e10dd1"
     },
     {
       "port": "kiln_rtr_trace.comp",
@@ -735,7 +735,7 @@
           "sha256": "48e73db4952c90da83143b896e98574736b7eee3308bcb30782ea54cd763bf72"
         }
       ],
-      "port_sha256": "1bba76032ea1d3ffaa50b92a58218a362b45086a75447543965560f633d7ba4c"
+      "port_sha256": "bc97369c8c67960a8c80096f47f9ca9f08db4a262b8b244c0202e62b0da7a6d6"
     },
     {
       "port": "kiln_brdf_lut.comp",
@@ -899,7 +899,8 @@
     "Surfel count/slot dispatch bounds are captured before allocation, matching the reference; trace uses the post-allocation count.",
     "The reference updates surfel irradiance in place. GPU work ordering makes independent runs vary.",
     "New or reset viewports use zero reprojection velocity when history is invalid.",
-    "Allocation bounds and workgroup barrier participation are checked; uninitialized or out-of-bounds source behavior is not intentionally reproduced."
+    "Allocation bounds and workgroup barrier participation are checked; uninitialized or out-of-bounds source behavior is not intentionally reproduced.",
+    "SDK-enabled Vulkan Kiln runs NRD RELAX on resolved diffuse and specular radiance; negative temporal specular undershoot is clamped before BRDF composition."
   ],
   "generator_sha256": "85ff112607ded316652016b84dba19517483af29f06c1b57bcad1d51881c0bbf"
 }

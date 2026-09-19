@@ -14,8 +14,6 @@ using namespace RendererRD;
 struct KilnNRD::Impl {
 	nrd::Instance *instance = nullptr;
 	Size2i size;
-	bool specular = false;
-	bool combined_specular = false;
 	Vector<RID> permanent, transient, shaders, pipelines, constants;
 	Vector<uint8_t> shared_sets;
 	RID samplers[2];
@@ -43,20 +41,16 @@ static RD::DataFormat nrd_format(nrd::Format f) {
 	return formats[uint32_t(f)];
 }
 
-bool KilnNRD::initialize(Size2i size, bool specular, bool combined_specular) {
+bool KilnNRD::initialize(Size2i size) {
 	ERR_FAIL_COND_V(impl || !available(), false);
 	const auto *lib = nrd::GetLibraryDesc();
 	ERR_FAIL_COND_V(lib->versionMajor != 4 || lib->versionMinor != 17 || lib->versionBuild != 3 || lib->normalEncoding != nrd::NormalEncoding::R10_G10_B10_A2_UNORM || lib->roughnessEncoding != nrd::RoughnessEncoding::LINEAR, false);
 	impl = memnew(Impl);
 	impl->size = size;
-	impl->specular = specular;
-	impl->combined_specular = combined_specular;
-	// Independent diffuse and Schlick histories allow full-rate diffuse alongside
-	// checkerboard reflections, and avoid all reflection work in diffuse-only mode.
-	nrd::DenoiserDesc denoisers[] = { { 0, nrd::Denoiser::RELAX_DIFFUSE }, { 1, nrd::Denoiser::RELAX_SPECULAR }, { 2, nrd::Denoiser::RELAX_SPECULAR } };
+	nrd::DenoiserDesc denoisers[] = { { 0, nrd::Denoiser::RELAX_DIFFUSE_SPECULAR } };
 	nrd::InstanceCreationDesc create = {};
 	create.denoisers = denoisers;
-	create.denoisersNum = specular ? (combined_specular ? 2 : 3) : 1;
+	create.denoisersNum = 1;
 	ERR_FAIL_COND_V(nrd::CreateInstance(create, impl->instance) != nrd::Result::SUCCESS, false);
 	const auto *desc = nrd::GetInstanceDesc(*impl->instance);
 	RD *rd = RD::get_singleton();
@@ -85,11 +79,11 @@ bool KilnNRD::initialize(Size2i size, bool specular, bool combined_specular) {
 		s.min_filter = s.mag_filter = i ? RD::SAMPLER_FILTER_LINEAR : RD::SAMPLER_FILTER_NEAREST;
 		impl->samplers[i] = rd->sampler_create(s);
 	}
-	print_line(specular ? (combined_specular ? "[KILN_NRD] NRD 4.17.3 RELAX: cache diffuse + demodulated specular" : "[KILN_NRD] NRD 4.17.3 RELAX: cache diffuse + Schlick base/fresnel") : "[KILN_NRD] NRD 4.17.3 RELAX_DIFFUSE: full-rate cache input, no hit-distance preblur");
+	print_line("[KILN_NRD] NRD 4.17.3 RELAX_DIFFUSE_SPECULAR: always on, full-resolution RTDGI + RTR resolve");
 	return true;
 }
 
-bool KilnNRD::denoise(RenderSceneDataRD *scene, const Projection &prev_projection, const Transform3D &prev_camera, uint32_t frame, bool reset, bool changing, bool checkerboard, int diffuse_iterations, RID motion, RID normal, RID depth, RID diffuse, RID base, RID fresnel, RID out_diffuse, RID out_base, RID out_fresnel) {
+bool KilnNRD::denoise(RenderSceneDataRD *scene, const Projection &prev_projection, const Transform3D &prev_camera, Vector2 prev_jitter, uint32_t frame, bool reset, RID motion, RID normal, RID depth, RID diffuse, RID specular, RID out_diffuse, RID out_specular) {
 	ERR_FAIL_COND_V(!impl || !impl->instance, false);
 	nrd::CommonSettings settings = {};
 	Projection correction;
@@ -103,41 +97,36 @@ bool KilnNRD::denoise(RenderSceneDataRD *scene, const Projection &prev_projectio
 	for (int i = 0; i < 2; i++) {
 		settings.resourceSize[i] = settings.resourceSizePrev[i] = settings.rectSize[i] = settings.rectSizePrev[i] = impl->size[i];
 		settings.cameraJitter[i] = -scene->taa_jitter[i] * impl->size[i] * 0.5f;
-		settings.cameraJitterPrev[i] = -scene->prev_taa_jitter[i] * impl->size[i] * 0.5f;
+		settings.cameraJitterPrev[i] = -(reset ? scene->taa_jitter[i] : prev_jitter[i]) * impl->size[i] * 0.5f;
 	}
+	settings.isMotionVectorInWorldSpace = true;
+	settings.motionVectorScale[2] = 1.0f;
 	settings.frameIndex = frame;
 	settings.timeDeltaBetweenFrames = MAX(scene->time_step * 1000.0f, 0.001f);
 	settings.denoisingRange = 10000.0f;
 	settings.accumulationMode = reset ? nrd::AccumulationMode::CLEAR_AND_RESTART : nrd::AccumulationMode::CONTINUE;
 	ERR_FAIL_COND_V(nrd::SetCommonSettings(*impl->instance, settings) != nrd::Result::SUCCESS, false);
-	const nrd::Identifier identifiers[] = { 0, 1, 2 };
-	uint32_t signal_count = impl->specular ? (impl->combined_specular ? 2 : 3) : 1;
-	for (uint32_t id = 0; id < signal_count; id++) {
-		nrd::RelaxSettings relax = {};
-		if (id == 0) {
-			// NRD 4.17.3 RELAX_PrePass reads diffuse hitT only inside the nonzero
-			// radius branch; subsequent diffuse stages consume RGB only. The cache
-			// supplies every pixel, so no hit-distance reconstruction is required.
-			relax.diffusePrepassBlurRadius = 0.0f;
-			relax.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::OFF;
-			relax.checkerboardMode = nrd::CheckerboardMode::OFF;
-			relax.diffuseMaxAccumulatedFrameNum = changing ? 4 : 8;
-			relax.diffuseMaxFastAccumulatedFrameNum = 2;
-			relax.historyFixFrameNum = 1;
-			relax.atrousIterationNum = diffuse_iterations;
-			// MSME already suppresses fireflies; do not stack another clipping pass.
-			relax.enableAntiFirefly = false;
-		} else {
-			relax.enableAntiFirefly = true;
-			relax.specularMaxAccumulatedFrameNum = changing ? 8 : 30;
-			relax.atrousIterationNum = checkerboard ? 4 : 6;
-			relax.checkerboardMode = checkerboard ? nrd::CheckerboardMode::BLACK : nrd::CheckerboardMode::OFF;
-		}
-		ERR_FAIL_COND_V(nrd::SetDenoiserSettings(*impl->instance, id, &relax) != nrd::Result::SUCCESS, false);
-	}
+	const nrd::Identifier identifiers[] = { 0 };
+	nrd::RelaxSettings relax = {};
+	// Resolve supplies every pixel. Its diffuse alpha is a variance, not hitT;
+	// preparation clears alpha and disables all diffuse hit-distance consumers.
+	relax.diffusePrepassBlurRadius = 0.0f;
+	relax.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::OFF;
+	// Use time-based histories: a fixed 30 frames barely accumulates at high FPS.
+	// Diffuse gets a longer window for correlated ReSTIR noise. Responsive fast
+	// histories and RELAX's antilag still track lighting changes and disocclusions.
+	const float fps = 1000.0f / settings.timeDeltaBetweenFrames;
+	relax.diffuseMaxAccumulatedFrameNum = CLAMP(nrd::GetMaxAccumulatedFrameNum(1.0f, fps), 4u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+	relax.diffuseMaxFastAccumulatedFrameNum = MAX(1u, relax.diffuseMaxAccumulatedFrameNum / 5);
+	relax.specularMaxAccumulatedFrameNum = CLAMP(nrd::GetMaxAccumulatedFrameNum(0.5f, fps), 4u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+	relax.specularMaxFastAccumulatedFrameNum = MAX(1u, relax.specularMaxAccumulatedFrameNum / 5);
+	relax.historyFixFrameNum = MIN(3u, MIN(relax.diffuseMaxFastAccumulatedFrameNum, relax.specularMaxFastAccumulatedFrameNum) - 1);
+	relax.atrousIterationNum = 5;
+	relax.enableAntiFirefly = true;
+	ERR_FAIL_COND_V(nrd::SetDenoiserSettings(*impl->instance, 0, &relax) != nrd::Result::SUCCESS, false);
 	const nrd::DispatchDesc *dispatches;
 	uint32_t count;
-	ERR_FAIL_COND_V(nrd::GetComputeDispatches(*impl->instance, identifiers, signal_count, dispatches, count) != nrd::Result::SUCCESS, false);
+	ERR_FAIL_COND_V(nrd::GetComputeDispatches(*impl->instance, identifiers, 1, dispatches, count) != nrd::Result::SUCCESS, false);
 	const auto *desc = nrd::GetInstanceDesc(*impl->instance);
 	const auto &offsets = nrd::GetLibraryDesc()->spirvBindingOffsets;
 	RD *rd = RD::get_singleton();
@@ -220,10 +209,10 @@ bool KilnNRD::denoise(RenderSceneDataRD *scene, const Projection &prev_projectio
 					texture = depth;
 					break;
 				case nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST:
-					texture = d.identifier == 1 ? base : fresnel;
+					texture = specular;
 					break;
 				case nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST:
-					texture = d.identifier == 1 ? out_base : out_fresnel;
+					texture = out_specular;
 					break;
 				case nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST:
 					texture = diffuse;
@@ -299,10 +288,10 @@ using namespace RendererRD;
 bool KilnNRD::available() {
 	return false;
 }
-bool KilnNRD::initialize(Size2i, bool, bool) {
+bool KilnNRD::initialize(Size2i) {
 	return false;
 }
-bool KilnNRD::denoise(RenderSceneDataRD *, const Projection &, const Transform3D &, uint32_t, bool, bool, bool, int, RID, RID, RID, RID, RID, RID, RID, RID, RID) {
+bool KilnNRD::denoise(RenderSceneDataRD *, const Projection &, const Transform3D &, Vector2, uint32_t, bool, RID, RID, RID, RID, RID, RID, RID) {
 	return false;
 }
 KilnNRD::~KilnNRD() {}

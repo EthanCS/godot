@@ -2,6 +2,7 @@
 // Imported algorithm provenance and redistribution limits: kiln/provenance/gi-provenance.json.
 
 #pragma once
+#include "kiln_nrd.h"
 #include "kiln_world.h"
 
 #include "servers/rendering/renderer_rd/shaders/kiln_gi.glsl.gen.h"
@@ -68,6 +69,8 @@ class KilnGI {
 		KILN_VELOCITY_REDUCE_Y,
 		KILN_VELOCITY_DILATE,
 		KILN_MOTION_BLUR,
+		KILN_NRD_PREPARE,
+		KILN_NRD_REPROJECT,
 		STAGE_COUNT
 	};
 	KilnGiShaderRD shader, hardware_shader;
@@ -105,6 +108,8 @@ public:
 		Transform3D previous_camera;
 		Vector2 previous_jitter;
 		bool ready = false, tracing = false;
+		KilnNRD *nrd = nullptr;
+		bool nrd_active = false;
 		RID parameters;
 		RID ray_albedo;
 		RID environment;

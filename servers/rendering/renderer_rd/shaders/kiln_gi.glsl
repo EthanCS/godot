@@ -10118,7 +10118,9 @@ layout(local_size_x = 8, local_size_y = 8) in;
 void main() {
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     if (!restir_inside(px, restir_half_size())) return;
-    ivec2 hi = min(px * 2, ivec2(p.size_frame.xy) - 1);
+    // Match the rotating subpixel used by normals, reservoir reuse and resolve.
+    // A fixed top-left origin would trace one surface with another's normal.
+    ivec2 hi = restir_hi(px);
     float depth = texelFetch(restir_depth, hi, 0).r;
     imageStore(invalidity_out, px, vec4(0.0));
     if (depth == 0.0) {
@@ -13362,7 +13364,9 @@ void main() {
     vec3 radiance = kiln_layered_evaluate_directional_light(brdf, wo, wi) * max(0.0, wi.z) * sun * visibility;
     radiance += texelFetch(emission_tex, px, 0).rgb;
     radiance += texelFetch(diffuse_tex, px, 0).rgb * brdf.diffuse_brdf.albedo * brdf.energy_preservation.preintegrated_transmission_fraction;
-    radiance += texelFetch(reflection_tex, px, 0).rgb * brdf.energy_preservation.preintegrated_reflection;
+    // Temporal reconstruction can undershoot at disocclusions. Negative
+    // indirect radiance must not subtract light during material modulation.
+    radiance += max(texelFetch(reflection_tex, px, 0).rgb, vec3(0)) * brdf.energy_preservation.preintegrated_reflection;
     imageStore(lighting_out, px, vec4(radiance, 1.0));
 }
 
@@ -22971,6 +22975,149 @@ void main() {
         sum/=count;
     }
     imageStore(output_tex,px,vec4(sum.rgb+(1.0-sum.a)*center_color,1));
+}
+
+#endif
+
+#ifdef STAGE_KILN_NRD_PREPARE
+
+// Kiln -> NRD 4.17.3 RELAX contract. Encoding follows NRD.hlsli.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    vec4 kiln_prev_eye; // xyz: previous eye position, w: sun size multiplier
+    vec4 lighting; // x: sun angular radius cos, y: ev shift, z: ReSTIR path enabled, w: previous frame index
+    vec4 post; // sampling offset in pixels, frame delta seconds, reserved
+    mat4 unjittered_projection;
+    mat4 inverse_unjittered_projection;
+    mat4 previous_unjittered_view_projection;
+    mat4 previous_inverse_projection;
+    mat4 previous_inverse_view;
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+
+layout(set=0,binding=1) uniform sampler2D depth_tex;
+layout(set=0,binding=2) uniform sampler2D normal_tex;
+layout(set=0,binding=3) uniform sampler2D motion_tex;
+layout(set=0,binding=4) uniform sampler2D diffuse_tex;
+layout(set=0,binding=5) uniform sampler2D specular_tex;
+layout(set=0,binding=6) uniform sampler2D hit_distance_tex;
+layout(set=0,binding=7,rgb10_a2) uniform writeonly image2D normal_out;
+layout(set=0,binding=8,r32f) uniform writeonly image2D depth_out;
+layout(set=0,binding=9,rgba16f) uniform writeonly image2D motion_out;
+layout(set=0,binding=10,rgba16f) uniform writeonly image2D diffuse_out;
+layout(set=0,binding=11,rgba16f) uniform writeonly image2D specular_out;
+layout(local_size_x=8,local_size_y=8) in;
+
+vec3 finite_radiance(vec3 value) {
+    return any(isnan(value)) || any(isinf(value)) ? vec3(0) : clamp(value,vec3(0),vec3(65504));
+}
+
+void main() {
+    ivec2 px=ivec2(gl_GlobalInvocationID.xy), size=ivec2(p.size_frame.xy);
+    if(any(greaterThanEqual(px,size))) return;
+    float depth=texelFetch(depth_tex,px,0).x;
+    bool surface=depth>0.0;
+    vec2 uv=(vec2(px)+0.5)/vec2(size);
+    vec4 nr=texelFetch(normal_tex,px,0);
+    vec3 n=surface ? safe_normalize(mat3(p.inv_view)*nr.xyz) : vec3(0,0,1);
+    n/=max(dot(abs(n),vec3(1)),1e-8);
+    // Rotated octahedral normal, signed LINEAR roughness, unused material ID.
+    float roughness=max(clamp(nr.w,0.0,1.0),1.5/512.0);
+    vec3 packed=vec3((n.x+n.y)*0.5+0.5,(n.y-n.x)*0.5+0.5,(n.z<0.0?-roughness:roughness)*0.5+0.5);
+    imageStore(normal_out,px,vec4(packed,0));
+    imageStore(depth_out,px,vec4(surface ? -view_position(uv,depth).z : 100000.0));
+    // Previous minus current OBJECT position in world space. Camera movement
+    // is provided separately through NRD's matrices, with no jitter in motion.
+    vec3 motion=surface && p.size_frame.w>0.5 ? mat3(p.inv_view)*texelFetch(motion_tex,px,0).xyz : vec3(0);
+    imageStore(motion_out,px,vec4(motion,0));
+    imageStore(diffuse_out,px,vec4(surface ? finite_radiance(texelFetch(diffuse_tex,px,0).rgb) : vec3(0),0));
+    // RTR resolve stores radiance variance in alpha. Supply its separately
+    // resolved physical ray length, never that variance or primary view depth.
+    float hit=texelFetch(hit_distance_tex,px,0).x;
+    hit=isnan(hit)||isinf(hit) ? 0.0 : clamp(hit,0.0,65504.0);
+    imageStore(specular_out,px,vec4(surface ? finite_radiance(texelFetch(specular_tex,px,0).rgb) : vec3(0),surface ? hit : 0.0));
+}
+
+#endif
+
+#ifdef STAGE_KILN_NRD_REPROJECT
+
+// Reuse the previous NRD diffuse output for secondary-bounce radiance.
+// NRD's alpha is variance, not the legacy RTDGI history length or validity.
+// Shared std140 contract. Matrices are Godot's already-corrected GPU projections.
+layout(set=0,binding=0,std140) uniform Parameters {
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 inv_view;
+    mat4 view;
+    vec4 size_frame;       // full width, height, frame, history valid
+    vec4 sun_direction;    // direction TO sun, energy
+    vec4 sun_color;        // linear RGB, sky energy
+    vec4 source_bvh_state; // static nodes, static triangles, GI enabled, continuous lighting response [0,1]
+    vec4 dynamic_scene;    // dynamic nodes, dynamic triangles, emissive triangles, total sampling power
+    vec4 kiln_prev_eye; // xyz: previous eye position, w: sun size multiplier
+    vec4 lighting; // x: sun angular radius cos, y: ev shift, z: ReSTIR path enabled, w: previous frame index
+    vec4 post; // sampling offset in pixels, frame delta seconds, reserved
+    mat4 unjittered_projection;
+    mat4 inverse_unjittered_projection;
+    mat4 previous_unjittered_view_projection;
+    mat4 previous_inverse_projection;
+    mat4 previous_inverse_view;
+} p;
+
+const float PI=3.14159265358979323846;
+vec3 safe_normalize(vec3 v) { return v * inversesqrt(max(dot(v,v),1e-16)); }
+vec3 view_position(vec2 uv,float depth) {
+    vec4 point=p.inv_projection*vec4(uv*2.0-1.0,depth,1.0);
+    return point.xyz/point.w;
+}
+vec3 world_position(vec2 uv,float depth) {return (p.inv_view*vec4(view_position(uv,depth),1.0)).xyz;}
+float luminance(vec3 v) {return dot(v,vec3(.2126,.7152,.0722));}
+
+layout(set=0,binding=10) uniform sampler2D history_tex;
+layout(set=0,binding=11) uniform sampler2D reprojection_tex;
+layout(set=0,binding=12,rgba16f) uniform writeonly image2D output_tex;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 px=ivec2(gl_GlobalInvocationID.xy), size=ivec2(p.size_frame.xy);
+    if(any(greaterThanEqual(px,size))) return;
+    vec4 reprojection=texelFetch(reprojection_tex,px,0);
+    uint mask=uint(reprojection.z*15.0+0.5);
+    vec2 pos=vec2(px)+reprojection.xy*p.size_frame.xy;
+    ivec2 base=ivec2(floor(pos));
+    vec2 f=fract(pos);
+    vec3 sum=vec3(0);
+    float weight=0.0;
+    if(p.size_frame.w>0.5) {
+        for(int y=0;y<2;y++) for(int x=0;x<2;x++) {
+            ivec2 sample_px=base+ivec2(x,y);
+            if((mask&(1u<<uint(x+y*2)))==0u || any(lessThan(sample_px,ivec2(0))) || any(greaterThanEqual(sample_px,size))) continue;
+            vec3 value=texelFetch(history_tex,sample_px,0).rgb;
+            if(any(isnan(value)) || any(isinf(value))) continue;
+            float w=(x==0 ? 1.0-f.x : f.x)*(y==0 ? 1.0-f.y : f.y);
+            sum+=max(value,vec3(0))*w;
+            weight+=w;
+        }
+    }
+    // Invalid/disoccluded pixels retain alpha=0 so tracing uses the world cache.
+    imageStore(output_tex,px,weight>1e-5 ? vec4(sum/weight,1) : vec4(0));
 }
 
 #endif

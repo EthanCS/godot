@@ -26,8 +26,9 @@ flowchart TD
     F --> G[世界辐射缓存 WRC]
     G --> H[Surfel 多次反弹与 MSME]
     H --> I[RTDGI 候选 / ReSTIR / 漫反射重建]
-    I --> J[RTR 反射 / 时域复用与降噪]
-    J --> K[太阳可见性 / 软阴影降噪]
+    I --> J[RTR 反射 / 时域候选复用与重建]
+    J --> NRD[NRD RELAX 间接漫反射与高光]
+    NRD --> K[太阳可见性 / 软阴影降噪]
     K --> L[BRDF 合成直接光、间接光、自发光与天空]
     L --> M[透明物体与后续场景合成]
     M --> N[TAA / 运动模糊 / 辉光 / 显示变换]
@@ -64,7 +65,9 @@ GPU 查询使用原始 float32 顶点建立静态/动态 BLAS 和 TLAS。硬件�
 ### 2. 重投影与 SSGI
 
 相机 jitter 使用 128 个 Halton 样本，并绑定到该视口的 GI 帧号。几何重投影结合深度、
-法线和物体三维 motion，随后重投影上一帧全分辨率漫反射历史。无效历史的速度置零。
+法线和物体三维 motion，随后重投影上一帧全分辨率 NRD 漫反射输出，供次级路径反馈。
+反馈只接受几何验证通过的双线性邻点；不把 NRD alpha 中的方差当作历史长度。
+无效历史的速度置零，次级路径改用世界缓存。
 
 `kiln_ssgi*` 在半分辨率计算屏幕空间遮蔽，执行空间过滤、全分辨率上采样和时域过滤。
 它为间接光重建提供几何与遮蔽引导，不替代世界空间 GI。
@@ -85,15 +88,17 @@ WRC 在 Surfel 当帧追踪之前更新：**192** 个世界探针、八面体辐
 ### 4. RTDGI / ReSTIR 漫反射
 
 半分辨率每个接收点生成一条漫反射候选路径。随后进行路径有效性判断、ReSTIR 时域
-候选复用、两轮空间复用、全分辨率 resolve，以及漫反射时域和空间过滤。
+候选复用、两轮空间复用及全分辨率 resolve，随后与反射一起交给 NRD 降噪。
 
-候选、命中点、法线、reservoir、历史辐照度及矩分别保存。最终 `diffuse` 是应用主表面
+候选、命中点、法线和 reservoir 分别保存。旧漫反射滤波的历史辐照度与矩仅在回退时分配。
+最终 `diffuse` 是应用主表面
 材质响应之前的间接漫反射信号。对应源码为 `kiln_restir*` 和 `kiln_rtdgi*`。
 
 ### 5. RTR 反射与太阳阴影
 
 `kiln_rtr*` 在半分辨率生成 GGX VNDF 反射候选，使用蓝噪声序列、时域 ReSTIR、
-全分辨率 resolve、时域过滤及空间清理。反射信号在过滤期间脱离主材质响应，合成时
+全分辨率 resolve，再由 NRD 完成降噪。反射命中采样使用当帧 RTDGI resolve 信号，
+由合并式 NRD 处理最终两路间接光。反射信号在过滤期间脱离主材质响应，合成时
 再乘回预积分反射项。
 
 `kiln_shadow*` 采样太阳圆盘可见性，经过阴影位打包、时域积累和三轮空间过滤，
@@ -115,14 +120,41 @@ WRC 在 Surfel 当帧追踪之前更新：**192** 个世界探针、八面体辐
 和光线查询结构单独管理。环境切换销毁该视口的缓存。显式 `reset_history()` 与静态
 几何改变触发重新积累。动态实例或光照变化沿正常逐帧路径更新。
 
-当前运行管线有 **55 个计算阶段**。旧 SurfelPlus 调度、XeGTAO、旧独立反射实现、
+当前注册 **57 个 Kiln 计算阶段**，另由 NRD SDK 调度 RELAX 内部阶段。旧 SurfelPlus 调度、XeGTAO、旧独立反射实现、
 它们的纹理/缓存、射线预算选项和 Surfel 磁盘调试视图已移除。
 
-**NRD 代码保留，但当前管线没有 NRD 开关，也不会创建或调用 NRD 实例。**
-`kiln_nrd.cpp/.h` 保留 SDK 适配器；`nrd/sources/` 保留其原参数布局及配套 shader 依赖。
-该目录不进入当前 GI 的 shader 阶段列表。`prepare_nrd.py` 和原有 SCons SDK 选项保留，
-Windows SDK 固定为 NRD 4.17.3（`792eff196afdd350fd9c3f862119017ccb438a0e`）。
-SDK 不随引擎源码分发。Shader 可编译不等于 NRD 已接入或完成画面验证。
+### NRD：始终开启的间接光降噪
+
+带 SDK 的 Windows Vulkan 构建为每个视口创建一个 **NRD 4.17.3
+RELAX_DIFFUSE_SPECULAR** 实例，始终运行，没有场景或项目开关。固定 SDK 提交为
+`792eff196afdd350fd9c3f862119017ccb438a0e`。未包含 SDK、非 Vulkan 或初始化/调度失败时
+明确警告并回退到原滤波器；`get_statistics().nrd_active` 报告实际运行状态。
+
+`kiln_nrd_prepare` 使用 G-buffer 生成世界空间法线、NRD 的旋转八面体法线/粗糙度编码、
+线性视图深度，以及不包含相机移动和 jitter 的三维物体运动。相机矩阵和每视口前帧
+jitter 单独传入。视口大小变化重建实例并清空历史；环境、静态几何或显式历史重置也
+重新积累。
+
+输入是全分辨率 RTDGI/RTR resolve 的去材质信号。RELAX 采用按实际渲染帧率换算的历史：
+漫反射最长 1 秒、高光最长 0.5 秒，均限于 SDK 的 255 帧上限；fast history 为各自主历史
+的五分之一。60 Hz 下分别为 60/12 和 30/6 帧。低帧率同步缩短重建历史，保留内置
+antilag、5 轮 A-trous 和 anti-firefly。漫反射不提供虚构命中距离，关闭其 hit-distance prepass 与
+reconstruction；反射使用 RTR 单独保存的真实光线长度，不能把 radiance alpha 中的
+方差当成命中距离。NRD 输出直接进入原 BRDF 合成，保持材质重新调制规则；反射时域重建的负值下冲
+在合成前截为零，避免负辐射扣暗画面。
+NRD 正常运行时，原 RTDGI temporal/spatial 和 RTR filter/cleanup 均不调度；上一帧
+NRD 漫反射通过 `kiln_nrd_reproject` 提供反馈。旧滤波历史与中间纹理按需分配，正常路径
+少用 48 字节/像素：1080p 约 94.9 MiB，1440p 约 168.8 MiB（纹理逻辑数据量，
+不含驱动对齐与内存池）。统计提供 `nrd_feedback`、`legacy_diffuse_filter_active` 和
+`legacy_filter_texture_bytes`，可检查实际路径。
+
+ReSTIR 的时域/空间候选复用、Surfel/WRC 积累、SSGI 与阴影各自的过滤，以及最终 TAA
+继续保留：它们分别负责路径采样、世界缓存、其他信号和抗锯齿，不是两路间接光的重复降噪。
+
+[`kiln_nrd.cpp`](../../servers/rendering/renderer_rd/kiln/kiln_nrd.cpp) 负责 SDK 调度；
+旧 `nrd/sources/` 仅保留历史适配 shader，不进入当前阶段列表。SDK 不随引擎源码分发，
+缺失时先运行 `python kiln/tools/prepare_nrd.py`。NRD 是跨厂商计算 shader，但本次只验证
+下文所列 GPU，不能据此声称其他 GPU/平台已通过。
 
 ## 构建、运行与检查
 
@@ -135,8 +167,7 @@ python -m SCons platform=windows target=editor module_mono_enabled=yes productio
 python -m SCons platform=windows target=template_release module_mono_enabled=yes production=no accesskit=no d3d12=no -j16
 ```
 
-普通引擎构建使用已保存的 GLSL，不要求 DXC 或外部参考仓库。修改保留的 HLSL 或
-适配器时，先运行 `python kiln/tools/build_reference_shaders.py`；该步骤需要 Vulkan SDK
+普通引擎构建使用已保存的 GLSL，不要求 DXC 或外部参考仓库。修改保留的 HLSL 端口时，先运行 `python kiln/tools/build_reference_shaders.py`；该步骤需要 Vulkan SDK
 的 DXC 与 SPIRV-Cross，再生成聚合 shader 并执行检查。`check_gi_shaders.py` 校验阶段
 注册顺序并编译软件、硬件查询变体；`--include-nrd` 额外检查独立保留的 NRD shader。
 
@@ -155,6 +186,10 @@ Cornell 独立运行。默认带车，原始资源与生成的 `assets/prepared`
 确定性诊断支持 `--frames=128 --size=960x540 --output=<临时目录>`，以及
 `--timeline=static|camera|relight|object|combined` 和 `--query-backend=1`（软件 BVH）。
 中间信号通过 `request_capture()` 读回，不能把开启读回的耗时当成性能测量。
+`--capture-indirect-only` 仅保存间接漫反射、高光、HDR 合成与 surface，便于长序列诊断。
+`--benchmark --frames=768 --size=1920x1080 --output=<临时目录>` 跳过全部图像读回，
+预热 256 帧后保存 512 帧 GPU 时间戳到 `profile.json`；引擎参数 `--fixed-fps 60`
+固定模拟步长。时间戳是帧内累计值，阶段耗时需要相邻项相减。
 
 `compare_kajiya.py` 保留为外部参考对照工具；其名称和参考仓库名称属于来源标识。
 参考查看器需在固定提交上应用 `kajiya_capture.patch` 并构建 `cargo build --release -p view`。
@@ -176,7 +211,7 @@ python kiln/tools/compare_kajiya.py --frames 32,128,256 --size 960x540 --cameras
 F4/F5 切换有效视图，F6 重置历史。`kiln/demo` 是独立岛屿/局部灯测试场景。
 这些示例中的局部灯和材质压力测试不意味着当前高级 GI 支持所有相关效果。
 
-## 验证范围
+## 历史清理验证范围（NRD 接入前）
 
 - **已实现：** 上述 G-buffer、软件/硬件查询调度、Surfel、WRC、RTDGI/ReSTIR、RTR、
   SSGI、太阳软阴影与时域显示流程。
@@ -199,6 +234,144 @@ F4/F5 切换有效视图，F6 重置历史。`kiln/demo` 是独立岛屿/局部�
 缓存差异，不是重新进行跨引擎一致性验收。55 个计算源码的再生成结果一致，74 份保留
 源码与 30 项手工端口的来源哈希已校验。构建日志、原始截图、数值结果与清理前快照位于
 `G:/KilnTemp/cleanup-2026-09-19`，不放入源码树。
+
+## NRD 初次接入验证（2026-09-19，重构前）
+
+- **已实现：** SDK 可用的 Vulkan Kiln 视口始终运行 RELAX_DIFFUSE_SPECULAR；世界空间运动、
+  法线/粗糙度、线性深度、反射命中距离适配；分辨率变化与历史重置；实际状态统计及 GPU 时间戳。
+- **已编译：** Windows x86_64 Mono editor 与 template_release（`production=no`）；
+  65 个 shader 变体通过 glslang 与 SPIR-V validation，其中 3 个是保留的历史适配 shader。
+- **实际 GPU：** RTX 5070 Ti / Vulkan 1.4.341。Cornell 使用原始带车模型，固定模拟 60 Hz；
+  静态诊断 960×540、256 帧，比较最后 64 帧的独立间接光信号。相机、光照、物体及
+  联动时间线各检查 64 帧序列，涵盖 961×541 非整组尺寸；间接光与合成 HDR 均无非有限值。
+  软件 BVH 640×360、显式历史重置、运行时 resize、相机切换后重置，以及导出发布包均完成
+  GPU 窗口渲染并检查截图；有效运行日志无错误。
+- **未验证：** 其他 GPU、macOS/Metal、Linux、移动平台、D3D12；此处性能不外推到这些平台。
+
+静态间接漫反射相邻帧 RGB RMS：墙面 `0.03383 → 0.00658`（降低 80.6%），
+顶面 `0.02016 → 0.00491`（75.7%），地面 `0.03010 → 0.00354`（88.3%）。
+间接高光：墙面 `0.01692 → 0.00181`（89.3%），顶面 `0.02394 → 0.00351`（85.3%），
+地面 `0.02226 → 0.00566`（74.6%），车身区域 `0.30704 → 0.17575`（42.8%）。
+这是固定图像区域的帧间波动指标，包含 jitter 在几何边缘产生的变化，不能解释成路径追踪
+真值误差。NRD 没有消除所有噪声；车身最终合成的直接高光/子像素闪烁仍存在，独立于本次
+处理的两路间接光。
+
+性能使用独立无读回运行：每个版本、每种分辨率交替运行 3 次，每次预热 256 帧、统计
+512 帧（共 1536 帧/配置）；相同场景、采样、分辨率、固定 60 Hz 模拟和关闭 VSync。
+表中是 GPU 渲染时间均值，不包含 CPU 等待、窗口呈现和诊断读回。
+
+| 分辨率 | 原管线 | NRD 管线 | 整帧净增加 | NRD + 输入转换本身 |
+| --- | ---: | ---: | ---: | ---: |
+| 960×540 | 1.302 ms | 1.470 ms | **0.168 ms** | 0.216 ms |
+| 1920×1080 | 3.107 ms | 3.727 ms | **0.620 ms** | 0.708 ms |
+| 2560×1440 | 5.311 ms | 6.261 ms | **0.950 ms** | 1.272 ms |
+
+净增加小于 NRD 自身，因为省去旧反射 temporal/cleanup；也包含缓存、调度及跨运行波动。
+1080p 三次独立运行均值：原版 3.114/3.108/3.099 ms，NRD 3.729/3.714/3.738 ms。
+加入反射负值截断后的最终二进制额外复测 1080p，512 帧均值为 3.654 ms；
+三轮对照用于给出约 0.6 ms 的预算，单轮时钟/调度波动不当作进一步优化收益。
+原始时间戳、截图、信号、分析脚本和 JSON 位于 `G:/KilnTemp/nrd-2026-09-19`。
+有效静态序列为 `baseline-fixed-static` 与 `nrd-verified-static`；动态序列用
+`nrd-verified-*` 命名。
+
+## NRD 滤波与反馈重构验证（2026-09-19，平滑调参前）
+
+- **已实现：** 正常 NRD 路径移除旧漫反射 temporal/spatial 调度，改用经过几何验证的
+  NRD 输出作为次级路径反馈；反射命中读取当帧原始漫反射 resolve；旧滤波纹理仅在回退时分配。
+- **已编译：** Windows x86_64 Mono editor、template_release，以及 `kiln_nrd=no` editor；
+  66 个 shader 变体通过编译与 SPIR-V validation（57 个注册阶段、6 个硬件查询变体、
+  3 个保留 NRD 适配 shader）。
+- **实际 GPU：** RTX 5070 Ti / Vulkan 1.4.341。比较保留旧滤波、合并 NRD、拆分两次
+  NRD 三种版本；静态 640×360 最后 32 帧，相机、光照、联动序列最后 16 帧，包含
+  641×361 非整组尺寸。最终构建另验证显式重置、相机切换、运行时 resize 至 961×541、
+  软件 BVH、无 SDK 回退和实际导出包；两路间接光与合成 HDR 数据有限，截图完成检查。
+  NRD 路径统计旧滤波纹理为 0 字节；321×181 回退路径为 2,788,848 字节。
+- **未验证：** 其他 GPU/平台、长时间复杂场景及 NRD 调度失败的故障注入。本次结论限定于
+  Cornell 场景，不代表所有光照变化或反射材质都已无闪烁。
+
+静态帧间波动与重构前 NRD 接近：漫反射墙面 RMS `0.00751 → 0.00741`、地面
+`0.00463 → 0.00426`；反射地面 `0.00789 → 0.00765`、车身 `0.16579 → 0.16452`。
+静态合成 HDR 均值变化约 -0.31%，对旧版的相对 RMS 差异约 0.99%；动态时间线约
+0.95%–2.14%。这些是回归差异与帧间波动，不是对路径追踪真值的准确率。
+
+太阳突然关闭的 320×180 测试中，墙面漫反射达到最终变化量 90%（连续四个采样保持在
+阈值内）由约 40 帧变成 44 帧；固定 60 Hz 下多约 67 ms。这是反馈滤波变化的可测代价，
+尚未消除。没有直接把当前帧路径无效性图接入 NRD 历史置信度：SDK 要求该输入位于
+上一帧坐标，且需要区分随机波动与光照变化。
+
+拆为 `RELAX_DIFFUSE` 和 `RELAX_SPECULAR` 两次调度没有明显画质收益；第一轮三次测量
+在 1080p 比合并方案慢约 0.32 ms，1440p 慢约 0.50 ms，因此保留合并式 NRD。
+
+关闭其他测试窗口后，对**重构后、平滑调参前的二进制**、重构前 NRD、未接 NRD 的原始基线重新交替
+运行三轮。每轮预热 256 帧后记录 512 帧 GPU 时间戳，固定模拟 60 Hz、相同采样与
+场景、关闭 VSync，无读回。均值如下：
+
+| 分辨率 | 未接 NRD | 重构前 NRD | 最终 NRD | 对未接 NRD 净增加 | 本次重构节省 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1920×1080 | 3.075 ms | 3.648 ms | 3.440 ms | **0.365 ms** | **0.208 ms** |
+| 2560×1440 | 5.330 ms | 6.323 ms | 5.853 ms | **0.522 ms** | **0.471 ms** |
+
+最终 NRD 与输入转换本身为 0.702 / 1.250 ms，净增加已扣除旧过滤开销并包含调度、
+缓存与测量波动。最终版三轮均值分别为 3.446/3.436/3.438 ms 和
+5.840/5.846/5.871 ms；GPU 渲染时间不包含 CPU 等待及窗口呈现。
+
+实验二进制、脚本、截图、逐帧信号与时间戳保存在
+`C:/Users/Administrator/AppData/Local/Temp/kiln-nrd-refactor-20260919`。
+该轮统计为 `verified-performance.json`；
+`performance.json` 为先前的三方案实验，不能与最终配对结果混用。
+
+## 静止漫反射游动验证（2026-09-19）
+
+固定相机、太阳和物体后仍可观测到漫反射的慢速明暗变化。ReSTIR 复用带来相关噪声，
+但输入不一致及积累参数也会影响结果；不能把全部波动归为算法无法改善的限制。
+
+- **输入修正：** `kiln_restir_trace` 的光线起点改用 `restir_hi()`，与法线、reservoir
+  复用和 resolve 的四相子像素轮换一致。原先固定左上角起点可能在边界上混用不同表面的
+  起点和法线。该修正单独测试过，并非消除慢速游动的充分条件。
+- **平滑参数：** 漫反射由固定 30 帧改为上述最长 1 秒的主历史与五分之一 fast history；
+  高光保持 0.5 秒预算并按实际帧率换算。固定 30 帧在高帧率下覆盖的时间过短。
+  更大的 luminance phi 与第六轮 A-trous 在 Cornell 没有明显收益，已弃用。
+- **长静态 GPU 测试：** Cornell 与 Sponza，640×360，固定 60 Hz；先预热 1024 帧，
+  再观察 512 帧，每 8 帧保存一组原始漫反射、NRD 漫反射和合成 HDR，共 64 组。
+  驱动脚本断言相机及太阳变换不变；Sponza 同时关闭日夜和物体动画。
+
+以亮度图进行 sigma=4 像素的空间高斯低通后，计算各像素的时间标准差再取 RMS，
+专门衡量慢速斑块波动，避免只统计相邻帧细噪声。相对调参前已重构 NRD 的结果：
+
+| 区域 | 调参前 | 调参后 | 波动减少 |
+| --- | ---: | ---: | ---: |
+| Cornell 墙面 | 0.006754 | 0.004660 | 31.0% |
+| Cornell 顶面 | 0.005171 | 0.003936 | 23.9% |
+| Cornell 地面 | 0.005725 | 0.004791 | 16.3% |
+| Sponza 中央区域 | 0.002730 | 0.001807 | 33.8% |
+
+这不是无偏真值误差，也不表示波动已为零。Cornell 墙面平均辐照度变化约 -0.27%，
+Sponza 区域约 +0.12%。太阳关闭测试达到 90% 变化量约需 47 帧，相比调参前 44 帧
+多约 50 ms（60 Hz）；相比保留旧滤波的 40 帧多约 117 ms。
+
+**已编译** Windows Mono editor/template_release，66 个 shader 变体通过检查；
+**实际 GPU 验证**仍为 RTX 5070 Ti / Vulkan。相机、光照及物体联动以 120 Hz、641×361
+测试，检查末尾 8 帧，两路间接光与 HDR 均有限并检查截图。最终构建再次验证历史重置、
+相机切换、运行时 resize、软件 BVH 和导出包；导出包静态连续 16 帧有效。其他 GPU/平台未验证。
+
+最终平滑版再次与调参前重构版及无 NRD 基线交替测量三轮，每轮预热 256 帧、记录
+512 帧 GPU 时间戳，固定 60 Hz，无诊断读回：
+
+| 分辨率 | 无 NRD 基线 | 调参前重构版 | 最终平滑版 | 相对无 NRD 净增加 |
+| --- | ---: | ---: | ---: | ---: |
+| 1920×1080 | 3.086 ms | 3.444 ms | 3.441 ms | **0.355 ms** |
+| 2560×1440 | 5.311 ms | 5.842 ms | 5.817 ms | **0.506 ms** |
+
+平滑调参没有增加空间 dispatch，和调参前的差值在约 0.004/0.025 ms 内，不作为性能
+优化收益。最终版三轮分别为 3.440/3.441/3.441 ms 和 5.821/5.811/5.819 ms。
+原始结果为 `smooth-performance.json`；前节数据保留为重构实验记录。
+
+数据位于上节的临时目录及 `G:/KilnTemp/nrd-static-20260919`；`final-long-*` 是调参前，
+`subpixel-long-*` 为仅修正起点，`spatial-long-*` 为弃用的空间参数，`temporal-long-*`
+为最终时间参数。部分中间信号归档于各目录的 `signals.zip`，指标和截图保留。
+
+参数依据参见 [NRD 固定版本设置说明](https://github.com/NVIDIA-RTX/NRD/blob/792eff196afdd350fd9c3f862119017ccb438a0e/Include/NRDSettings.h)
+及 [官方采样与残余波动说明](https://github.com/NVIDIA-RTX/NRD#interaction-with-low-discrepancy-samplers-blue-noise)。
 
 ## 来源与许可证
 

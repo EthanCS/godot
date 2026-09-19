@@ -24,10 +24,13 @@ var with_car := true
 var camera_position := Vector3(0, 1, 8)
 var camera_yaw := 0.0
 var capture_sequence := false
+var capture_count := 64
 var timeline := "static"
 var car: Node3D
 var query_backend := 0
 var mesh_input := "prepared"
+var benchmark := false
+var profile_samples: Array = []
 
 
 func _ready() -> void:
@@ -39,9 +42,12 @@ func _ready() -> void:
 		if arg.begins_with("--output="): output = arg.trim_prefix("--output=")
 		if arg == "--no-car": with_car = false
 		if arg == "--capture-sequence": capture_sequence = true
+		if arg.begins_with("--capture-count="): capture_count = maxi(1, int(arg.get_slice("=", 1)))
+		if arg == "--benchmark": benchmark = true
 		if arg.begins_with("--timeline="): timeline = arg.get_slice("=", 1)
 		if arg.begins_with("--query-backend="): query_backend = int(arg.get_slice("=", 1))
 		if arg == "--capture-hdr-only": ProjectSettings.set_setting("rendering/kiln/capture_hdr_only", true)
+		if arg == "--capture-indirect-only": ProjectSettings.set_setting("rendering/kiln/capture_indirect_only", true)
 		if arg.begins_with("--camera-yaw="): camera_yaw = float(arg.get_slice("=", 1))
 		if arg.begins_with("--camera-position="):
 			var xyz := arg.get_slice("=", 1).split(",")
@@ -103,6 +109,7 @@ func _ready() -> void:
 	gi.set_quality(2, 256)
 	gi.set_query_backend(query_backend)
 	add_child(gi)
+	gi.set_profiling(benchmark)
 
 	_set_sun(sun_theta, sun_phi)
 	if frames > 0:
@@ -151,13 +158,19 @@ func _run_capture() -> void:
 		if is_instance_valid(car) && (timeline == "object" || timeline == "combined"):
 			car.position.x = 0.6 * sin(frame * TAU / 96.0)
 			car.rotation.y = 0.3 * sin(frame * TAU / 96.0)
-		# Kajiya's Cornell HDR capture averages the final min(64, frames)
-		# frames; keep the diagnostic stream on the same convergence window.
-		if output != "" && (frame == frames - 1 || (capture_sequence && frame >= frames - mini(frames, 64))):
+		# The default matches the reference's final 64-frame average window.
+		if !benchmark && output != "" && (frame == frames - 1 || (capture_sequence && frame >= frames - mini(frames, capture_count))):
 			gi.request_capture(output.path_join("signals/frame%04d" % frame))
 		await settle(1)
+		if benchmark && frame >= 256:
+			var stats := gi.get_statistics()
+			if profile_samples.is_empty() || profile_samples.back().frame != stats.profile_frame:
+				profile_samples.append({"frame": stats.profile_frame, "profile": stats.profile})
 	if output != "":
-		get_viewport().get_texture().get_image().save_png(output.path_join("color.png"))
+		if benchmark:
+			FileAccess.open(output.path_join("profile.json"), FileAccess.WRITE).store_string(JSON.stringify(profile_samples))
+		else:
+			get_viewport().get_texture().get_image().save_png(output.path_join("color.png"))
 		FileAccess.open(output.path_join("lighting.json"), FileAccess.WRITE).store_string(JSON.stringify({
 			"sun_theta": sun_theta,
 			"sun_phi": sun_phi,

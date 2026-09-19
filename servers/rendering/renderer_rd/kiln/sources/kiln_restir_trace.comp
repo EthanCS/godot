@@ -68,7 +68,9 @@ layout(local_size_x = 8, local_size_y = 8) in;
 void main() {
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     if (!restir_inside(px, restir_half_size())) return;
-    ivec2 hi = min(px * 2, ivec2(p.size_frame.xy) - 1);
+    // Match the rotating subpixel used by normals, reservoir reuse and resolve.
+    // A fixed top-left origin would trace one surface with another's normal.
+    ivec2 hi = restir_hi(px);
     float depth = texelFetch(restir_depth, hi, 0).r;
     imageStore(invalidity_out, px, vec4(0.0));
     if (depth == 0.0) {

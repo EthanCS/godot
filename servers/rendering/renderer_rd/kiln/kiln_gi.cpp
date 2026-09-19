@@ -30,7 +30,7 @@ RID KilnGI::texture(Size2i size, RD::DataFormat format) {
 }
 KilnGI::KilnGI() {
 	Vector<String> defines;
-	const char *stages[] = { "BVH_REFIT", "KILN_SKY", "KILN_SURFEL_CLEAR_POOL", "KILN_SURFEL_FIND_MISSING", "KILN_SURFEL_ARGS", "KILN_SURFEL_AGE", "KILN_SURFEL_ALLOCATE", "KILN_SURFEL_CLEAR_CELLS", "KILN_SURFEL_COUNT_CELLS", "KILN_SURFEL_SCAN", "KILN_SURFEL_SCAN_SEGMENTS", "KILN_SURFEL_SCAN_MERGE", "KILN_SURFEL_SLOT_CELLS", "KILN_SURFEL_TRACE", "KILN_RESTIR_TRACE", "KILN_RESTIR_TEMPORAL", "KILN_RESTIR_SPATIAL", "KILN_RESTIR_RESOLVE", "KILN_BRDF_LUT", "KILN_LIGHT", "KILN_RTDGI_REPROJECT", "KILN_RTDGI_TEMPORAL_FILTER", "KILN_RTDGI_SPATIAL_FILTER", "KILN_RTDGI_VALIDITY", "KILN_RTR_TRACE", "KILN_RTR_TEMPORAL", "KILN_RTR_RESOLVE", "KILN_RTR_FILTER", "KILN_RTR_CLEANUP", "KILN_SSGI", "KILN_SSGI_SPATIAL", "KILN_SSGI_UPSAMPLE", "KILN_SSGI_TEMPORAL", "KILN_SHADOW_TRACE", "KILN_SHADOW_BITPACK", "KILN_SHADOW_TEMPORAL", "KILN_SHADOW_SPATIAL", "KILN_TAA_REPROJECT", "KILN_TAA_INPUT", "KILN_TAA_HISTORY", "KILN_TAA_PROB", "KILN_TAA_PROB_FILTER", "KILN_TAA_PROB_FILTER2", "KILN_TAA", "KILN_DISPLAY_LUT", "KILN_POST", "KILN_POST_BLUR0", "KILN_POST_BLUR", "KILN_POST_REVERSE", "KILN_RTDGI_HISTORY_REPROJECT", "KILN_WRC_TRACE", "KILN_VELOCITY_REDUCE_X", "KILN_VELOCITY_REDUCE_Y", "KILN_VELOCITY_DILATE", "KILN_MOTION_BLUR" };
+	const char *stages[] = { "BVH_REFIT", "KILN_SKY", "KILN_SURFEL_CLEAR_POOL", "KILN_SURFEL_FIND_MISSING", "KILN_SURFEL_ARGS", "KILN_SURFEL_AGE", "KILN_SURFEL_ALLOCATE", "KILN_SURFEL_CLEAR_CELLS", "KILN_SURFEL_COUNT_CELLS", "KILN_SURFEL_SCAN", "KILN_SURFEL_SCAN_SEGMENTS", "KILN_SURFEL_SCAN_MERGE", "KILN_SURFEL_SLOT_CELLS", "KILN_SURFEL_TRACE", "KILN_RESTIR_TRACE", "KILN_RESTIR_TEMPORAL", "KILN_RESTIR_SPATIAL", "KILN_RESTIR_RESOLVE", "KILN_BRDF_LUT", "KILN_LIGHT", "KILN_RTDGI_REPROJECT", "KILN_RTDGI_TEMPORAL_FILTER", "KILN_RTDGI_SPATIAL_FILTER", "KILN_RTDGI_VALIDITY", "KILN_RTR_TRACE", "KILN_RTR_TEMPORAL", "KILN_RTR_RESOLVE", "KILN_RTR_FILTER", "KILN_RTR_CLEANUP", "KILN_SSGI", "KILN_SSGI_SPATIAL", "KILN_SSGI_UPSAMPLE", "KILN_SSGI_TEMPORAL", "KILN_SHADOW_TRACE", "KILN_SHADOW_BITPACK", "KILN_SHADOW_TEMPORAL", "KILN_SHADOW_SPATIAL", "KILN_TAA_REPROJECT", "KILN_TAA_INPUT", "KILN_TAA_HISTORY", "KILN_TAA_PROB", "KILN_TAA_PROB_FILTER", "KILN_TAA_PROB_FILTER2", "KILN_TAA", "KILN_DISPLAY_LUT", "KILN_POST", "KILN_POST_BLUR0", "KILN_POST_BLUR", "KILN_POST_REVERSE", "KILN_RTDGI_HISTORY_REPROJECT", "KILN_WRC_TRACE", "KILN_VELOCITY_REDUCE_X", "KILN_VELOCITY_REDUCE_Y", "KILN_VELOCITY_DILATE", "KILN_MOTION_BLUR", "KILN_NRD_PREPARE", "KILN_NRD_REPROJECT" };
 	static_assert(sizeof(stages) / sizeof(stages[0]) == STAGE_COUNT);
 	for (int i = 0; i < STAGE_COUNT; i++) {
 		defines.push_back(String("\n#define STAGE_") + stages[i] + "\n");
@@ -111,6 +111,11 @@ void KilnGI::View::free_hardware() {
 	hardware_active = false;
 }
 void KilnGI::View::free_data() {
+	if (nrd) {
+		memdelete(nrd);
+		nrd = nullptr;
+	}
+	nrd_active = false;
 	// RenderSceneBuffersRD calls this on viewport reconfiguration, including
 	// resize. Only screen-space resources depend on that configuration.
 	for (RID rid : owned) {
@@ -120,7 +125,7 @@ void KilnGI::View::free_data() {
 	}
 	owned.clear();
 	textures.clear();
-	index = 0;
+	frames = index = 0;
 	ready = false;
 }
 void KilnGI::View::free_cache() {
@@ -148,7 +153,7 @@ void KilnGI::View::free_cache() {
 }
 void KilnGI::dispatch(Stage stage, Size2i size, const std::vector<Binding> &bindings, int stride, int z, RID tlas) {
 	RD *rd = RD::get_singleton();
-	static const char *stage_names[] = { "BVH refit", "sky", "surfel pool init", "find missing surfels", "surfel args", "age surfels", "allocate surfels", "clear cells", "count surfels per cell", "prefix scan", "prefix scan segments", "prefix scan merge", "slot surfels into cells", "trace irradiance", "ReSTIR trace", "ReSTIR temporal", "ReSTIR spatial", "ReSTIR resolve", "BRDF FG LUT", "Deferred sun and GI", "RTDGI reproject", "RTDGI temporal filter", "RTDGI spatial filter", "RTDGI path validity", "RTR trace", "RTR ReSTIR temporal", "RTR resolve", "RTR temporal filter", "RTR cleanup", "SSGI AO", "SSGI spatial", "SSGI upsample", "SSGI temporal", "Sun shadow rays", "Shadow bitpack", "Shadow temporal", "Shadow spatial", "taa reproject", "taa input", "taa history", "taa prob", "taa prob filter", "taa prob filter2", "taa", "display lut", "post", "post blur0", "post blur", "post reverse", "RTDGI history reprojection", "World radiance cache", "Velocity reduce X", "Velocity reduce Y", "Velocity dilate", "Motion blur" };
+	static const char *stage_names[] = { "BVH refit", "sky", "surfel pool init", "find missing surfels", "surfel args", "age surfels", "allocate surfels", "clear cells", "count surfels per cell", "prefix scan", "prefix scan segments", "prefix scan merge", "slot surfels into cells", "trace irradiance", "ReSTIR trace", "ReSTIR temporal", "ReSTIR spatial", "ReSTIR resolve", "BRDF FG LUT", "Deferred sun and GI", "RTDGI reproject", "RTDGI temporal filter", "RTDGI spatial filter", "RTDGI path validity", "RTR trace", "RTR ReSTIR temporal", "RTR resolve", "RTR temporal filter", "RTR cleanup", "SSGI AO", "SSGI spatial", "SSGI upsample", "SSGI temporal", "Sun shadow rays", "Shadow bitpack", "Shadow temporal", "Shadow spatial", "taa reproject", "taa input", "taa history", "taa prob", "taa prob filter", "taa prob filter2", "taa", "display lut", "post", "post blur0", "post blur", "post reverse", "RTDGI history reprojection", "World radiance cache", "Velocity reduce X", "Velocity reduce Y", "Velocity dilate", "Motion blur", "NRD prepare", "NRD diffuse feedback" };
 	static_assert(sizeof(stage_names) / sizeof(stage_names[0]) == STAGE_COUNT);
 	RENDER_TIMESTAMP(String("Kiln / ") + stage_names[stage]);
 	LocalVector<RD::Uniform> uniforms;
@@ -166,13 +171,26 @@ void KilnGI::dispatch(Stage stage, Size2i size, const std::vector<Binding> &bind
 	if (tlas.is_valid()) {
 		int variant = -1;
 		switch (stage) {
-			case KILN_SURFEL_TRACE: variant = 0; break;
-			case KILN_RESTIR_TRACE: variant = 1; break;
-			case KILN_LIGHT: variant = 2; break;
-			case KILN_RTR_TRACE: variant = 3; break;
-			case KILN_SHADOW_TRACE: variant = 4; break;
-			case KILN_WRC_TRACE: variant = 5; break;
-			default: ERR_FAIL_MSG("Stage does not support hardware ray queries.");
+			case KILN_SURFEL_TRACE:
+				variant = 0;
+				break;
+			case KILN_RESTIR_TRACE:
+				variant = 1;
+				break;
+			case KILN_LIGHT:
+				variant = 2;
+				break;
+			case KILN_RTR_TRACE:
+				variant = 3;
+				break;
+			case KILN_SHADOW_TRACE:
+				variant = 4;
+				break;
+			case KILN_WRC_TRACE:
+				variant = 5;
+				break;
+			default:
+				ERR_FAIL_MSG("Stage does not support hardware ray queries.");
 		}
 		RD::Uniform u;
 		u.binding = 27;
@@ -245,6 +263,22 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			state->parameters = rd->uniform_buffer_create(176 * sizeof(float));
 		}
 		state->textures["diffuse0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+		if (KilnNRD::available()) {
+			state->nrd = memnew(KilnNRD);
+			if (!state->nrd->initialize(state->size)) {
+				memdelete(state->nrd);
+				state->nrd = nullptr;
+				WARN_PRINT("Kiln NRD initialization failed; using legacy GI filters.");
+			} else {
+				for (const char *name : { "nrd_motion", "nrd_diffuse", "nrd_specular" }) {
+					state->textures[String(name) + "0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+				}
+				state->textures["nrd_normal0"] = own(texture(state->size, RD::DATA_FORMAT_A2B10G10R10_UNORM_PACK32));
+				state->textures["nrd_depth0"] = own(texture(state->size, RD::DATA_FORMAT_R32_SFLOAT));
+			}
+		} else {
+			WARN_PRINT_ONCE("Kiln NRD requires the pinned NRD SDK and Vulkan; using legacy GI filters.");
+		}
 		state->ready = true;
 	}
 	if (state->history_version != world.history_version) {
@@ -391,7 +425,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	}
 	Projection projection = scene->get_cam_projection();
 	if (state->frames == 0) {
-			state->previous_camera = scene->cam_transform;
+		state->previous_camera = scene->cam_transform;
 		state->previous_projection = scene->cam_projection;
 	}
 	float params[176] = {};
@@ -430,6 +464,19 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	auto I = [&](int binding, RID rid) { return Binding{ binding, RD::UNIFORM_TYPE_IMAGE, rid }; };
 	int current = state->index, previous = 1 - current;
 	auto T = [&](String name, int i = 0) { return state->t(name, i); };
+	// These textures are only needed by the SDK-unavailable/error fallback.
+	// NRD output itself persists until the next frame's feedback reprojection.
+	auto ensure_legacy_filters = [&]() {
+		if (state->textures.has("rtdgi_filtered0")) {
+			return;
+		}
+		for (int i = 0; i < 2; i++) {
+			state->textures["rtdgi_history" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+			state->textures["rtdgi_moments" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16_SFLOAT));
+			state->textures["rtr_history" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+		}
+		state->textures["rtdgi_filtered0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
+	};
 	RID depth = buffers->get_depth_texture(), normal = full_normal;
 	{
 		// Persistent clipmap surfels, diffuse ReSTIR and indirect reflections.
@@ -507,7 +554,6 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			}
 			make_restir("rtr_hit_normal", RD::DATA_FORMAT_R16G16B16A16_SFLOAT);
 			for (int i = 0; i < 2; i++) {
-				state->textures["rtr_history" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
 				state->textures["rtr_length" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16_SFLOAT));
 			}
 			state->textures["rtr_resolved0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
@@ -524,11 +570,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 			make_restir("restir_irradiance", RD::DATA_FORMAT_R16G16B16A16_SFLOAT);
 			make_restir("restir_reservoir", RD::DATA_FORMAT_R32G32B32A32_SFLOAT);
 			for (int i = 0; i < 2; ++i) {
-				state->textures["rtdgi_history" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
 				state->textures["rtdgi_geometry" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R32G32B32A32_SFLOAT));
-				state->textures["rtdgi_moments" + itos(i)] = own(texture(state->size, RD::DATA_FORMAT_R16G16_SFLOAT));
 			}
-			for (const char *name : { "rtdgi_reprojected", "rtdgi_reprojection", "rtdgi_filtered", "rtdgi_raw" }) {
+			for (const char *name : { "rtdgi_reprojected", "rtdgi_reprojection", "rtdgi_raw" }) {
 				state->textures[String(name) + "0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
 			}
 			state->textures["rtdgi_lighting0"] = own(texture(state->size, RD::DATA_FORMAT_R16G16B16A16_SFLOAT));
@@ -542,7 +586,10 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		RID ktile_irr = state->textures["kiln_tile_irradiance"];
 		dispatch(KILN_RTDGI_REPROJECT, Size2i((state->size.x + 7) / 8, (state->size.y + 7) / 8),
 				{ U(), S(1, depth), S(2, normal), S(3, blue_noise), S(7, surface_input), S(11, T("rtdgi_geometry", previous)), S(12, buffers->get_texture(SNAME("kiln_deferred"), SNAME("motion_3d"))), I(13, T("rtdgi_geometry", current)), I(14, T("rtdgi_reprojection")) });
-		dispatch(KILN_RTDGI_HISTORY_REPROJECT, Size2i((state->size.x + 7) / 8, (state->size.y + 7) / 8), { U(), C(10, T("rtdgi_history", previous)), C(11, T("rtdgi_reprojection")), I(12, T("rtdgi_reprojected")) });
+		if (!state->nrd) {
+			ensure_legacy_filters();
+		}
+		dispatch(state->nrd ? KILN_NRD_REPROJECT : KILN_RTDGI_HISTORY_REPROJECT, Size2i((state->size.x + 7) / 8, (state->size.y + 7) / 8), { U(), C(10, state->nrd ? T("diffuse") : T("rtdgi_history", previous)), C(11, T("rtdgi_reprojection")), I(12, T("rtdgi_reprojected")) });
 		const Size2i ao_half_groups((half_size.x + 7) / 8, (half_size.y + 7) / 8);
 		const Size2i ao_full_groups((state->size.x + 7) / 8, (state->size.y + 7) / 8);
 		dispatch(KILN_SSGI, ao_half_groups, { U(), S(1, depth), S(2, normal), S(6, albedo), I(15, T("ssgi_raw")) });
@@ -625,15 +672,23 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		}
 		dispatch(KILN_RESTIR_RESOLVE, diffuse_full_groups,
 				{ U(), S(1, depth), S(2, normal), S(3, blue_noise), S(6, albedo), S(10, T("restir_irradiance", current)), S(12, T("restir_hit", current)), S(13, T("restir_spatial", 1)), S(15, depth), I(21, T("rtdgi_raw")) });
-		dispatch(KILN_RTDGI_TEMPORAL_FILTER, diffuse_full_groups,
-				{ U(), S(10, T("rtdgi_raw")), S(11, T("rtdgi_reprojected")), C(12, T("rtdgi_moments", previous)), S(13, T("rtdgi_reprojection")), S(14, T("restir_validity", current)), I(15, T("rtdgi_filtered")), I(16, T("rtdgi_history", current)), I(17, T("rtdgi_moments", current)) });
-		dispatch(KILN_RTDGI_SPATIAL_FILTER, diffuse_full_groups,
-				{ U(), S(7, surface_input), S(10, T("rtdgi_filtered")), S(11, depth), S(12, T("ssgi_final")), I(14, T("diffuse")) });
+		auto legacy_diffuse = [&]() {
+			ensure_legacy_filters();
+			dispatch(KILN_RTDGI_TEMPORAL_FILTER, diffuse_full_groups,
+					{ U(), S(10, T("rtdgi_raw")), S(11, T("rtdgi_reprojected")), C(12, T("rtdgi_moments", previous)), S(13, T("rtdgi_reprojection")), S(14, T("restir_validity", current)), I(15, T("rtdgi_filtered")), I(16, T("rtdgi_history", current)), I(17, T("rtdgi_moments", current)) });
+			dispatch(KILN_RTDGI_SPATIAL_FILTER, diffuse_full_groups,
+					{ U(), S(7, surface_input), S(10, T("rtdgi_filtered")), S(11, depth), S(12, T("ssgi_final")), I(14, T("diffuse")) });
+		};
+		if (!state->nrd) {
+			legacy_diffuse();
+		}
 		Size2i full_groups((state->size.x + 7) / 8, (state->size.y + 7) / 8);
 		Size2i half_groups((half_size.x + 7) / 8, (half_size.y + 7) / 8);
 		{
+			// Current resolved diffuse supplies reflection hits; NRD filters the resulting
+			// specular signal together with diffuse once, after RTR resolve.
 			std::vector<Binding> b = kbase();
-			kappend(b, { S(1, depth), S(2, normal), S(3, blue_noise), S(6, albedo), S(7, T("diffuse")), C(8, T("rtdgi_fg")), C(19, ksky), { 20, RD::UNIFORM_TYPE_STORAGE_BUFFER, rtr_noise }, I(21, T("rtr_candidate0")), I(22, T("rtr_candidate1")), I(23, T("rtr_candidate2")), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates") });
+			kappend(b, { S(1, depth), S(2, normal), S(3, blue_noise), S(6, albedo), S(7, state->nrd ? T("rtdgi_raw") : T("diffuse")), C(8, T("rtdgi_fg")), C(19, ksky), { 20, RD::UNIFORM_TYPE_STORAGE_BUFFER, rtr_noise }, I(21, T("rtr_candidate0")), I(22, T("rtr_candidate1")), I(23, T("rtr_candidate2")), B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates") });
 			dispatch(KILN_RTR_TRACE, half_groups, b, 0, 1, query_tlas);
 		}
 		dispatch(KILN_RTR_TEMPORAL, half_groups,
@@ -643,11 +698,29 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		dispatch(KILN_RTR_RESOLVE, full_groups,
 				{ U(), S(1, depth), S(2, normal), S(3, blue_noise), S(6, albedo), C(8, T("rtdgi_fg")), S(11, depth), S(13, T("rtr_candidate1")), S(14, T("rtr_candidate2")), S(16, T("rtdgi_reprojection")), C(19, T("rtr_length", previous)),
 						S(20, T("rtr_irradiance", current)), S(21, T("rtr_hit", current)), S(22, T("rtr_reservoir", current)), S(23, T("rtr_origin", current)), I(24, T("rtr_resolved")), I(25, T("rtr_length", current)) });
-		// Kajiya temporal_filter.hlsl is an unconditional copy in this revision.
-		dispatch(KILN_RTR_FILTER, full_groups,
-				{ U(), S(10, T("rtr_resolved")), C(11, T("rtr_history", previous)), S(12, depth), S(13, T("rtr_length", current)), C(14, T("rtdgi_reprojection")), I(15, T("rtr_history", current)) });
-		dispatch(KILN_RTR_CLEANUP, full_groups,
-				{ U(), S(7, surface_input), S(10, T("rtr_history", current)), S(11, depth), I(13, T("rtr_final")) });
+		state->nrd_active = false;
+		if (state->nrd) {
+			dispatch(KILN_NRD_PREPARE, full_groups,
+					{ U(), S(1, depth), S(2, normal), S(3, buffers->get_texture(SNAME("kiln_deferred"), SNAME("motion_3d"))), S(4, T("rtdgi_raw")), S(5, T("rtr_resolved")), S(6, T("rtr_length", current)),
+							I(7, T("nrd_normal")), I(8, T("nrd_depth")), I(9, T("nrd_motion")), I(10, T("nrd_diffuse")), I(11, T("nrd_specular")) });
+			RENDER_TIMESTAMP("Kiln / NRD RELAX diffuse + specular");
+			state->nrd_active = state->nrd->denoise(scene, state->previous_projection, state->previous_camera, state->previous_jitter, state->frames, state->frames == 0,
+					T("nrd_motion"), T("nrd_normal"), T("nrd_depth"), T("nrd_diffuse"), T("nrd_specular"), T("diffuse"), T("rtr_final"));
+			RENDER_TIMESTAMP("Kiln / between passes");
+			if (!state->nrd_active) {
+				WARN_PRINT_ONCE("Kiln NRD dispatch failed; using legacy GI filters.");
+				legacy_diffuse();
+				memdelete(state->nrd);
+				state->nrd = nullptr;
+			}
+		}
+		if (!state->nrd_active) {
+			// The retained RTR temporal_filter.hlsl is an unconditional copy.
+			dispatch(KILN_RTR_FILTER, full_groups,
+					{ U(), S(10, T("rtr_resolved")), C(11, T("rtr_history", previous)), S(12, depth), S(13, T("rtr_length", current)), C(14, T("rtdgi_reprojection")), I(15, T("rtr_history", current)) });
+			dispatch(KILN_RTR_CLEANUP, full_groups,
+					{ U(), S(7, surface_input), S(10, T("rtr_history", current)), S(11, depth), I(13, T("rtr_final")) });
+		}
 		dispatch(KILN_SHADOW_TRACE, full_groups,
 				{ U(), S(1, depth), S(2, normal), S(3, blue_noise), S(6, surface_input), I(10, T("shadow_raw")),
 						B(4, "nodes"), B(5, "triangles"), B(16, "dynamic_nodes"), B(17, "dynamic_triangles"), S(32, state->ray_albedo, true), B(33, "texture_coordinates"), B(34, "dynamic_texture_coordinates") },
@@ -674,12 +747,17 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 				metadata["width"] = state->size.x;
 				metadata["height"] = state->size.y;
 				metadata["frame"] = state->frames;
+				metadata["nrd_active"] = state->nrd_active;
 				metadata["gi_algorithm"] = "Surfel GI + RTDGI ReSTIR";
 				metadata["hdr_format"] = "RGBA16F linear scene radiance before display transform";
 				const bool hdr_only = ProjectSettings::get_singleton()->get_setting("rendering/kiln/capture_hdr_only", false);
+				const bool indirect_only = ProjectSettings::get_singleton()->get_setting("rendering/kiln/capture_indirect_only", false);
 				metadata["capture_hdr_only"] = hdr_only;
 				Dictionary signals;
 				auto capture_signal = [&](const char *name, RID texture_rid) {
+					if (indirect_only && String(name) != "diffuse" && String(name) != "rtr_final" && String(name) != "rtdgi_lighting" && String(name) != "surface") {
+						return;
+					}
 					Ref<FileAccess> file = FileAccess::open(world.capture_directory.path_join(String(name) + ".bin"), FileAccess::WRITE);
 					if (file.is_null()) {
 						return;
@@ -725,7 +803,9 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 					if (hdr_only && String(name) != "rtdgi_lighting" && String(name) != "surface") {
 						continue;
 					}
-					capture_signal(name, T(name));
+					if (state->textures.has(String(name) + "0")) {
+						capture_signal(name, T(name));
+					}
 				}
 				for (const char *name : { "restir_irradiance", "restir_hit", "restir_origin", "restir_hit_normal", "restir_reservoir" }) {
 					if (hdr_only && String(name) != "rtdgi_lighting" && String(name) != "surface") {
@@ -752,6 +832,11 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 	statistics["width"] = state->size.x;
 	statistics["height"] = state->size.y;
 	statistics["gi_enabled"] = world.enabled;
+	statistics["nrd_active"] = state->nrd_active;
+	statistics["nrd_feedback"] = state->nrd_active ? "previous NRD diffuse, geometry-validated reprojection" : "legacy RTDGI history";
+	statistics["legacy_diffuse_filter_active"] = !state->nrd_active;
+	statistics["legacy_filter_texture_bytes"] = state->textures.has("rtdgi_filtered0") ? uint64_t(state->size.x) * state->size.y * 48 : uint64_t(0);
+	statistics["indirect_denoiser"] = state->nrd_active ? "NRD 4.17.3 RELAX_DIFFUSE_SPECULAR" : "legacy temporal/spatial filters";
 	statistics["backend"] = state->hardware_active ? "hardware_ray_query" : "compute_software_bvh";
 	statistics["hardware_ray_query_available"] = hardware_available;
 	statistics["hardware_blas_builds"] = state->hardware_builds;
@@ -766,7 +851,7 @@ bool KilnGI::process(Ref<RenderSceneBuffersRD> buffers, RenderSceneDataRD *scene
 		statistics["surfel_ray_budget_mode"] = "four rays per live surfel";
 		statistics["specular_rays"] = 1;
 		statistics["specular_resolution"] = "half resolution";
-		statistics["specular_implementation"] = "GGX VNDF, ReSTIR temporal reuse, resolve and temporal/spatial denoise";
+		statistics["specular_implementation"] = state->nrd_active ? "GGX VNDF, ReSTIR temporal reuse, resolve and NRD RELAX" : "GGX VNDF, ReSTIR temporal reuse, resolve and temporal/spatial denoise";
 		statistics["specular_checkerboard"] = false;
 		statistics["rtdgi_candidate_rays"] = 1;
 		statistics["rtdgi_path_validation"] = true;
