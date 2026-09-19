@@ -1,0 +1,100 @@
+#version 450
+#define KILN_TRACE_MIN_DISTANCE 0.0
+// Half-resolution diffuse candidate ray used by Kajiya's RTDGI/ReSTIR path.
+// The candidate evaluates one uniform-hemisphere sample, direct sun, emission,
+// the persistent surfel cache, and the procedural sky on a miss.
+// @GI_COMMON@
+// @BVH@
+// @KILN_COMMON@
+// @KILN_SKY@
+// @KILN_BRDF@
+// @KILN_RAY_MATERIAL@
+// @KILN_SURFEL@
+// @KILN_RESTIR_COMMON@
+#define KILN_WRC_LOOKUP
+// @KILN_WRC@
+
+layout(set = 0, binding = 19) uniform samplerCube restir_sky;
+layout(set = 0, binding = 20) uniform sampler2D restir_fg_lut;
+layout(set = 0, binding = 21, rgba16f) uniform writeonly image2D restir_candidate;
+layout(set = 0, binding = 22, rgba16f) uniform writeonly image2D restir_hit;
+
+layout(set = 0, binding = 11) uniform sampler2D reprojection_tex;
+layout(set = 0, binding = 10) uniform sampler2D reprojected_gi;
+layout(set = 0, binding = 6) uniform sampler2D history_irradiance;
+layout(set = 0, binding = 7) uniform sampler2D history_origin;
+layout(set = 0, binding = 8) uniform sampler2D history_ray;
+layout(set = 0, binding = 9, r8) uniform writeonly image2D invalidity_out;
+
+vec3 restir_hit_radiance(vec3 hit_position, vec3 hit_normal, int triangle_id, vec3 outgoing_dir) {
+	Triangle tri = world_triangle(triangle_id);
+	vec4 material = kiln_ray_material(triangle_id, hit_position);
+	vec3 albedo = material.rgb;
+	mat3 basis = restir_basis(hit_normal);
+	vec3 tangent = basis[0], bitangent = basis[1];
+	vec3 wo = vec3(dot(-outgoing_dir, tangent), dot(-outgoing_dir, bitangent), dot(-outgoing_dir, hit_normal));
+
+	KilnLayeredBrdf brdf = kiln_layered_from_gbuffer_ndotv(albedo, mix(material.w, 1.0, 0.5), tri.emission.w, max(0.001, wo.z), restir_fg_lut);
+	vec3 wi = vec3(dot(p.sun_direction.xyz, tangent), dot(p.sun_direction.xyz, bitangent), dot(p.sun_direction.xyz, hit_normal));
+	vec3 direct = vec3(0.0);
+	if (wi.z > 0.0 && !occluded(hit_position + p.sun_direction.xyz * 1e-4, p.sun_direction.xyz)) {
+		direct = kiln_layered_evaluate(brdf, wo, wi) * wi.z * kiln_sun_color(p.sun_direction.xyz, p.sun_color.rgb) * (p.sun_direction.w / PI);
+	}
+	vec3 clip = restir_project(hit_position);
+    ivec2 screen_px = ivec2((clip.xy * 0.5 + 0.5) * p.size_frame.xy);
+    vec3 gi = kiln_lookup_surfel_gi(hit_position, hit_normal);
+    if (restir_inside(screen_px, ivec2(p.size_frame.xy))) {
+        float screen_depth = texelFetch(restir_depth, screen_px, 0).r;
+        vec4 screen_gi = texelFetch(reprojected_gi, screen_px, 0);
+        if (screen_gi.w > 0.0 && restir_relative_depth(clip.z, screen_depth) < 5e-3) gi = screen_gi.rgb;
+    }
+    return direct + tri.emission.rgb + gi * albedo;
+}
+
+vec3 restir_trace(vec3 origin, vec3 direction, vec3 query_normal, out vec4 hit, out float inv_pdf) {
+    int id; float distance; vec3 normal;
+    KilnFarField far_field = kiln_wrc_query(origin, direction, query_normal);
+    inv_pdf = 1.0;
+    if (world_trace(origin, direction, far_field.probe_t >= 0.0 ? far_field.probe_t : RESTIR_SKY_DISTANCE, false, id, distance, normal)) {
+        normal = kiln_ray_normal(id);
+        hit = vec4(normal, distance);
+        return restir_hit_radiance(origin + direction * distance, normal, id, direction);
+    }
+    if (far_field.probe_t >= 0.0) { inv_pdf = far_field.inv_pdf; hit = vec4(-direction, far_field.surface_t); return far_field.radiance; }
+    hit = vec4(-direction, RESTIR_SKY_DISTANCE);
+    return kiln_sample_sky(restir_sky, direction);
+}
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    if (!restir_inside(px, restir_half_size())) return;
+    ivec2 hi = min(px * 2, ivec2(p.size_frame.xy) - 1);
+    float depth = texelFetch(restir_depth, hi, 0).r;
+    imageStore(invalidity_out, px, vec4(0.0));
+    if (depth == 0.0) {
+        imageStore(invalidity_out, px, vec4(1.0));
+        imageStore(restir_candidate, px, vec4(0.0));
+        imageStore(restir_hit, px, vec4(0.0, 0.0, 1.0, RESTIR_SKY_DISTANCE)); return;
+    }
+    vec3 origin = restir_origin(hi, depth), normal = restir_half_normal_ws(px);
+    vec3 direction = restir_direction(px, normal);
+    vec4 hit; float inv_pdf;
+    vec3 radiance = restir_trace(origin, direction, normal, hit, inv_pdf);
+    imageStore(restir_candidate, px, vec4(max(vec3(0.0), radiance), inv_pdf));
+    imageStore(restir_hit, px, hit);
+    // Retrace the previous selected path under this frame's geometry and lighting.
+    if (p.size_frame.w > 0.5) {
+        ivec2 rp = ivec2(floor(vec2(px) + p.size_frame.xy * texelFetch(reprojection_tex, hi, 0).xy * 0.5 + 0.5));
+        if (restir_inside(rp, restir_half_size())) {
+            vec3 old_origin = texelFetch(history_origin, rp, 0).xyz;
+            vec3 old_delta = texelFetch(history_ray, rp, 0).xyz - old_origin;
+            if (dot(old_delta, old_delta) > 1e-8) {
+                vec4 check_hit; float check_pdf;
+                vec3 check_value = max(vec3(0.0), restir_trace(old_origin, normalize(old_delta), normal, check_hit, check_pdf));
+                vec3 prev = max(vec3(0.0), texelFetch(history_irradiance, rp, 0).rgb);
+                float difference = length(abs(prev - check_value) / max(vec3(1e-3), prev + check_value)) / sqrt(3.0);
+                imageStore(invalidity_out, px, vec4(smoothstep(0.1, 0.5, difference)));
+            }
+        }
+    }
+}

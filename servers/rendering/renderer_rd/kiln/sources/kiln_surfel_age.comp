@@ -1,0 +1,26 @@
+#version 450
+// lighting age_surfels.hlsl: life increment and recycle-to-pool on expiry.
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_SURFEL@
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = kiln_surfel_meta_buf[KILN_SURFEL_META_SURFEL_COUNT / 4u];
+	if (surfel_idx >= total_surfel_count) {
+		return;
+	}
+	if (!kiln_surfel_life_needs_aging(kiln_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+	uint prev_age = kiln_surfel_life_buf[surfel_idx];
+	uint new_age = prev_age + 1u;
+	if (kiln_is_surfel_life_valid(new_age)) {
+		kiln_surfel_life_buf[surfel_idx] = new_age;
+	} else {
+		kiln_surfel_life_buf[surfel_idx] = KILN_SURFEL_LIFE_RECYCLED;
+		// Deallocate: push the index back onto the LIFO pool.
+		uint alloc_count = atomicAdd(kiln_surfel_meta_buf[KILN_SURFEL_META_ALLOC_COUNT / 4u], -1u);
+		kiln_surfel_pool_buf[alloc_count - 1u] = surfel_idx;
+	}
+}

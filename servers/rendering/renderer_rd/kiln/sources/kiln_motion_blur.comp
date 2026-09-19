@@ -1,0 +1,63 @@
+#version 450
+// Port of Kajiya rust-shaders/src/motion_blur.rs, MIT. Fixed scale matches
+// renderers/motion_blur.rs; velocity is the unjittered reprojection map.
+// @GI_COMMON@
+layout(binding=10) uniform sampler2D input_tex;
+layout(binding=11) uniform sampler2D velocity_tex;
+layout(binding=12) uniform sampler2D tile_velocity_tex;
+layout(binding=13) uniform sampler2D depth_tex;
+layout(binding=14,rgba16f) uniform writeonly image2D output_tex;
+layout(local_size_x=8,local_size_y=8) in;
+vec4 motion_fetch(sampler2D t, ivec2 px) {
+    return any(lessThan(px,ivec2(0))) || any(greaterThanEqual(px,textureSize(t,0))) ? vec4(0) : texelFetch(t,px,0);
+}
+float motion_depth(float d) {
+    vec4 v=p.inverse_unjittered_projection*vec4(0,0,d,1);
+    return -v.z/v.w;
+}
+float motion_weight(float center_depth,float sample_depth,float offset_len,float center_spread,float sample_spread) {
+    vec2 dc=vec2(0.5)+vec2(16,-16)*(sample_depth-center_depth);
+    dc=vec2(isnan(dc.x)?0.0:clamp(dc.x,0.0,1.0),isnan(dc.y)?0.0:clamp(dc.y,0.0,1.0));
+    return dot(dc,clamp(vec2(center_spread,sample_spread)-(offset_len+1.0),0.0,1.0));
+}
+void main() {
+    ivec2 px=ivec2(gl_GlobalInvocationID.xy),size=imageSize(output_tex);
+    if(any(greaterThanEqual(px,size))) return;
+    vec2 uv=(vec2(px)+0.5)/vec2(size);
+    ivec2 offset=px;
+    offset.x+=offset.x<<4; offset.x^=offset.x>>6;
+    offset.y+=offset.x<<1; offset.y+=offset.y<<6;
+    offset.y^=offset.y>>2; offset.x^=offset.y;
+    int noise1=((offset.x^(offset.y<<1))&31)-15;
+    offset=(offset&31)-15;
+    ivec2 tile_coord=clamp(ivec2(max(vec2(0),uv*vec2(size)+vec2(offset))),ivec2(0),size-1)/16;
+    vec2 tile_velocity=0.5*texelFetch(tile_velocity_tex,tile_coord,0).xy;
+    float noise=0.5*float(noise1)/15.0;
+    vec2 center_uv=uv+tile_velocity*(noise/4.0*0.5);
+    ivec2 center_px=clamp(ivec2(max(vec2(0),center_uv*vec2(size))),ivec2(0),size-1);
+    vec3 center_color=texelFetch(input_tex,center_px,0).rgb;
+    float center_depth=motion_depth(textureLod(depth_tex,center_uv,0.0).x);
+    float center_spread=length(0.5*textureLod(velocity_tex,center_uv,0.0).xy*vec2(size));
+    vec4 sum=vec4(0);
+    float count=1.0;
+    if(length(tile_velocity)>0.0) {
+        for(int i=1;i<4;i++) {
+            vec2 uv0=uv+tile_velocity*((float(i)+noise)/4.0*0.5);
+            vec2 uv1=uv+tile_velocity*((-float(i)+noise)/4.0*0.5);
+            ivec2 px0=ivec2(max(vec2(0),uv0*vec2(size))),px1=ivec2(max(vec2(0),uv1*vec2(size)));
+            float d0=motion_depth(motion_fetch(depth_tex,px0).x),d1=motion_depth(motion_fetch(depth_tex,px1).x);
+            float v0=length(0.5*motion_fetch(velocity_tex,px0).xy*vec2(size)),v1=length(0.5*motion_fetch(velocity_tex,px1).xy*vec2(size));
+            float w0=motion_weight(center_depth,d0,length((uv0-uv)*vec2(size)),center_spread,v0);
+            float w1=motion_weight(center_depth,d1,length((uv1-uv)*vec2(size)),center_spread,v1);
+            if(d0>d1 && v1>v0) w0=w1;
+            if(!(d0>d1 || v1>v0)) w1=w0;
+            float valid0=all(equal(uv0,clamp(uv0,0.0,1.0)))?1.0:0.0;
+            float valid1=all(equal(uv1,clamp(uv1,0.0,1.0)))?1.0:0.0;
+            count+=valid0+valid1;
+            sum+=vec4(textureLod(input_tex,uv0,1.0).rgb,1)*w0*valid0;
+            sum+=vec4(textureLod(input_tex,uv1,1.0).rgb,1)*w1*valid1;
+        }
+        sum/=count;
+    }
+    imageStore(output_tex,px,vec4(sum.rgb+(1.0-sum.a)*center_color,1));
+}

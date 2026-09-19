@@ -905,9 +905,8 @@ layout(set = 3, binding = 6) uniform sampler2D kiln_gi_diffuse;
 layout(set = 3, binding = 7) uniform sampler2D kiln_gi_specular;
 layout(set = 3, binding = 8) uniform sampler2D kiln_gi_ao;
 layout(set = MATERIAL_UNIFORM_SET, binding = 9) uniform sampler2D kiln_motion;
-layout(set = MATERIAL_UNIFORM_SET, binding = 10) uniform sampler2D kiln_history;
-layout(set = MATERIAL_UNIFORM_SET, binding = 11) uniform sampler2D kiln_surfel_debug;
-layout(set = MATERIAL_UNIFORM_SET, binding = 12) uniform sampler2D kiln_gi_fresnel;
+layout(set = MATERIAL_UNIFORM_SET, binding = 13) uniform sampler2DArray kiln_sky;
+layout(set = MATERIAL_UNIFORM_SET, binding = 14) uniform sampler2D kiln_rtdgi_lighting;
 
 vec3 vertex_interp;
 vec3 normal_interp;
@@ -949,6 +948,27 @@ layout(location = 9) in float dp_clip;
 
 layout(location = 10) in flat uint instance_index_interp;
 #endif // !MODE_KILN_RESOLVE
+
+#ifdef MODE_KILN_RESOLVE
+vec3 kiln_sky_sample(vec3 direction) {
+	direction = normalize(direction);
+	vec3 a = abs(direction);
+	int face;
+	vec2 uv;
+	if (a.x >= a.y && a.x >= a.z) {
+		if (direction.x >= 0.0) { face = 0; uv = vec2(-direction.z, -direction.y) / a.x; }
+		else { face = 1; uv = vec2(direction.z, -direction.y) / a.x; }
+	} else if (a.y >= a.z) {
+		if (direction.y >= 0.0) { face = 2; uv = vec2(direction.x, direction.z) / a.y; }
+		else { face = 3; uv = vec2(direction.x, -direction.z) / a.y; }
+	} else {
+		if (direction.z >= 0.0) { face = 4; uv = vec2(direction.x, -direction.y) / a.z; }
+		else { face = 5; uv = vec2(-direction.x, -direction.y) / a.z; }
+	}
+	uv = uv * 0.5 + 0.5;
+	return textureLod(kiln_sky, vec3(uv, float(face)), 0.0).rgb;
+}
+#endif
 
 #ifdef USE_LIGHTMAP
 // w0, w1, w2, and w3 are the four cubic B-spline basis functions
@@ -1041,6 +1061,16 @@ layout(location = 14) in vec2 point_coord_interp;
 
 //defines to keep compatibility with vertex
 
+#ifdef MODE_KILN_MATERIAL
+vec4 kiln_previous_view_position(vec4 clip) {
+#ifdef USE_MULTIVIEW
+	return scene_data_block.prev_data.inv_projection_matrix_view[ViewIndex] * clip;
+#else
+	return scene_data_block.prev_data.inv_projection_matrix * clip;
+#endif
+}
+#endif
+
 #ifdef USE_MULTIVIEW
 #define projection_matrix scene_data.projection_matrix_view[ViewIndex]
 #define inv_projection_matrix scene_data.inv_projection_matrix_view[ViewIndex]
@@ -1074,6 +1104,7 @@ layout(location = 1) out vec4 kiln_normal_out;
 layout(location = 2) out vec4 kiln_emission_out;
 layout(location = 3) out vec4 kiln_material_out;
 layout(location = 4) out uvec2 kiln_surface_out;
+layout(location = 6) out vec4 kiln_motion_3d_out;
 
 #endif
 
@@ -1256,12 +1287,22 @@ void fragment_shader(in SceneData scene_data) {
 #endif
 #ifdef MODE_KILN_RESOLVE
 	ivec2 pixel = ivec2(gl_FragCoord.xy);
+    if (draw_call.multimesh_motion_vectors_previous_offset != 0u && draw_call.uv_offset == 0u) {
+        frag_color = vec4(texelFetch(kiln_rtdgi_lighting, pixel, 0).rgb * scene_data.emissive_exposure_normalization, 1.0);
+        return;
+    }
 	uint encoded_instance = texelFetch(kiln_instance, pixel, 0).r;
 	if (encoded_instance == 0u) {
-		discard;
-	}
-	if (draw_call.uv_offset >= 15u && draw_call.uv_offset <= 27u) {
-		frag_color = draw_call.multimesh_motion_vectors_current_offset != 0u ? vec4(texelFetch(kiln_surfel_debug, pixel, 0).rgb, 1.0) : vec4(0, 0, 0, 1);
+		if (draw_call.multimesh_motion_vectors_current_offset == 0u) discard;
+		vec2 uv = (vec2(pixel) + 0.5) * scene_data.screen_pixel_size;
+		vec4 view_point = inv_projection_matrix * vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+		vec3 view_ray = normalize(view_point.xyz / max(abs(view_point.w), 1e-6));
+		mat4 resolve_inv_view = transpose(mat4(scene_data.inv_view_matrix[0],
+				scene_data.inv_view_matrix[1],
+				scene_data.inv_view_matrix[2],
+				vec4(0.0, 0.0, 0.0, 1.0)));
+		vec3 world_ray = normalize((resolve_inv_view * vec4(view_ray, 0.0)).xyz);
+		frag_color = vec4(kiln_sky_sample(world_ray), 1.0);
 		return;
 	}
     if (draw_call.uv_offset == 13u || draw_call.uv_offset == 14u) {
@@ -1441,7 +1482,6 @@ void fragment_shader(in SceneData scene_data) {
 	backlight = vec3(stored_material.a);
 	alpha_highp = 1.0;
 	if (draw_call.uv_offset == 9u) { frag_color = vec4(texelFetch(kiln_motion, pixel, 0).rg * 30.0 + 0.5, 0.5, 1); return; }
-	if (draw_call.uv_offset == 12u) { frag_color = vec4(vec3(texelFetch(kiln_history, clamp(ivec2(vec2(pixel) * vec2(textureSize(kiln_history, 0)) / vec2(textureSize(kiln_depth, 0))), ivec2(0), textureSize(kiln_history, 0) - 1), 0).r / 256.0), 1); return; }
 	if (draw_call.uv_offset > 0u && draw_call.uv_offset <= 6u) {
 		vec3 value = albedo_highp;
 		if (draw_call.uv_offset == 2u) value = normal_interp * 0.5 + 0.5;
@@ -1761,7 +1801,7 @@ void fragment_shader(in SceneData scene_data) {
 #endif //not render depth
 	/////////////////////// LIGHTING //////////////////////////////
 
-#if defined(NORMAL_USED) && !defined(MODE_KILN_RESOLVE)
+#if defined(NORMAL_USED) && !defined(MODE_KILN_RESOLVE) && !defined(MODE_KILN_MATERIAL)
 	if (bool(scene_data.flags & SCENE_DATA_FLAGS_USE_ROUGHNESS_LIMITER)) {
 		//https://www.jp.square-enix.com/tech/library/pdf/ImprovedGeometricSpecularAA.pdf
 		float roughness2 = roughness * roughness;
@@ -1779,6 +1819,8 @@ void fragment_shader(in SceneData scene_data) {
 	}
 #endif
 #ifdef MODE_KILN_MATERIAL
+	vec3 kiln_face_normal = normalize(cross(dFdy(vertex), dFdx(vertex)));
+	if (dot(normal, kiln_face_normal) < 0.0) normal = -normal;
 	kiln_albedo_out = vec4(albedo, metallic);
 	kiln_normal_out = vec4(normal, roughness);
 	kiln_emission_out = vec4(emission, 0.0);
@@ -1794,7 +1836,7 @@ void fragment_shader(in SceneData scene_data) {
 #ifdef KILN_SURFACE
     surface_instance |= 0x80000000u;
 #endif
-    vec3 geometric_normal = normalize(normal_interp);
+    vec3 geometric_normal = kiln_face_normal;
     geometric_normal /= abs(geometric_normal.x) + abs(geometric_normal.y) + abs(geometric_normal.z);
     vec2 oct = geometric_normal.z >= 0.0 ? geometric_normal.xy : (1.0 - abs(geometric_normal.yx)) * mix(vec2(-1), vec2(1), greaterThanEqual(geometric_normal.xy, vec2(0)));
     // Explicit SNORM packing avoids a Metal compiler issue with the native
@@ -3189,47 +3231,13 @@ void fragment_shader(in SceneData scene_data) {
 #ifdef MODE_KILN_RESOLVE
 	if (draw_call.uv_offset == 11u) { frag_color = vec4(float(kiln_cluster_count) / 128.0, float(kiln_cluster_count) / 512.0, float(kiln_cluster_count) / 1024.0, 1); return; }
 	if (draw_call.uv_offset == 10u) emission = vec3(0);
-	if (draw_call.multimesh_motion_vectors_current_offset != 0u && draw_call.uv_offset != 10u) {
-		vec4 gi_diffuse = texelFetch(kiln_gi_diffuse, pixel, 0);
-		vec4 gi_specular = texelFetch(kiln_gi_specular, pixel, 0);
-		vec3 gi_f0 = F0(metallic, specular, albedo);
-		float gi_nv = clamp(dot(normal, view), 0.0001, 1.0);
-		vec2 gi_dfg = prefiltered_dfg(roughness, gi_nv).xy;
-		float gi_f90 = clamp(50.0 * gi_f0.g, metallic, 1.0);
-		vec3 gi_compensation = get_energy_compensation(gi_f0, gi_dfg.y);
-		vec3 fresnel = clamp(gi_compensation * ((gi_f90 - gi_f0) * gi_dfg.x + gi_f0 * gi_dfg.y), vec3(0), vec3(1));
-		float kiln_ao = texelFetch(kiln_gi_ao, pixel, 0).r;
-		if (draw_call.uv_offset == 8u) { frag_color = vec4(vec3(kiln_ao), 1.0); return; }
-		vec3 reflected = gi_compensation * (gi_f0 * gi_specular.rgb + gi_f90 * texelFetch(kiln_gi_fresnel, pixel, 0).rgb);
-		// Ray traced reflections already include geometric visibility. Screen AO
-		// modulates diffuse only; applying it to glossy light creates dark halos.
-		vec3 indirect = (vec3(1) - fresnel) * albedo * (1.0 - metallic) * gi_diffuse.rgb * kiln_ao + reflected;
-		if (draw_call.uv_offset == 28u) { frag_color = vec4(reflected, 1); return; }
-		if (draw_call.uv_offset == 7u) {
-			frag_color = vec4(indirect, 1.0);
-			return;
-		}
-		emission += indirect * scene_data.emissive_exposure_normalization;
+	if (draw_call.multimesh_motion_vectors_current_offset != 0u) {
+		if (draw_call.uv_offset == 7u) { frag_color = vec4(texelFetch(kiln_gi_diffuse, pixel, 0).rgb, 1.0); return; }
+		if (draw_call.uv_offset == 8u) { frag_color = vec4(vec3(texelFetch(kiln_gi_ao, pixel, 0).r), 1.0); return; }
+		if (draw_call.uv_offset == 28u) { frag_color = vec4(texelFetch(kiln_gi_specular, pixel, 0).rgb, 1.0); return; }
 	}
 #endif
 
-#if !defined(MODE_KILN_RESOLVE) && !defined(MODE_UNSHADED)
-	// Native GI is also valid for ordinary opaque StandardMaterial3D surfaces.
-	// The per-pass flag is only set for a KilnGIWorld's opaque buffers; existing
-	// Forward+ scenes and the transparent pass keep their upstream behavior.
-	if ((implementation_data.ss_effects_flags & 16u) != 0u) {
-		vec4 gi_diffuse = texelFetch(sampler2D(kiln_forward_diffuse, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0);
-		vec4 gi_specular = texelFetch(sampler2D(kiln_forward_specular, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0);
-		vec3 gi_f0 = F0(metallic, specular, albedo);
-		float gi_nv = clamp(dot(normal, view), 0.0001, 1.0);
-		vec2 gi_dfg = prefiltered_dfg(roughness, gi_nv).xy;
-		float gi_f90 = clamp(50.0 * gi_f0.g, metallic, 1.0);
-		vec3 gi_compensation = get_energy_compensation(gi_f0, gi_dfg.y);
-		vec3 fresnel = clamp(gi_compensation * ((gi_f90 - gi_f0) * gi_dfg.x + gi_f0 * gi_dfg.y), vec3(0), vec3(1));
-		vec3 reflected = gi_compensation * (gi_f0 * gi_specular.rgb + gi_f90 * texelFetch(sampler2D(kiln_forward_fresnel, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0).rgb);
-		emission += ((vec3(1) - fresnel) * albedo * (1.0 - metallic) * gi_diffuse.rgb * texelFetch(sampler2D(kiln_forward_ao, SAMPLER_NEAREST_CLAMP), ivec2(gl_FragCoord.xy), 0).r + reflected) * scene_data.emissive_exposure_normalization;
-	}
-#endif
 
 	// multiply by albedo
 	diffuse_light *= albedo; // ambient must be multiplied by albedo at the end
@@ -3274,7 +3282,7 @@ void fragment_shader(in SceneData scene_data) {
 #ifdef MODE_UNSHADED
 	frag_color = vec4(albedo, alpha);
 #else
-	frag_color = vec4(emission + ambient_light + diffuse_light + direct_specular_light + indirect_specular_light, alpha);
+		frag_color = vec4(emission + ambient_light + diffuse_light + direct_specular_light + indirect_specular_light, alpha);
 //frag_color = vec4(1.0);
 #endif //USE_NO_SHADING
 
@@ -3297,6 +3305,14 @@ void fragment_shader(in SceneData scene_data) {
 	vec2 prev_position_uv = prev_position_clip * vec2(0.5, 0.5);
 
 	motion_vector = prev_position_uv - position_uv;
+#ifdef MODE_KILN_MATERIAL
+	// Previous object position expressed in the current view, matching Kajiya's
+	// 3D velocity. Camera motion is applied separately by GI reprojection.
+	vec4 kiln_prev_vs = kiln_previous_view_position(prev_screen_position);
+	vec3 kiln_prev_ws = (kiln_prev_vs / kiln_prev_vs.w) * scene_data_block.prev_data.inv_view_matrix;
+	vec3 kiln_prev_current_vs = vec4(kiln_prev_ws, 1.0) * scene_data.view_matrix;
+	kiln_motion_3d_out = vec4(kiln_prev_current_vs - vertex, 0.0);
+#endif
 #endif
 }
 

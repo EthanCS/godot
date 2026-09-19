@@ -21,34 +21,54 @@ var output := ""
 var sun_theta := DEFAULT_SUN_THETA
 var sun_phi := DEFAULT_SUN_PHI
 var with_car := true
+var camera_position := Vector3(0, 1, 8)
+var camera_yaw := 0.0
+var capture_sequence := false
+var timeline := "static"
+var car: Node3D
+var query_backend := 0
+var mesh_input := "prepared"
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
-		if arg == "--kajiya": ProjectSettings.set_setting("rendering/kiln/kajiya_mode", true)
+		if arg.begins_with("--mesh-input="): mesh_input = arg.get_slice("=", 1)
 		if arg.begins_with("--sun-theta="): sun_theta = float(arg.get_slice("=", 1))
 		if arg.begins_with("--sun-phi="): sun_phi = float(arg.get_slice("=", 1))
 		if arg.begins_with("--frames="): frames = int(arg.get_slice("=", 1))
 		if arg.begins_with("--output="): output = arg.trim_prefix("--output=")
 		if arg == "--no-car": with_car = false
+		if arg == "--capture-sequence": capture_sequence = true
+		if arg.begins_with("--timeline="): timeline = arg.get_slice("=", 1)
+		if arg.begins_with("--query-backend="): query_backend = int(arg.get_slice("=", 1))
+		if arg == "--capture-hdr-only": ProjectSettings.set_setting("rendering/kiln/capture_hdr_only", true)
+		if arg.begins_with("--camera-yaw="): camera_yaw = float(arg.get_slice("=", 1))
+		if arg.begins_with("--camera-position="):
+			var xyz := arg.get_slice("=", 1).split(",")
+			camera_position = Vector3(float(xyz[0]), float(xyz[1]), float(xyz[2]))
 		if arg.begins_with("--size="):
 			var size := arg.get_slice("=", 1).split("x")
 			get_window().size = Vector2i(int(size[0]), int(size[1]))
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	# The reference draws full mesh indices. Raster LODs would disagree with
+	# both that G-buffer and the original-triangle ray-tracing geometry.
+	get_viewport().mesh_lod_threshold = 0.0
 	if output != "":
 		DirAccess.make_dir_recursive_absolute(output)
 
-	var cornell_scene: PackedScene = load("res://assets/cornell_box/scene.gltf")
+	assert(mesh_input == "prepared" || mesh_input == "canonical", "Unknown Cornell input set")
+	var cornell_scene: PackedScene = load("res://assets/%s/cornell_box.gltf" % mesh_input)
 	assert(cornell_scene != null, "Run python kiln/tools/fetch_cornell.py before importing this project.")
 	var cornell := cornell_scene.instantiate()
-	cornell.scale = Vector3.ONE * 2.0
+	_match_reference_raster_materials(cornell)
 	cornell.position = Vector3(0, -1, 0)
 	add_child(cornell)
 
 	if with_car:
-		var car_scene: PackedScene = load("res://assets/car/scene.gltf")
-		var car := car_scene.instantiate()
-		car.scale = Vector3.ONE * 0.01
+		var car_scene: PackedScene = load("res://assets/%s/car.gltf" % mesh_input)
+		car = car_scene.instantiate()
+		if timeline == "object" || timeline == "combined": car.set_meta("kiln_dynamic", true)
+		_match_reference_raster_materials(car)
 		car.position = Vector3(0, -0.01, 0)
 		add_child(car)
 
@@ -66,7 +86,8 @@ func _ready() -> void:
 	add_child(world)
 
 	camera = Camera3D.new()
-	camera.position = Vector3(0, 1, 8)
+	camera.position = camera_position
+	camera.rotation.y = camera_yaw
 	camera.fov = 52.0
 	camera.near = 0.01 # kajiya CameraLens default
 	add_child(camera)
@@ -80,11 +101,26 @@ func _ready() -> void:
 	gi = KilnGIWorld.new()
 	gi.environment = environment
 	gi.set_quality(2, 256)
+	gi.set_query_backend(query_backend)
 	add_child(gi)
 
 	_set_sun(sun_theta, sun_phi)
 	if frames > 0:
 		_run_capture.call_deferred()
+
+func _match_reference_raster_materials(node: Node) -> void:
+	# Kajiya raster_meshes.rs uses face_cull(true) for every material, including
+	# glTF materials marked doubleSided. Match that scene input explicitly.
+	if node is MeshInstance3D:
+		for surface in node.mesh.get_surface_count():
+			var material = node.mesh.surface_get_material(surface)
+			if material is BaseMaterial3D:
+				var matched = material.duplicate()
+				matched.cull_mode = BaseMaterial3D.CULL_BACK
+				node.set_surface_override_material(surface, matched)
+	for child in node.get_children():
+		_match_reference_raster_materials(child)
+
 
 func _set_sun(theta: float, phi: float) -> void:
 	# kajiya view/src/main.rs SunState::direction()
@@ -105,17 +141,33 @@ func settle(count: int) -> void:
 		await RenderingServer.frame_post_draw
 
 func _run_capture() -> void:
-	await settle(frames)
+	for frame in frames:
+		var phase := frame * TAU / 128.0
+		if timeline == "camera" || timeline == "combined":
+			camera.position = camera_position + Vector3(1.5 * sin(phase), 0, 0)
+			camera.rotation.y = atan2(camera.position.x, camera.position.z)
+		if timeline == "relight" || timeline == "combined":
+			_set_sun(sun_theta + 0.6 * sin(phase), sun_phi)
+		if is_instance_valid(car) && (timeline == "object" || timeline == "combined"):
+			car.position.x = 0.6 * sin(frame * TAU / 96.0)
+			car.rotation.y = 0.3 * sin(frame * TAU / 96.0)
+		# Kajiya's Cornell HDR capture averages the final min(64, frames)
+		# frames; keep the diagnostic stream on the same convergence window.
+		if output != "" && (frame == frames - 1 || (capture_sequence && frame >= frames - mini(frames, 64))):
+			gi.request_capture(output.path_join("signals/frame%04d" % frame))
+		await settle(1)
 	if output != "":
 		get_viewport().get_texture().get_image().save_png(output.path_join("color.png"))
 		FileAccess.open(output.path_join("lighting.json"), FileAccess.WRITE).store_string(JSON.stringify({
 			"sun_theta": sun_theta,
 			"sun_phi": sun_phi,
-			"sun_direction": [sun_theta, sun_phi],
-			"camera": [0, 1, 8],
+			"sun_direction": [sin(sun_phi) * cos(sun_theta), cos(sun_phi), sin(sun_phi) * sin(sun_theta)],
+			"camera": [camera.position.x, camera.position.y, camera.position.z],
+			"camera_yaw": camera.rotation.y,
 			"fov": 52.0,
 			"frames": frames,
 			"with_car": with_car,
+			"timeline": timeline,
 			"statistics": gi.get_statistics(),
 		}))
 		print("[CORNELL_CAPTURE] ", output)

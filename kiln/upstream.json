@@ -4,5 +4,5 @@
   "commit": "ed1daf0bf001b61586d9930840f2f1394092c079",
   "fork": "https://github.com/EthanCS/godot",
   "branch": "main",
-  "status": "Standard G-buffer deferred rendering with Surfel GI. Visibility rasterization/material replay removed. Persistent diffuse multibounce plus world-space GGX indirect specular, temporal/spatial reflection filtering and ray-hit albedo textures. Build, real-GPU results and explicit unsupported features are recorded separately in docs/SURFEL-GI.md."
+  "status": "Engine G-buffer deferred rendering with Surfel GI, RTDGI/ReSTIR, RTR, WRC, SSGI, soft sun shadows and temporal display processing. Advanced GI runs only in kiln_deferred. NRD adapter source is retained and inactive. Current architecture and validation scope: docs/PIPELINE.md."
 }

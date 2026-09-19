@@ -1,0 +1,16 @@
+#version 450
+// Kajiya rust-shaders/src/rev_blur.rs (MIT), with texture-view dimensions.
+layout(set=0,binding=10) uniform sampler2D pyramid_tex;
+layout(set=0,binding=11) uniform sampler2D coarser_tex;
+layout(set=0,binding=12,r11f_g11f_b10f) uniform writeonly image2D output_tex;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy), size = imageSize(output_tex);
+    if (any(greaterThanEqual(px, size))) return;
+    vec4 self_color = vec4(0.0);
+    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+        vec2 uv = (vec2(px) + 0.5 + vec2(x,y)) / vec2(size);
+        self_color += textureLod(coarser_tex, uv, 0.0);
+    }
+    imageStore(output_tex, px, mix(self_color / 9.0, texelFetch(pyramid_tex, px, 0), 0.5 * 0.6));
+}

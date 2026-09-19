@@ -1,0 +1,93 @@
+#version 450
+// Adapted from Kajiya rtr/reflection.rgen.hlsl (MIT).
+#define KILN_TRACE_MIN_DISTANCE 0.0
+#define KILN_TRACE_CULL_BACK_FACES
+// @GI_COMMON@
+// @BVH@
+// @KILN_COMMON@
+// @KILN_SKY@
+// @KILN_BRDF@
+// @KILN_RAY_MATERIAL@
+// @KILN_SURFEL@
+// @KILN_RESTIR_COMMON@
+layout(set=0,binding=6) uniform sampler2D rtr_albedo;
+layout(set=0,binding=7) uniform sampler2D rtr_diffuse;
+layout(set=0,binding=8) uniform sampler2D rtr_fg;
+layout(set=0,binding=19) uniform samplerCube rtr_sky;
+layout(set=0,binding=20,std430) readonly buffer RtrNoise { uint rtr_noise[]; };
+layout(set=0,binding=21,rgba32f) uniform writeonly image2D rtr_candidate0;
+layout(set=0,binding=22,rgba32f) uniform writeonly image2D rtr_candidate1;
+layout(set=0,binding=23,rgba8_snorm) uniform writeonly image2D rtr_candidate2;
+
+float rtr_urand(ivec2 px, uint frame, uint dimension) {
+    uint pixel = uint((px.x & 127) + (px.y & 127) * 128) * 8u;
+    uint ranked = (frame & 255u) ^ rtr_noise[65536u + pixel + dimension];
+    uint value = rtr_noise[dimension + ranked * 256u] ^ rtr_noise[196608u + pixel + dimension];
+    return (float(value) + 0.5) / 256.0;
+}
+vec3 rtr_sun_direction(ivec2 px) {
+    vec2 u = restir_blue(px, uint(p.size_frame.z)).xy;
+    float z = mix(1.0, p.lighting.x, u.x), r = sqrt(max(0.0, 1.0-z*z));
+    return restir_basis(p.sun_direction.xyz) * vec3(r*cos(u.y*2.0*PI), r*sin(u.y*2.0*PI), z);
+}
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    if (!restir_inside(px, restir_half_size())) return;
+    ivec2 hi = restir_hi(px);
+    float depth = texelFetch(restir_depth, hi, 0).r;
+    imageStore(rtr_candidate0, px, vec4(0.0));
+    imageStore(rtr_candidate1, px, vec4(0.0));
+    imageStore(rtr_candidate2, px, vec4(0.0));
+    if (depth == 0.0) { imageStore(rtr_candidate0, px, vec4(0.0,0.0,0.0,-RESTIR_SKY_DISTANCE)); return; }
+    vec4 m = texelFetch(rtr_albedo, hi, 0);
+    m.rgb = pow(floor(sqrt(clamp(m.rgb, vec3(0), vec3(1))) * 255.0) / 255.0, vec3(2));
+    float roughness = max(6e-4, pow(texelFetch(restir_normal, hi, 0).a, 2.0));
+    vec3 n = restir_normal_ws(hi), position = world_position(restir_uv(hi), depth);
+    mat3 basis = restir_basis(n);
+    vec3 wo = transpose(basis) * normalize(p.inv_view[3].xyz - position);
+    if (wo.z < 0.0) { wo.z *= -0.25; wo = normalize(wo); }
+    KilnSpecularBrdf spec;
+    spec.albedo = mix(vec3(0.04), m.rgb, m.a); spec.roughness = roughness;
+    vec2 u = vec2(rtr_urand(px,uint(p.size_frame.z),0u),rtr_urand(px,uint(p.size_frame.z),1u));
+    u.x *= 0.95;
+    KilnBrdfSample sample_value = kiln_specular_sample(spec, wo, u);
+    if (!kiln_brdf_sample_is_valid(sample_value)) return;
+    vec3 direction = basis * sample_value.wi;
+    vec3 origin = restir_origin(hi, depth);
+    float ratio = normalize(wo + sample_value.wi).z;
+    int id; float distance; vec3 hit_normal;
+    vec3 radiance;
+    if (world_trace(origin,direction,RESTIR_SKY_DISTANCE,false,id,distance,hit_normal)) {
+        hit_normal = kiln_ray_normal(id);
+        vec3 hit_position = origin + direction * distance;
+        Triangle tri = world_triangle(id);
+        vec4 material = kiln_ray_material(id,hit_position);
+
+        float roughness_bias = mix(roughness,1.0,0.15);
+        mat3 hit_basis = restir_basis(hit_normal);
+        vec3 hit_wo = transpose(hit_basis) * -direction;
+        KilnLayeredBrdf brdf = kiln_layered_from_gbuffer_ndotv(material.rgb,mix(material.a,1.0,roughness_bias),tri.emission.a,max(1e-5,hit_wo.z),rtr_fg);
+        vec3 sun_dir = rtr_sun_direction(px), wi = transpose(hit_basis) * sun_dir;
+        radiance = tri.emission.rgb;
+        if (wi.z > 0.0 && !occluded(hit_position + sun_dir * 1e-4,sun_dir)) {
+            radiance += kiln_layered_evaluate(brdf,hit_wo,wi) * wi.z * kiln_sun_color(p.sun_direction.xyz,p.sun_color.rgb) * (p.sun_direction.w / PI);
+        }
+        vec3 clip = restir_project(hit_position);
+        ivec2 screen_px = ivec2((clip.xy*0.5+0.5)*p.size_frame.xy);
+        vec3 irradiance = kiln_lookup_surfel_gi(hit_position,hit_normal);
+        if (restir_inside(screen_px,ivec2(p.size_frame.xy))) {
+            vec3 screen_n = restir_normal_ws(screen_px);
+            if (restir_relative_depth(clip.z,texelFetch(restir_depth,screen_px,0).r)<5e-3 && dot(screen_n,-direction)>0.0 && dot(screen_n,hit_normal)>0.7)
+                irradiance = texelFetch(rtr_diffuse,screen_px,0).rgb;
+        }
+        radiance += irradiance * material.rgb;
+    } else {
+        radiance = kiln_sample_sky(rtr_sky,direction);
+        distance = RESTIR_SKY_DISTANCE; hit_normal = -direction;
+    }
+    vec3 direction_vs = mat3(p.view)*direction;
+    imageStore(rtr_candidate0,px,vec4(max(vec3(0.0),radiance),ratio));
+    imageStore(rtr_candidate1,px,vec4(view_position(restir_uv(hi),depth)+direction_vs*distance,sample_value.pdf));
+    imageStore(rtr_candidate2,px,vec4(mat3(p.view)*hit_normal,0.0));
+}

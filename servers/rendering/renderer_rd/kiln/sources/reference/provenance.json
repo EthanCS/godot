@@ -1,0 +1,905 @@
+{
+  "source": "https://github.com/EmbarkStudios/kajiya",
+  "local_commit": "da853891736a9e1b294be0e3d64ec73b1b0030dd",
+  "license": "MIT; ../../licenses/KAJIYA-LICENSE-MIT.txt; additional AMD and Oklab notices retained in their source headers and licenses directory",
+  "retained_sources": [
+    {
+      "path": "adapter.hlsl",
+      "sha256": "224342cf4651bd5afa27fa97a9d42317f3b0b6fb6e8df43a6bba51795232ee7c",
+      "role": "engine resource adapter or generated fixed sampling offsets"
+    },
+    {
+      "path": "blur.hlsl",
+      "sha256": "f751ef564d3226b32066a592fa8547457cf6b028d5ebd0ad25366dc01f303c0d",
+      "upstream_path": "assets/shaders/blur.hlsl",
+      "upstream_sha256": "ddd64d9171e3ee271f197a94f7949f3ddf236256f456d7c14a0711b6876f52ff",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/bilinear.hlsl",
+      "sha256": "6ae62ba5a3182472439c9df9fe0446f219a594f52407c85802c3a72743745c21",
+      "upstream_path": "assets/shaders/inc/bilinear.hlsl",
+      "upstream_sha256": "779ef816089bc33bbae726ff6da1d56c4461f8483e13a1f3fe358f82ac07f403",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/bindless_textures.hlsl",
+      "sha256": "3577040a4f05788f01dc889175534c6c7ea976e3817b3315d859b497cd78312b",
+      "upstream_path": "assets/shaders/inc/bindless_textures.hlsl",
+      "upstream_sha256": "c5ece2a3bc3be5c7bf5468e82ab4a1ae7a5521821c8154233ddb898ec66dd222",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/blue_noise.hlsl",
+      "sha256": "d26349602cbf1b13e8db868821cdd32e626af728b08770e2d1fa83f8f227d61d",
+      "upstream_path": "assets/shaders/inc/blue_noise.hlsl",
+      "upstream_sha256": "31f6447eeab6135aeb0e0713e35b8eb0ae0275f756bc5aa2c3a32c77b767d2be",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/brdf.hlsl",
+      "sha256": "a3e6ae3a93b28593fbd300cb9a18bff795ff375b8ec0670180db1a9ca88fd791",
+      "upstream_path": "assets/shaders/inc/brdf.hlsl",
+      "upstream_sha256": "bbe5ee2494703db4af33f8291f38539f5f30e5a3b55055a625533374a07f2b61",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/brdf_lut.hlsl",
+      "sha256": "6b0831144015211f9c2fe17b50400a450d2ec3f940dd5f37811d33e9a1e7ec46",
+      "upstream_path": "assets/shaders/inc/brdf_lut.hlsl",
+      "upstream_sha256": "16f43388287c9743e892b220f04e287e2411f7d15e8cf03c7dc1c90e50639394",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/bezold_brucke.hlsl",
+      "sha256": "f757f3d542b44c6b17af16c1bd5e07e20416ba68ca8fc9cd1752a2f95b20f5c8",
+      "upstream_path": "assets/shaders/inc/color/bezold_brucke.hlsl",
+      "upstream_sha256": "e73ecd8dadcbc0cbd16e30cddf00062789c6d2cb8a7e222a765a91f0b4774827",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/display_transform.hlsl",
+      "sha256": "6bb4362fadb8c8141d58e139862a6f0d9eb232a3375e9f890acf001cfb42cedc",
+      "upstream_path": "assets/shaders/inc/color/display_transform.hlsl",
+      "upstream_sha256": "77ea01c881c8dea34d5b0cff6755aa0b1e1c553de31394851e775b7630e90825",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/helmholtz_kohlrausch.hlsl",
+      "sha256": "dd08e111bac0b3a0ebd6d06071c010ca8b3cb9b978704f2434e846605b5a101d",
+      "upstream_path": "assets/shaders/inc/color/helmholtz_kohlrausch.hlsl",
+      "upstream_sha256": "2f1e2b7f8b2c3cefec55370cb49e7ca1cd3bd712e29a77364cba46c7ee4858a0",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/ictcp.hlsl",
+      "sha256": "62dbee5adeb0aa11936a1375323ef0a9b82086a7319d7ef57fce3ca7b70aca3e",
+      "upstream_path": "assets/shaders/inc/color/ictcp.hlsl",
+      "upstream_sha256": "ca220a99fd6ec5a4b7168b786d7869f7f446717aa02d00a06decd65aaa01f657",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/ipt.hlsl",
+      "sha256": "4def53071c3ac2754bc757bdf197986a7b20c0c81448510c3562a46a8f4490f5",
+      "upstream_path": "assets/shaders/inc/color/ipt.hlsl",
+      "upstream_sha256": "6592b8c3386cb86f675403cf61abd8bc22ab2eb527c036532c3a4b270bba268e",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/lab.hlsl",
+      "sha256": "2c64cda6dc901f67d519e8f931a94ea98561f1d45fc3310dea8325570189c241",
+      "upstream_path": "assets/shaders/inc/color/lab.hlsl",
+      "upstream_sha256": "1b25ab21a9aa02ea916ec76155bf3e811651ea9c8f1ef3d4f027c6f092c691dc",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/luv.hlsl",
+      "sha256": "57327d15486607ebe3f57907fc734d20edb3d0d79cd5f41ae305b03980e925ae",
+      "upstream_path": "assets/shaders/inc/color/luv.hlsl",
+      "upstream_sha256": "878e05e080a9385ca1fab5da0a889fe7c9c44bb03e02cd03da0cd2534ef77ffb",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/math.hlsl",
+      "sha256": "2efae1d6f9fcb282a0d5a1644d80791712f8edffc1d494f231c63215d3ba8b4e",
+      "upstream_path": "assets/shaders/inc/color/math.hlsl",
+      "upstream_sha256": "d23c55a239d697fd39759768dc48009a010acfe90576c9d967f20a7427e175ad",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/oklab.hlsl",
+      "sha256": "12a81733c472cdc2b87f28900f816878643864dad13254ee352e9715d6bee977",
+      "upstream_path": "assets/shaders/inc/color/oklab.hlsl",
+      "upstream_sha256": "7e5eeac177c747cee25114989a7de269e0058e1d629842c746d898736538e743",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/srgb.hlsl",
+      "sha256": "acb84e44770954cb57626bad9d9f2dcbe3d3f51c62d96c91f0a6da0e15918cde",
+      "upstream_path": "assets/shaders/inc/color/srgb.hlsl",
+      "upstream_sha256": "c703654d6ae73c5034bc247b1a6c76e5d41cc3908e7900b9acafa3b6fe91e28f",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/standard_observer.hlsl",
+      "sha256": "786726ba3abac0e9851227b10a6a83966c493468f8e7dc62745181b295fb9898",
+      "upstream_path": "assets/shaders/inc/color/standard_observer.hlsl",
+      "upstream_sha256": "d59cf2a927b8f1ed6d31a85ad8dc6131c20a53439d08ac476f18a96b23b9ae8e",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/xyz.hlsl",
+      "sha256": "decec431d8e37beb8196efe8d58c6d28bd5fd68f625d6261e5d615dff554b006",
+      "upstream_path": "assets/shaders/inc/color/xyz.hlsl",
+      "upstream_sha256": "e1b245e4f78cb8921b97166fecec37878777cd376b211049c5687eea34662fb2",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color/ycbcr.hlsl",
+      "sha256": "0a563fe20dfcf6ef70b90639031bbb666683032535fb3157a6b245bcbf0f93cf",
+      "upstream_path": "assets/shaders/inc/color/ycbcr.hlsl",
+      "upstream_sha256": "28895f43864603ffb5f91768e40de8b242da273e876201f4cf0c3508630fb777",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/color.hlsl",
+      "sha256": "66bf929b43263a7fa61ab2c6481c6d61b06165fe26ccf76dd975edc5eab44da0",
+      "upstream_path": "assets/shaders/inc/color.hlsl",
+      "upstream_sha256": "cdad0b547cb2007304ac153e9bf14821149dafb8d2e489247c78190a4a790545",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/curve.hlsl",
+      "sha256": "71f2d56365254396c618c92a9a01f7a16dc28a1358afc9ac7dcc3d76edb0be3e",
+      "upstream_path": "assets/shaders/inc/curve.hlsl",
+      "upstream_sha256": "4b0c789728aacb2eabeb9086ad320e10905e097c962610a26b20a35d77438f30",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/frame_constants.hlsl",
+      "sha256": "257e6a58724869937dcdc96c35fc641f52ae644e1ec9c284610cbc098e0371f2",
+      "upstream_path": "assets/shaders/inc/frame_constants.hlsl",
+      "upstream_sha256": "766e215ddfbfcc595deac511e12dc52b749998702020079e2828a392c2dd843f",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/gbuffer.hlsl",
+      "sha256": "0e88f82381c9d81dc91d5c202f3874f882e54ca414c0f5cd9fe25f969e0a7b6c",
+      "upstream_path": "assets/shaders/inc/gbuffer.hlsl",
+      "upstream_sha256": "386a9f801f45ccf083ebb3919207cbc7ba975693b670131178bc515d923dc628",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/hash.hlsl",
+      "sha256": "aa062ba85f72b7fb6f1a446913edc59222aad55b4fe3b087ab154195f2e71eb2",
+      "upstream_path": "assets/shaders/inc/hash.hlsl",
+      "upstream_sha256": "82553aa1ebaac805fb2a1e078c1b60adfbde923cd14f5435f7c1b5dab0827011",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/image.hlsl",
+      "sha256": "c9b566fbbbcc3e5f56c23695132bea5f91fd388c11fd043ae6f87fede25e4b8b",
+      "upstream_path": "assets/shaders/inc/image.hlsl",
+      "upstream_sha256": "ea174585723ab808affe33573cfe740ceabd6eba2e38c557911370587a7a367d",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/layered_brdf.hlsl",
+      "sha256": "dd63a9f0e8609092ab14698cf84067a17331747f201b7c354d9379e9030fc301",
+      "upstream_path": "assets/shaders/inc/layered_brdf.hlsl",
+      "upstream_sha256": "1dc44c99687de252a17db6352f90ed4ff322d6974a29001382e54d4bc3b545ba",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/math.hlsl",
+      "sha256": "e52c2ca943258feb671ab12f560cb3e9e570686c36051417b280b3b0e0fb5cd3",
+      "upstream_path": "assets/shaders/inc/math.hlsl",
+      "upstream_sha256": "fd0a148a0952f350dd59fe20f3b49659db6ec667d0cdede9412e781dcb6a5452",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/math_const.hlsl",
+      "sha256": "19945043fe0420ff80736ff98d8b17323c3c8750cc268837d13315e29f95f962",
+      "upstream_path": "assets/shaders/inc/math_const.hlsl",
+      "upstream_sha256": "487bc26549a730a5bb96f02358de019c7e1f7590b4f98787d6668f5b7486eaaa",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/pack_unpack.hlsl",
+      "sha256": "b8c40d3d9bd3b0569cb4cf9bd313206b82da11384919ab512a2c40c8f9882787",
+      "upstream_path": "assets/shaders/inc/pack_unpack.hlsl",
+      "upstream_sha256": "d8a659ee18e1a0664d30be8084cc007008853616fe72f01e38ae9b982811fd57",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/quasi_random.hlsl",
+      "sha256": "0d801f099c2242fe31227cc484ad6cc5c3c5d7f14f1d25e45556af762d3d28c7",
+      "upstream_path": "assets/shaders/inc/quasi_random.hlsl",
+      "upstream_sha256": "3f93a5fb7408e207a9c0bd8795b0dbd47a4ac3bedc8a9a3bcde0e1c48feeed40",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/reservoir.hlsl",
+      "sha256": "0b9412d5f9be41aa0f18b9df19c935efc122958b3190be41269af03228cc06a6",
+      "upstream_path": "assets/shaders/inc/reservoir.hlsl",
+      "upstream_sha256": "7296f80af833cac93cdb81495d55da7cfb83cba60fa8deb439313e3525974ebb",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/samplers.hlsl",
+      "sha256": "18e4865917a98ddf6c79bffe4c6de8b85a9ded0f6c07b535c1b736fb9809138d",
+      "upstream_path": "assets/shaders/inc/samplers.hlsl",
+      "upstream_sha256": "3eb7da3fb5848814b860ec30dc8d3aeecb618d66880b2ec6331e0ce733c78a43",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/soft_color_clamp.hlsl",
+      "sha256": "ab472dbb21a4ee8a19903dfea24336f65b1c8df8b42f65e927aabd8d6401cfbd",
+      "upstream_path": "assets/shaders/inc/soft_color_clamp.hlsl",
+      "upstream_sha256": "e159afd06ef53e1cd0b1ce3601e8ab18606840fb492c293de27b9d5653be436d",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/unjitter_taa.hlsl",
+      "sha256": "30417adc315cdd83525f53acff85585d981680956583ad8022f617b319cf0dec",
+      "upstream_path": "assets/shaders/inc/unjitter_taa.hlsl",
+      "upstream_sha256": "6e3e9d289efbdf3cf3e22533f029df884f03a9a38924249c514368105269b1f1",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/uv.hlsl",
+      "sha256": "5936f6e1ff2a6468612776f3c510ccd628d54b7d18ebd7aa9900e5fdfa17397e",
+      "upstream_path": "assets/shaders/inc/uv.hlsl",
+      "upstream_sha256": "32c022d40f22329a0818459d2eeb1a971e80fe226e587b863fda83d05821893e",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "inc/working_color_space.hlsl",
+      "sha256": "989b21658d89a905625332da4fd13c2413e2a99381fd2165dc4203317cc683b3",
+      "upstream_path": "assets/shaders/inc/working_color_space.hlsl",
+      "upstream_sha256": "93081fc1f27d605226a157699c434930e57d219eec1cebf852c77d126954acc6",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "lut/bezold_brucke.hlsl",
+      "sha256": "e71fa71863ddc581371ffea22e06447afb90f4ffff0085a1ee910dee9bfac0b7",
+      "upstream_path": "assets/shaders/lut/bezold_brucke.hlsl",
+      "upstream_sha256": "d82422f321487cb9b5f88a97ed866dd680bc967dc7f009f36f176b6fff006930",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "offsets.hlsl",
+      "sha256": "66c8e51e72d6e00e4323889986b52cdfed4db413400ee0450949031cc5ec31f9",
+      "role": "engine resource adapter or generated fixed sampling offsets"
+    },
+    {
+      "path": "post_combine.hlsl",
+      "sha256": "b24ba59e15abbad640aaf9e0ecedb7f4f4b16f170dcdb86bb6868ffa3547f26a",
+      "upstream_path": "assets/shaders/post_combine.hlsl",
+      "upstream_sha256": "af407e04d1352c018462fb776c3c06d4e7b85dc5e7211363b7c63cedd5a02cb7",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/candidate_ray_dir.hlsl",
+      "sha256": "4da85ae7a578a03e007d140360599ac8283a218bef0d748858ab5e60b248fb9c",
+      "upstream_path": "assets/shaders/rtdgi/candidate_ray_dir.hlsl",
+      "upstream_sha256": "73e0d3070f0243e529d4d8500efc42ac7bf0b0e671990053bd275f4b73287842",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/fullres_reproject.hlsl",
+      "sha256": "c4069e05262343db0ad5e66037d1cfaba603c26cbecc29c5ca44efd517377f73",
+      "upstream_path": "assets/shaders/rtdgi/fullres_reproject.hlsl",
+      "upstream_sha256": "ab5578f473c30afe34da06da56e2574a6e225fd45cbee6992aab2b7d7861a228",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/near_field_settings.hlsl",
+      "sha256": "5ba2413971b3ea3dff9c1beb472fe497f9b3230d8ed443d559d8d88d9b122889",
+      "upstream_path": "assets/shaders/rtdgi/near_field_settings.hlsl",
+      "upstream_sha256": "71663f4a0a125a473e0a770a66ef8143d2acd1f3ea25a60d705bb28fdb36715e",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/restir_resolve.hlsl",
+      "sha256": "d95889e0d026e8149352b30837a7a865eb0797ef69e9d252184aaac97fcccea4",
+      "upstream_path": "assets/shaders/rtdgi/restir_resolve.hlsl",
+      "upstream_sha256": "c20402cbc6737a4915217f7d24f640cb12f144d1938149493261bb287eb9cbf8",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/restir_settings.hlsl",
+      "sha256": "aac82bbdc010bf608b1c37b42ed50c8823c87acade8deff7eab58a6e9b1592f4",
+      "upstream_path": "assets/shaders/rtdgi/restir_settings.hlsl",
+      "upstream_sha256": "57ef2187c5d9d63a8ea95b4da48de5def638528c8806ceff4b8ed405e0ad3356",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/restir_spatial.hlsl",
+      "sha256": "1d5c358cba8e7859d1e858341eb20910b2a2f7b3e1569bb781da16c5af4526ea",
+      "upstream_path": "assets/shaders/rtdgi/restir_spatial.hlsl",
+      "upstream_sha256": "ac7973115b50671caf8799b0a9e0cf35d732de309f16e85cf4726e805862e713",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/restir_temporal.hlsl",
+      "sha256": "cc6bc9520d914033564f5ae89e15be75d93b58b8b1238c933074a98d716e896d",
+      "upstream_path": "assets/shaders/rtdgi/restir_temporal.hlsl",
+      "upstream_sha256": "6168339f864e5219a6386c8936900ed84824c652ed36fbde9b15533bb9d234e6",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/spatial_filter2.hlsl",
+      "sha256": "c112791a86dabee49193f2008d4c35c43edc968ea37a24d54095d9e917d3b828",
+      "upstream_path": "assets/shaders/rtdgi/spatial_filter2.hlsl",
+      "upstream_sha256": "c3bc79ac79bf88abb1194e1c911cedbcb2314eb7310fc80fc6a2c832fd1cd08f",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/temporal_filter2.hlsl",
+      "sha256": "d151a1e0821bf5e2ee3df6e899965d3c4f305cde31456b6bda20a5bc6ac0a385",
+      "upstream_path": "assets/shaders/rtdgi/temporal_filter2.hlsl",
+      "upstream_sha256": "ff79776f5442085275b02a87987b12b1b79ea8cae2826b0e3a4de1f1671304ee",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtdgi/temporal_validity_integrate.hlsl",
+      "sha256": "a382fc8930ea358b5a7ea982e159ba5426c77578f76cdd78923ba50a750b4b7a",
+      "upstream_path": "assets/shaders/rtdgi/temporal_validity_integrate.hlsl",
+      "upstream_sha256": "cd3317cd69e578bb6cc156d24a4462b35691048f5a153000254f08f1f4fe65e4",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtr/resolve.hlsl",
+      "sha256": "bad970cc6723c760fbbfa15339b4602852feaea0c6cdaa6097053a616f82edb2",
+      "upstream_path": "assets/shaders/rtr/resolve.hlsl",
+      "upstream_sha256": "acfa82613fb819ea95a2bfc4dde319d1f6b4ade5776f039da873a7195410b7fc",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtr/rtr_restir_temporal.hlsl",
+      "sha256": "382bd254ea9462f9e8e06801e63e100815e63dc32570ce1e50950ff58296ff80",
+      "upstream_path": "assets/shaders/rtr/rtr_restir_temporal.hlsl",
+      "upstream_sha256": "0adc3b001e9ce92b1e940f94f02cb227dfe0b4f404f2d5311c9ce5df89fe6631",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtr/rtr_settings.hlsl",
+      "sha256": "f5a875961119e88b6bbe6682f1a3c3a2a71c84c047f064f2027dc850cb2ed28c",
+      "upstream_path": "assets/shaders/rtr/rtr_settings.hlsl",
+      "upstream_sha256": "b733dc7c63681fad2adc352aa93d74ab76a106516ac249a1f9ba39d6ad5bc791",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtr/spatial_cleanup.hlsl",
+      "sha256": "f0f22340fe709614d5533152af6b2b105c1601d2f516daed76336ad5ea6dc8e6",
+      "upstream_path": "assets/shaders/rtr/spatial_cleanup.hlsl",
+      "upstream_sha256": "a9c84043ae8d68695c1a5e4da1b22afe863e5a98af7af07fbc7094937b2480f8",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "rtr/temporal_filter2.hlsl",
+      "sha256": "d72c6f6c692afd6f23c5e0b117e8794599cbdaec8f1737466b1c3357a71e9e23",
+      "upstream_path": "assets/shaders/rtr/temporal_filter2.hlsl",
+      "upstream_sha256": "72b2d105ff42ddf62054162843fcd0bebde418e225e4524fe3b2fcf332ca1c90",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/bitpack_shadow_mask.hlsl",
+      "sha256": "590ccf28321e87b40266f57695d22cbfcb6bbf4ef2751844af3abc5925eb43f2",
+      "upstream_path": "assets/shaders/shadow_denoise/bitpack_shadow_mask.hlsl",
+      "upstream_sha256": "07f576bbb3f5760a891006c4282db0e456b91a9143d88b82c9ba8df1b4861315",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/ffx/ffx_denoiser_shadows_filter.hlsl",
+      "sha256": "134adc154b084431e7fb01a3293153a2063baee6fec3eec43e656d3d0c6ec8d3",
+      "upstream_path": "assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_filter.hlsl",
+      "upstream_sha256": "37c63a34a8052bf07d68bca1543d82ef1bb0a1af56fb0abc153e9c34f0e56b32",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/ffx/ffx_denoiser_shadows_prepare.hlsl",
+      "sha256": "701d65df6e6c7715b85b942a2353caeb997e25837e15b7c8cf4ca0cd8e8b8f3a",
+      "upstream_path": "assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_prepare.hlsl",
+      "upstream_sha256": "ff852f742b7867efe37f7e96945d75401909ee095e7164c01772fa5f45fe9517",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/ffx/ffx_denoiser_shadows_tileclassification.hlsl",
+      "sha256": "02d5b9c88b2dfa53a16598ef1380fff064bd663cb99ba1647d1d6f5cfb2c5844",
+      "upstream_path": "assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_tileclassification.hlsl",
+      "upstream_sha256": "6942988785dfeda9ddcfd75222cbfe9729eb45ec57707a6d776cca1413658655",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/ffx/ffx_denoiser_shadows_util.hlsl",
+      "sha256": "c5a5096ec656949c2ecea1e9cec518e6ed6dad92171e2217cd47fde3807643b8",
+      "upstream_path": "assets/shaders/shadow_denoise/ffx/ffx_denoiser_shadows_util.hlsl",
+      "upstream_sha256": "d9225b7ebd1f16895b69ce26370f07b6e9c3dba74aa063df818f54b552b72637",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/megakernel.hlsl",
+      "sha256": "c7a3e0d6e669e0a393e900d6453ec27e3b9d662c374233eccf1717e965040a37",
+      "upstream_path": "assets/shaders/shadow_denoise/megakernel.hlsl",
+      "upstream_sha256": "13b731b5c110f1ff0ba7a350231c1ef454c07c3fd6436876df8061aea4783a72",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "shadow_denoise/spatial_filter.hlsl",
+      "sha256": "ef089a5e0a6841c4af44c6f53694322b8b3b91c5a21ecebea818ff75fb3213cf",
+      "upstream_path": "assets/shaders/shadow_denoise/spatial_filter.hlsl",
+      "upstream_sha256": "903bb4ca60af70b25bf971f6a68fdb982fed8ef9bd9c9dce0b8e4aa88faca2b7",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "ssgi/spatial_filter.hlsl",
+      "sha256": "a90e6fc279e0e2f8264a51f52e6258ed1ad7d300378e5b96dd70e1de08f13628",
+      "upstream_path": "assets/shaders/ssgi/spatial_filter.hlsl",
+      "upstream_sha256": "ae19f82e81466610b9aebed96df500b7d6d1af0d455839cf1512645b9bd791c6",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "ssgi/ssgi.hlsl",
+      "sha256": "c5c4842927a87290d850d77cf3cf7d4855c68da85bab4127d72040a4b898f8fe",
+      "upstream_path": "assets/shaders/ssgi/ssgi.hlsl",
+      "upstream_sha256": "c1dbb8f66771b34d0facc3fe3827e411b05bb4746971f50c31eb6bf0310f918d",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "ssgi/temporal_filter.hlsl",
+      "sha256": "c074e7631fb30a706f90caa102d9b273b55cee165fb1abf9f580f397eb82c2cc",
+      "upstream_path": "assets/shaders/ssgi/temporal_filter.hlsl",
+      "upstream_sha256": "657e809a12a025b8d889f2c041f78c6489e4c12c91b7f47c6a1e9fc7ecba3485",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "ssgi/upsample.hlsl",
+      "sha256": "9e4aa3cad8fc8c5add839fd7c2bea4593f87da36a726a198f88bb0aa1507b691",
+      "upstream_path": "assets/shaders/ssgi/upsample.hlsl",
+      "upstream_sha256": "dadbe9c9cd5583405024d318aedebf2fc6d3daac91fbaf0270aa7821e7ae3b4a",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/filter_history.hlsl",
+      "sha256": "379e46cbe922fe0b0cdbfb881792d3fbe0818cef8fa5e106e9000ff105c23716",
+      "upstream_path": "assets/shaders/taa/filter_history.hlsl",
+      "upstream_sha256": "4440be603f59048f9ea66458706db4ba69df5f4a1da38ce2ed8d2116a593dd5a",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/filter_input.hlsl",
+      "sha256": "0b22128a95f192362c3eeb74e01d86fb0a282079a0eb12ac704939507e81747c",
+      "upstream_path": "assets/shaders/taa/filter_input.hlsl",
+      "upstream_sha256": "89072153ceeac406ada0a39875f1a7adbd67c18d7592cc214769204a98fa2460",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/filter_prob.hlsl",
+      "sha256": "b5faaf340f12d02093fc3cb2e1255bc26258b568b05e4ee2ff8f7d7eb08899d7",
+      "upstream_path": "assets/shaders/taa/filter_prob.hlsl",
+      "upstream_sha256": "e9cc6077fc6b31defcbf80210ddce596f825d52429346080e501ae0f37598f93",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/filter_prob2.hlsl",
+      "sha256": "191a689b1858a454e4e21060238d86ee2e63eca35a7cecf483b4e71e7da647b0",
+      "upstream_path": "assets/shaders/taa/filter_prob2.hlsl",
+      "upstream_sha256": "578bf8d6bcc62599dc231e6593399e8a7b48e612a67ea528904eb896b2c25602",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/input_prob.hlsl",
+      "sha256": "9d81c89b69784d30c6ef8bc3936dbd4338e004c101b1120b91070ecf09af99e9",
+      "upstream_path": "assets/shaders/taa/input_prob.hlsl",
+      "upstream_sha256": "cbbe44cc95bb146cae7abbdadc7e9d49124a7cfb2b168de6018ade2a2bcee745",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/reproject_history.hlsl",
+      "sha256": "d709b422709cdc45dd65d73260940075cc49d4b45ae1abb9ff76461ff9bdfd38",
+      "upstream_path": "assets/shaders/taa/reproject_history.hlsl",
+      "upstream_sha256": "f19466da84cc03252d92da2af33367695180776925b4a34b1880d82fe453b39a",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/taa.hlsl",
+      "sha256": "8fe2109bdf665f5c03cb3a05124a435f567e7398135bdb13bf111716dcc52051",
+      "upstream_path": "assets/shaders/taa/taa.hlsl",
+      "upstream_sha256": "ac9654260bbd6ea9d43726771b899dfc7c671952ec09b939d5f50e7851fbf07e",
+      "source_text_unchanged": false
+    },
+    {
+      "path": "taa/taa_common.hlsl",
+      "sha256": "f38fd228e19aed9bc0152d64e92d132cac4553f144b9171af4b8e64052abcef3",
+      "upstream_path": "assets/shaders/taa/taa_common.hlsl",
+      "upstream_sha256": "364b0add2e428690e376967363005bd96de341d65c4e64a38296c7b57689c4b6",
+      "source_text_unchanged": false
+    }
+  ],
+  "generator": "kiln/tools/build_reference_shaders.py",
+  "binding_manifest": "bindings.json",
+  "adaptations": [
+    "Engine resource bindings, camera conventions and G-buffer encoding are mapped by adapter.hlsl and inc/frame_constants.hlsl.",
+    "Generated GLSL implements zero-valued out-of-bounds Texture.Load with a clamped read and boolean selection; bounded neighborhood loops carry unroll hints. Static zero/zero reflection motion and zero-weight background filtering remain finite.",
+    "Dispatch dimensions, storage formats, sampler combination and push constants follow the engine allocations.",
+    "Blue-noise tables and fixed spatial offsets preserve the reference sampling sequences.",
+    "Manual ray-query and Rust compute ports are listed separately; GPU comparison is recorded in kiln/docs/KAJIYA-PARITY.md and is not a claim of bitwise equality.",
+    "Surfel irradiance follows the reference in-place transport schedule. GPU work ordering makes repeated runs non-bitwise-deterministic; compare repeated runs of both renderers."
+  ],
+  "manual_ports": [
+    {
+      "port": "kiln_surfel_clear_pool.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/clear_surfel_pool.hlsl",
+          "sha256": "91d9a21c72a990f7c7e8009723963907eaed1dde71fa4867e07cac9a8852fb7d"
+        }
+      ],
+      "port_sha256": "9f7cdce814bc88a4b26251852ecdbccf3a7143ffb88ee037ecd4b4527480bbbe"
+    },
+    {
+      "port": "kiln_surfel_find_missing.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/find_missing_surfels.hlsl",
+          "sha256": "ad3855e8883434e16ac0d19524d8d6558452c1930cf2da2dc02b0ed88a3e0139"
+        }
+      ],
+      "port_sha256": "b9040ca9e038c44da579efd3a1baa7bcd88d861f0e9b282fb7dda8ee4b447275"
+    },
+    {
+      "port": "kiln_surfel_args.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/prepare_surfel_assignment_dispatch_args.hlsl",
+          "sha256": "852d8e686142543c4106eaecef3eef9d7b3c5fa103b72449d8cda9d621d0742c"
+        },
+        {
+          "path": "assets/shaders/surfel_gi/prepare_trace_dispatch_args.hlsl",
+          "sha256": "777788c050ddf6ac469f888c783774caaaa649e1b4b1582dc9572c4082c6edad"
+        }
+      ],
+      "port_sha256": "ea31abaf8fb568722c5fab5352fffc588d0490807a7153ed520b8110689c153f"
+    },
+    {
+      "port": "kiln_surfel_age.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/age_surfels.hlsl",
+          "sha256": "7b4ba4772fc95453f526d698d2e13d7e6e7d4f24c92cc376a5d3d62c634d95ac"
+        }
+      ],
+      "port_sha256": "065ccb6dd547818f75711dda1beee04f683927debb6701656ef0950e6e734178"
+    },
+    {
+      "port": "kiln_surfel_allocate.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/allocate_surfels.hlsl",
+          "sha256": "9a106e9fab55c32c4ff17351aafa463ecd5671febbbf1bee1364d1718a95574b"
+        }
+      ],
+      "port_sha256": "6d05e91a6f5417a6cde22cd40b8094ff7865bb4ea3666e1006686900ee1ae748"
+    },
+    {
+      "port": "kiln_surfel_clear_cells.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/clear_cells.hlsl",
+          "sha256": "8805e0ceab8205254bf0f62ae0a651cd7e4163ab356984dc71d02b42eaa6e062"
+        }
+      ],
+      "port_sha256": "98c5e2b7ae2e3f8f10d77aaf8219d3775cae5c95378d45f7f699397e1fa39c4d"
+    },
+    {
+      "port": "kiln_surfel_count_cells.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/count_surfels_per_cell.hlsl",
+          "sha256": "ea07def052b048c5ac5fcdbad6409ffeb70ea643c11b2b6f36b9fda031c88dd9"
+        }
+      ],
+      "port_sha256": "91da3978db731592bd3ba54b6f09c67f788b5fcd3e4259d0729075764bcdfd5d"
+    },
+    {
+      "port": "kiln_surfel_scan.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/inclusive_prefix_scan.hlsl",
+          "sha256": "7f2a2041fc12c0d5a769d4abe8c4e4a0ca8d8f20301d8bba788394974072c30b"
+        }
+      ],
+      "port_sha256": "0bfce6dba2f98f05a2404d170d2f94204e5470d7b085f6e6801dbc732f8745ea"
+    },
+    {
+      "port": "kiln_surfel_scan_segments.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/inclusive_prefix_scan_segments.hlsl",
+          "sha256": "b05e438b814993b7588afc4a217f36baaa89692ad3e5c1166a6b5f0f21f53b5b"
+        }
+      ],
+      "port_sha256": "c1c20302726f54e36cf13279ea09fe65e2a9b63deeab5d1ce7b3f4dda99ddeea"
+    },
+    {
+      "port": "kiln_surfel_scan_merge.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/inclusive_prefix_scan_merge.hlsl",
+          "sha256": "5eb03269d85bba1989955aab2b3448c7716aaf1410cd9fce35bbc075467d81b8"
+        }
+      ],
+      "port_sha256": "17c7caf7f9d49cf7289882005c417e507bc737401287b40a7f950aed58203a1b"
+    },
+    {
+      "port": "kiln_surfel_slot_cells.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/slot_surfels_into_cells.hlsl",
+          "sha256": "ac92a53145fe7711d603773d7cb74a9221ac0004cc298d8724cc0431687e40c5"
+        }
+      ],
+      "port_sha256": "e7d74b72bffb532d2b215efd5f55f2b2beb1711605fe242355ec44b6913e3e8c"
+    },
+    {
+      "port": "kiln_surfel_trace.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/trace_irradiance.rgen.hlsl",
+          "sha256": "2ccab5af74823e7bb06b043d19d6ed437167654ff1aedd677d0eb069e89f9d6c"
+        }
+      ],
+      "port_sha256": "b09ce463e250794664bc48e13ab9aee07969a6c8e67900eced087f01f20a50a0"
+    },
+    {
+      "port": "kiln_surfel.inc",
+      "sources": [
+        {
+          "path": "assets/shaders/surfel_gi/lookup.hlsl",
+          "sha256": "5bbb8b06cbf70eafb3e05317c5c2a943183ff5f2be5f2d4c036a5ad1f7a05a2a"
+        },
+        {
+          "path": "assets/shaders/surfel_gi/bindings.hlsl",
+          "sha256": "815a33fa8a133ecab2fdc14a2d6a13b17a1b9c1fb3918b8a6e17188ac6e59646"
+        },
+        {
+          "path": "assets/shaders/surfel_gi/surfel_constants.hlsl",
+          "sha256": "778093653dcd4de38cbfffc9f9494423709e524675e430a4caf63d6b7d03793d"
+        },
+        {
+          "path": "assets/shaders/surfel_gi/surfel_grid_hash.hlsl",
+          "sha256": "41a5ed05859dc243b5436db888c194b0dff5d7fabb878a86a65e2bbca332927c"
+        },
+        {
+          "path": "assets/shaders/surfel_gi/surfel_grid_hash_mut.hlsl",
+          "sha256": "7e93cb8ba3a67671ea6ae1df4ed5c75757672b4fe70c3f24c28cb6e14456310d"
+        }
+      ],
+      "port_sha256": "ac7ff7a16f247193e699b2959f4a31224dd3b077cfaeeade02054c8e7acad0e6"
+    },
+    {
+      "port": "kiln_restir_trace.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/rtdgi/trace_diffuse.rgen.hlsl",
+          "sha256": "7cb5061a6e56bac4facb868c49965b01d3246118215388f581ec22ad8f80a6e0"
+        },
+        {
+          "path": "assets/shaders/rtdgi/candidate_ray_dir.hlsl",
+          "sha256": "73e0d3070f0243e529d4d8500efc42ac7bf0b0e671990053bd275f4b73287842"
+        }
+      ],
+      "port_sha256": "6dc734312aa6c26570396a59cad6386eab3b3351f3e24278694121a3b1e62b26"
+    },
+    {
+      "port": "kiln_rtr_trace.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/rtr/reflection.rgen.hlsl",
+          "sha256": "67670d738d84e0ebec2e54bef029b3db311ed8944f76e2f50d14274519fcca37"
+        }
+      ],
+      "port_sha256": "d96ee64a6cecd083a1d25ed759ad01deca18d8030894fbc50507ec8362692321"
+    },
+    {
+      "port": "kiln_wrc_trace.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/wrc/trace_wrc.rgen.hlsl",
+          "sha256": "fbb11e89fbc2c4d036da8c9b9559453d21e3eafbdcb233035114c8d129638d18"
+        }
+      ],
+      "port_sha256": "f5f9b100e3421da61aa5a59bb4ec29a578948bdeda622167a234fb61de3b0ff8"
+    },
+    {
+      "port": "kiln_wrc.inc",
+      "sources": [
+        {
+          "path": "assets/shaders/wrc/lookup.hlsl",
+          "sha256": "b5c266fd3917ce44395580f948271b2284a44c9774591f74fe6390a116cadcf9"
+        },
+        {
+          "path": "assets/shaders/wrc/wrc_settings.hlsl",
+          "sha256": "133de2afbd607a1d49193a4f36aa8663493ab8f9ec79d899ba15829e644c65ce"
+        }
+      ],
+      "port_sha256": "b1736996a99cc97374ca48b8b8a548fed243e02901f0752ff638b207fa7d5995"
+    },
+    {
+      "port": "kiln_light.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/light_gbuffer.hlsl",
+          "sha256": "48e73db4952c90da83143b896e98574736b7eee3308bcb30782ea54cd763bf72"
+        }
+      ],
+      "port_sha256": "1bba76032ea1d3ffaa50b92a58218a362b45086a75447543965560f633d7ba4c"
+    },
+    {
+      "port": "kiln_brdf_lut.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/lut/brdf_fg.hlsl",
+          "sha256": "0e9ea4198f3474291cdb7b990dddfa131bc449e1f8f029acda9562bab8f00e59"
+        }
+      ],
+      "port_sha256": "01b1e177211a0a26d8adfc06e142bbc06a9acbe64ccfdc71f686bf88560fc3e3"
+    },
+    {
+      "port": "kiln_brdf.inc",
+      "sources": [
+        {
+          "path": "assets/shaders/inc/brdf.hlsl",
+          "sha256": "bbe5ee2494703db4af33f8291f38539f5f30e5a3b55055a625533374a07f2b61"
+        },
+        {
+          "path": "assets/shaders/inc/layered_brdf.hlsl",
+          "sha256": "1dc44c99687de252a17db6352f90ed4ff322d6974a29001382e54d4bc3b545ba"
+        },
+        {
+          "path": "assets/shaders/inc/brdf_lut.hlsl",
+          "sha256": "16f43388287c9743e892b220f04e287e2411f7d15e8cf03c7dc1c90e50639394"
+        }
+      ],
+      "port_sha256": "24eb86936c35208037928a333478452148b9325e57038e72fbbb97b4b9b871f3"
+    },
+    {
+      "port": "kiln_ray_material.inc",
+      "sources": [
+        {
+          "path": "assets/shaders/rt/gbuffer.rchit.hlsl",
+          "sha256": "ede858929e64200c9ca82b43aac0b00dc58dacd6f2839a7930c37fae1961b4c3"
+        }
+      ],
+      "port_sha256": "8acdfb485d037a4c13611fa1381ab60acd281b0d1a2fc841fea8aa090ed54597"
+    },
+    {
+      "port": "kiln_shadow_trace.comp",
+      "sources": [
+        {
+          "path": "assets/shaders/rt/trace_sun_shadow_mask.rgen.hlsl",
+          "sha256": "daa615275acd8ad2d46d3d79fae3e9d1b61cc87cd3fcdbb9f2619286d630e326"
+        }
+      ],
+      "port_sha256": "23a2f1d1476f6569c5f0aefb1e57647da4327501e15639555d5ab4fec714221d"
+    },
+    {
+      "port": "kiln_sky.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/sky.rs",
+          "sha256": "cd4d6976f509fb4bed22e434e3d81b71c381219e730807fc93398d64d68b1717"
+        }
+      ],
+      "port_sha256": "7ae3b75e9ed72d60fa98519c653470d9084e51e6068dbaa238a6b98414c9bb2a"
+    },
+    {
+      "port": "kiln_post_reverse.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/blur.rs",
+          "sha256": "480c6bdc3f03c9ff81a1b855798420562e501ce26f60f0de95730b8ebf6f622c"
+        }
+      ],
+      "port_sha256": "69cfd2e65f93f42817a627cd66ec083d641369cd8c5ee8a6e4f740db2f6a7059"
+    },
+    {
+      "port": "kiln_rtdgi_reproject.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/calculate_reprojection_map.rs",
+          "sha256": "d92453b1667d2db9283b52b1544170557dd7dac49cdd697191121485fa31eead"
+        }
+      ],
+      "port_sha256": "9b19e920e65cb97713c382884da5f442bb3e84f2b2b5cf77653fc6888294fb7e"
+    },
+    {
+      "port": "kiln_velocity_reduce_x.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/motion_blur.rs",
+          "sha256": "a58fa29b90c3ae092386a1209c9742751500d5b365544d3d471406df9fa6e18a"
+        }
+      ],
+      "port_sha256": "5fad7c65b46efdc22da6df299d97cacb79522c385d718b47c27931c80009f005"
+    },
+    {
+      "port": "kiln_velocity_reduce_y.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/motion_blur.rs",
+          "sha256": "a58fa29b90c3ae092386a1209c9742751500d5b365544d3d471406df9fa6e18a"
+        }
+      ],
+      "port_sha256": "27d0bba1d7d19a3f395bead5ce9700601370de170deec48a82f0cc176c395e26"
+    },
+    {
+      "port": "kiln_velocity_dilate.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/motion_blur.rs",
+          "sha256": "a58fa29b90c3ae092386a1209c9742751500d5b365544d3d471406df9fa6e18a"
+        }
+      ],
+      "port_sha256": "773faf9d7e6cdb3ed8ae5cb65f43e0a1848280748117fd883c92a52663d0e992"
+    },
+    {
+      "port": "kiln_motion_blur.comp",
+      "sources": [
+        {
+          "path": "crates/lib/rust-shaders/src/motion_blur.rs",
+          "sha256": "a58fa29b90c3ae092386a1209c9742751500d5b365544d3d471406df9fa6e18a"
+        }
+      ],
+      "port_sha256": "b64b808d92ba724f55bc75bc215b30104dfa6fef39ff426e9882dda98519529b"
+    },
+    {
+      "port": "kiln_common.inc",
+      "sources": [
+        {
+          "path": "assets/shaders/inc/hash.hlsl",
+          "sha256": "82553aa1ebaac805fb2a1e078c1b60adfbde923cd14f5435f7c1b5dab0827011"
+        },
+        {
+          "path": "assets/shaders/inc/quasi_random.hlsl",
+          "sha256": "3f93a5fb7408e207a9c0bd8795b0dbd47a4ac3bedc8a9a3bcde0e1c48feeed40"
+        },
+        {
+          "path": "assets/shaders/inc/reservoir.hlsl",
+          "sha256": "7296f80af833cac93cdb81495d55da7cfb83cba60fa8deb439313e3525974ebb"
+        },
+        {
+          "path": "assets/shaders/inc/working_color_space.hlsl",
+          "sha256": "93081fc1f27d605226a157699c434930e57d219eec1cebf852c77d126954acc6"
+        },
+        {
+          "path": "assets/shaders/inc/pack_unpack.hlsl",
+          "sha256": "d8a659ee18e1a0664d30be8084cc007008853616fe72f01e38ae9b982811fd57"
+        },
+        {
+          "path": "assets/shaders/inc/atmosphere_felix.hlsl",
+          "sha256": "37ef3e284c0218a66237e8bb4aa7d79a262c3d794a8c2d0bd5f42d1448bb5c74"
+        }
+      ],
+      "port_sha256": "fb2f63a348cb663e3999d98bfc7c9ef7dedaeaea4f838dd2877f4a352f1793c0"
+    }
+  ],
+  "noise_tables": {
+    "path": "../../data/blue_noise_spp64.bin",
+    "sha256": "4bb8bbb02c56a20798a04f9ff337e1574a9ae4c787032e467351bdb7c656cde9",
+    "crate": "blue-noise-sampler 0.1.0",
+    "source": "src/spp64.rs",
+    "source_sha256": "e9a7a4db275ab9a2b658e2853a810d7fb8152c7d5ba530d81023a795b6739236",
+    "license_notice": "../../licenses/BLUE-NOISE-SPP64-NOTICE.txt"
+  },
+  "engine_boundary_differences": [
+    "Godot mesh import uses its own vertex storage and finite reverse-Z projection. Adapter preserves source shader conventions; bitwise identity is not claimed.",
+    "Surfel count/slot dispatch bounds are captured before allocation, matching the reference; trace uses the post-allocation count.",
+    "The reference updates surfel irradiance in place. GPU work ordering makes independent runs vary.",
+    "New or reset viewports use zero reprojection velocity when history is invalid.",
+    "Allocation bounds and workgroup barrier participation are checked; uninitialized or out-of-bounds source behavior is not intentionally reproduced."
+  ],
+  "generator_sha256": "85ff112607ded316652016b84dba19517483af29f06c1b57bcad1d51881c0bbf"
+}

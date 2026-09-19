@@ -1,0 +1,35 @@
+#version 450
+// lighting slot_surfels_into_cells.hlsl: decrement-count scatter producing the
+// compacted per-cell surfel index ranges [offset[cell], offset[cell+1]).
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_SURFEL@
+layout(set = 0, binding = 10, std430) readonly buffer KilnAssignmentArgs { uint assignment_args[]; };
+layout(local_size_x = 64) in;
+void main() {
+	uint surfel_idx = gl_GlobalInvocationID.x;
+	uint total_surfel_count = min(kiln_surfel_meta_buf[KILN_SURFEL_META_SURFEL_COUNT / 4u], assignment_args[4] * 64u);
+	if (surfel_idx >= total_surfel_count || !kiln_is_surfel_life_valid(kiln_surfel_life_buf[surfel_idx])) {
+		return;
+	}
+
+	vec3 position = kiln_surfel_position(surfel_idx);
+	vec3 normal = kiln_surfel_normal(surfel_idx);
+
+	KilnSurfelGridMinMax box = kiln_get_surfel_grid_box_min_max(position);
+	for (uint ci = 0u; ci < box.cascade_count; ci++) {
+		for (uint z = box.c4_min[ci].z; z <= box.c4_max[ci].z; z++) {
+			for (uint y = box.c4_min[ci].y; y <= box.c4_max[ci].y; y++) {
+				for (uint x = box.c4_min[ci].x; x <= box.c4_max[ci].x; x++) {
+					uvec4 c4 = uvec4(x, y, z, box.c4_min[ci].w);
+					if (!kiln_surfel_intersects_grid_coord(position, normal, c4)) {
+						continue;
+					}
+					uint cell_idx = kiln_surfel_grid_c4_to_hash(c4);
+					uint cell_index_loc_plus_one = atomicAdd(kiln_cell_index_offset_buf[cell_idx], -1u);
+					kiln_surfel_index_buf[cell_index_loc_plus_one - 1u] = surfel_idx;
+				}
+			}
+		}
+	}
+}

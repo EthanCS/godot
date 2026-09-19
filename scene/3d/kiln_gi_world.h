@@ -1,5 +1,5 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
+// Imported algorithm provenance and redistribution limits: kiln/provenance/gi-provenance.json.
 
 #pragma once
 #ifdef RD_ENABLED
@@ -14,7 +14,8 @@
 class KilnGIWorld : public Node3D {
 	GDCLASS(KilnGIWorld, Node3D);
 	struct Triangle {
-		Vector3 a, b, c, normal, albedo, emission;
+		Vector3 a, b, c, normal, albedo, emission, base_color;
+		float roughness = 1.0f, metallic = 0.0f;
 		Vector2 uv_a, uv_b, uv_c;
 		int texture_page = -1;
 		bool texture_repeat = true;
@@ -30,7 +31,8 @@ class KilnGIWorld : public Node3D {
 		uint64_t revision = 0;
 	};
 	struct Transport {
-		Vector3 albedo = Vector3(1, 1, 1), emission;
+		Vector3 albedo = Vector3(1, 1, 1), emission, base_color = Vector3(1, 1, 1);
+		float roughness = 1.0f, metallic = 0.0f;
 		int texture_page = -1;
 		Vector3 texture_fallback = Vector3(1, 1, 1);
 		Vector2 uv_scale = Vector2(1, 1), uv_offset;

@@ -1,0 +1,44 @@
+#version 450
+#ifndef KILN_MAX_SURFEL_CELLS
+#define KILN_MAX_SURFEL_CELLS 262144u
+#endif
+// lighting inclusive_prefix_scan_segments.hlsl: scan the per-segment sums.
+// @GI_COMMON@
+// @KILN_COMMON@
+#define KILN_SCAN_THREAD_GROUP_SIZE 512
+#define KILN_SCAN_SEGMENT_SIZE (KILN_SCAN_THREAD_GROUP_SIZE * 2)
+layout(set = 0, binding = 10, std430) readonly buffer KilnScanBuf {
+	uint values[];
+};
+layout(set = 0, binding = 11, std430) writeonly buffer KilnScanSegments {
+	uint segment_sums[];
+};
+shared uint shared_data[KILN_SCAN_SEGMENT_SIZE];
+uint load_input(uint idx) {
+	uint segment_sum_idx = idx * KILN_SCAN_SEGMENT_SIZE + KILN_SCAN_SEGMENT_SIZE - 1u;
+	if (segment_sum_idx >= KILN_MAX_SURFEL_CELLS + 1u) {
+		return 0u;
+	}
+	return values[segment_sum_idx];
+}
+layout(local_size_x = KILN_SCAN_THREAD_GROUP_SIZE) in;
+void main() {
+	uint idx = gl_LocalInvocationID.x;
+	const uint STEP_COUNT = uint(log2(float(KILN_SCAN_THREAD_GROUP_SIZE))) + 1u;
+
+	shared_data[idx * 2u] = load_input(idx * 2u);
+	shared_data[idx * 2u + 1u] = load_input(idx * 2u + 1u);
+
+	barrier();
+
+	for (uint step = 0u; step < STEP_COUNT; step++) {
+		uint mask = (1u << step) - 1u;
+		uint rd_idx = ((idx >> step) << (step + 1u)) + mask;
+		uint wr_idx = rd_idx + 1u + (idx & mask);
+		shared_data[wr_idx] += shared_data[rd_idx];
+		barrier();
+	}
+
+	segment_sums[idx * 2u] = shared_data[idx * 2u];
+	segment_sums[idx * 2u + 1u] = shared_data[idx * 2u + 1u];
+}

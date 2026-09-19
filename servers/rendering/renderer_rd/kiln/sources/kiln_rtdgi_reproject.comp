@@ -1,0 +1,61 @@
+#version 450
+// Kajiya rust-shaders/src/calculate_reprojection_map.rs (MIT).
+// Camera reprojection uses unjittered matrices; jitter is resolved by TAA.
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_RESTIR_COMMON@
+layout(set=0,binding=7) uniform usampler2D geometric_normal_tex;
+layout(set=0,binding=11) uniform sampler2D previous_depth_tex;
+layout(set=0,binding=12) uniform sampler2D motion_3d_tex;
+layout(set=0,binding=13,rgba32f) uniform writeonly image2D depth_history_out;
+layout(set=0,binding=14,rgba16f) uniform writeonly image2D reprojection_out;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy), size = ivec2(p.size_frame.xy);
+    if (!restir_inside(px,size)) return;
+    vec2 uv = restir_uv(px);
+    float depth = texelFetch(restir_depth,px,0).x;
+    imageStore(depth_history_out,px,vec4(depth,0,0,0));
+    // A new viewport has no previous camera or object positions. Invalid
+    // history must also have zero velocity, since motion blur consumes xy.
+    if (p.size_frame.w < 0.5) {
+        imageStore(reprojection_out,px,vec4(0,0,0,1));
+        return;
+    }
+    vec4 pos_vs_h = p.inverse_unjittered_projection * vec4(uv*2.0-1.0,depth,1.0);
+    vec4 prev_clip = p.previous_unjittered_view_projection * p.inv_view * pos_vs_h;
+    if (depth == 0.0) {
+        imageStore(reprojection_out,px,vec4(prev_clip.xy*0.5+0.5-uv,0,0));
+        return;
+    }
+    vec4 previous_object_vs = pos_vs_h / pos_vs_h.w + vec4(texelFetch(motion_3d_tex,px,0).xyz,0);
+    prev_clip = p.previous_unjittered_view_projection * p.inv_view * previous_object_vs;
+    vec2 prev_uv = prev_clip.xy/prev_clip.w*0.5+0.5;
+    vec2 delta = trunc((prev_uv-uv)*32767.0+0.5)/32767.0;
+    prev_uv = uv+delta;
+    vec3 pos_vs = pos_vs_h.xyz/pos_vs_h.w;
+    vec4 prev_vs_h = p.previous_inverse_projection*prev_clip;
+    float prev_z = prev_vs_h.z/prev_vs_h.w;
+    vec2 f = unpackSnorm2x16(texelFetch(geometric_normal_tex,px,0).y);
+    vec3 normal_vs = vec3(f,1.0-abs(f.x)-abs(f.y));
+    if (normal_vs.z < 0.0) normal_vs.xy = (1.0-abs(normal_vs.yx))*mix(vec2(-1),vec2(1),greaterThanEqual(normal_vs.xy,vec2(0)));
+    // Match the reference A2R10G10B10_UNORM geometric normal attachment.
+    normal_vs = round((normalize(normal_vs)*0.5+0.5)*1023.0)/1023.0*2.0-1.0;
+    float plane_dz = min(normal_vs.z,-0.2);
+    float ndotv = dot(normal_vs,normalize(pos_vs));
+    float threshold = 0.001*(1080.0/p.size_frame.y)*(-pos_vs.z)/(-ndotv);
+    ivec2 base = ivec2(prev_uv*p.size_frame.xy-0.5);
+    uint valid = 0u;
+    if (p.size_frame.w > 0.5) {
+        for (int y=0;y<2;y++) for(int x=0;x<2;x++) {
+            ivec2 sp=base+ivec2(x,y);
+            if(!restir_inside(sp,size)) continue;
+            float old_depth=texelFetch(previous_depth_tex,sp,0).x;
+            vec4 old_vs=p.inverse_unjittered_projection*vec4(0,0,old_depth,1);
+            float distance=abs(plane_dz*(old_vs.z/old_vs.w-prev_z));
+            if(distance<=threshold) valid|=1u<<uint(x+y*2);
+        }
+    }
+    vec2 center_offset=abs(vec2(0.5)-fract(prev_uv*p.size_frame.xy));
+    imageStore(reprojection_out,px,vec4(delta,float(valid)/15.0,1.0-center_offset.x-center_offset.y));
+}

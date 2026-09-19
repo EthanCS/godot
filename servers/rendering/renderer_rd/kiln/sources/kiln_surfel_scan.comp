@@ -1,0 +1,51 @@
+#version 450
+#ifndef KILN_MAX_SURFEL_CELLS
+#define KILN_MAX_SURFEL_CELLS 262144u
+#endif
+// lighting inclusive_prefix_scan.hlsl: shared-memory Blelloch-style inclusive scan
+// over 1024-entry segments. One workgroup per segment. Loads beyond the cell
+// buffer return 0 and stores are dropped (the reference scans a full 1M range
+// over a 262145-entry buffer, relying on HLSL's zero-fill OOB behavior).
+// @GI_COMMON@
+// @KILN_COMMON@
+#define KILN_SCAN_THREAD_GROUP_SIZE 512
+#define KILN_SCAN_SEGMENT_SIZE (KILN_SCAN_THREAD_GROUP_SIZE * 2)
+layout(set = 0, binding = 10, std430) buffer KilnScanBuf {
+	uint values[];
+};
+shared uint shared_data[KILN_SCAN_SEGMENT_SIZE];
+uint load_input(uint idx, uint segment) {
+	uint linear = idx + segment * KILN_SCAN_SEGMENT_SIZE;
+	if (linear >= KILN_MAX_SURFEL_CELLS + 1u) {
+		return 0u;
+	}
+	return values[linear];
+}
+void store_output(uint idx, uint segment, uint val) {
+	uint linear = idx + segment * KILN_SCAN_SEGMENT_SIZE;
+	if (linear < KILN_MAX_SURFEL_CELLS + 1u) {
+		values[linear] = val;
+	}
+}
+layout(local_size_x = KILN_SCAN_THREAD_GROUP_SIZE) in;
+void main() {
+	uint idx = gl_LocalInvocationID.x;
+	uint segment = gl_WorkGroupID.x;
+	const uint STEP_COUNT = uint(log2(float(KILN_SCAN_THREAD_GROUP_SIZE))) + 1u;
+
+	shared_data[idx * 2u] = load_input(idx * 2u, segment);
+	shared_data[idx * 2u + 1u] = load_input(idx * 2u + 1u, segment);
+
+	barrier();
+
+	for (uint step = 0u; step < STEP_COUNT; step++) {
+		uint mask = (1u << step) - 1u;
+		uint rd_idx = ((idx >> step) << (step + 1u)) + mask;
+		uint wr_idx = rd_idx + 1u + (idx & mask);
+		shared_data[wr_idx] += shared_data[rd_idx];
+		barrier();
+	}
+
+	store_output(idx * 2u, segment, shared_data[idx * 2u]);
+	store_output(idx * 2u + 1u, segment, shared_data[idx * 2u + 1u]);
+}

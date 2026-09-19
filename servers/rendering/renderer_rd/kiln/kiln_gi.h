@@ -1,73 +1,88 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
+// Imported algorithm provenance and redistribution limits: kiln/provenance/gi-provenance.json.
 
 #pragma once
-#include <vector>
-#include "kiln_nrd.h"
 #include "kiln_world.h"
 
 #include "servers/rendering/renderer_rd/shaders/kiln_gi.glsl.gen.h"
-#include "servers/rendering/renderer_rd/shaders/kiln_specular_native.glsl.gen.h"
 #include "servers/rendering/renderer_rd/storage_rd/render_scene_buffers_rd.h"
 #include "servers/rendering/renderer_rd/storage_rd/render_scene_data_rd.h"
 
+#include <vector>
+
 namespace RendererRD {
 class KilnGI {
-	enum Stage { SURFEL_UPDATE,
-		SURFEL_GRID,
-		SURFEL_GENERATE,
-		SURFEL_TRACE,
-		SURFEL_INTEGRATE,
-		SURFEL_EVALUATE,
-		SURFEL_PUBLISH,
-		SURFEL_SPECULAR,
-		SURFEL_SPECULAR_FILTER,
-		SURFEL_DEBUG,
-		SEQUENCE,
-		AO_DEPTH,
-		AO_MAIN,
-		AO_DENOISE,
-		AO_TEMPORAL,
+	enum Stage {
 		BVH_REFIT,
-		SURFEL_GRID_PREFIX,
-		SURFEL_GRID_PREFIX_SUMS,
-		SURFEL_GRID_SCATTER,
-		SURFEL_DIFFUSE_FILTER,
-		NRD_PREPARE,
-		NRD_DIFFUSE,
-		NRD_RESOLVE,
-		SURFEL_SPATIAL,
-		SURFEL_SCHEDULE,
-		KAJIYA_SKY,
-		KAJIYA_SURFEL_CLEAR_POOL,
-		KAJIYA_SURFEL_FIND_MISSING,
-		KAJIYA_SURFEL_ARGS,
-		KAJIYA_SURFEL_AGE,
-		KAJIYA_SURFEL_ALLOCATE,
-		KAJIYA_SURFEL_CLEAR_CELLS,
-		KAJIYA_SURFEL_COUNT_CELLS,
-		KAJIYA_SURFEL_SCAN,
-		KAJIYA_SURFEL_SCAN_SEGMENTS,
-		KAJIYA_SURFEL_SCAN_MERGE,
-		KAJIYA_SURFEL_SLOT_CELLS,
-		KAJIYA_SURFEL_TRACE,
-		KAJIYA_SURFEL_RESOLVE,
-		STAGE_COUNT,
-		QUERY_VALIDATE = STAGE_COUNT };
+		KILN_SKY,
+		KILN_SURFEL_CLEAR_POOL,
+		KILN_SURFEL_FIND_MISSING,
+		KILN_SURFEL_ARGS,
+		KILN_SURFEL_AGE,
+		KILN_SURFEL_ALLOCATE,
+		KILN_SURFEL_CLEAR_CELLS,
+		KILN_SURFEL_COUNT_CELLS,
+		KILN_SURFEL_SCAN,
+		KILN_SURFEL_SCAN_SEGMENTS,
+		KILN_SURFEL_SCAN_MERGE,
+		KILN_SURFEL_SLOT_CELLS,
+		KILN_SURFEL_TRACE,
+		KILN_RESTIR_TRACE,
+		KILN_RESTIR_TEMPORAL,
+		KILN_RESTIR_SPATIAL,
+		KILN_RESTIR_RESOLVE,
+		KILN_BRDF_LUT,
+		KILN_LIGHT,
+		KILN_RTDGI_REPROJECT,
+		KILN_RTDGI_TEMPORAL_FILTER,
+		KILN_RTDGI_SPATIAL_FILTER,
+		KILN_RTDGI_VALIDITY,
+		KILN_RTR_TRACE,
+		KILN_RTR_TEMPORAL,
+		KILN_RTR_RESOLVE,
+		KILN_RTR_FILTER,
+		KILN_RTR_CLEANUP,
+		KILN_SSGI,
+		KILN_SSGI_SPATIAL,
+		KILN_SSGI_UPSAMPLE,
+		KILN_SSGI_TEMPORAL,
+		KILN_SHADOW_TRACE,
+		KILN_SHADOW_BITPACK,
+		KILN_SHADOW_TEMPORAL,
+		KILN_SHADOW_SPATIAL,
+		KILN_TAA_REPROJECT,
+		KILN_TAA_INPUT,
+		KILN_TAA_HISTORY,
+		KILN_TAA_PROB,
+		KILN_TAA_PROB_FILTER,
+		KILN_TAA_PROB_FILTER2,
+		KILN_TAA,
+		KILN_DISPLAY_LUT,
+		KILN_POST,
+		KILN_POST_BLUR0,
+		KILN_POST_BLUR,
+		KILN_POST_REVERSE,
+		KILN_RTDGI_HISTORY_REPROJECT,
+		KILN_WRC_TRACE,
+		KILN_VELOCITY_REDUCE_X,
+		KILN_VELOCITY_REDUCE_Y,
+		KILN_VELOCITY_DILATE,
+		KILN_MOTION_BLUR,
+		STAGE_COUNT
+	};
 	KilnGiShaderRD shader, hardware_shader;
-	RID hardware_version, hardware_pipelines[6];
-	KilnSpecularNativeShaderRD native_specular_shader;
-	RID native_specular_version;
-	RID specular_pipelines[3][8];
+	static constexpr int HARDWARE_STAGE_COUNT = 6;
+	RID hardware_version, hardware_pipelines[HARDWARE_STAGE_COUNT];
 	bool hardware_available = false;
-	RID version, pipelines[STAGE_COUNT], sampler, linear_sampler, sequence, hilbert, empty_surface;
+	RID version, pipelines[STAGE_COUNT], sampler, linear_sampler, linear_clamp_sampler, blue_noise, rtr_noise;
 	struct Binding {
 		int binding;
 		RD::UniformType type;
 		RID resource;
 		bool linear = false;
+		bool clamp = false;
 	};
-	void dispatch(Stage p_stage, Size2i p_size, const std::vector<Binding> &p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID(), bool p_force_translated = false, Vector2 p_jitter_delta = Vector2());
+	void dispatch(Stage p_stage, Size2i p_size, const std::vector<Binding> &p_bindings, int p_stride = 0, int p_z = 1, RID p_tlas = RID());
 	RID texture(Size2i p_size, RD::DataFormat p_format);
 
 public:
@@ -81,26 +96,16 @@ public:
 		HashMap<String, RID> storage;
 		HashMap<String, uint32_t> capacities;
 		Size2i size;
-		uint64_t geometry_version = 0, dynamic_version = 0, light_version = 0, material_version = 0;
+		uint64_t geometry_version = 0, dynamic_version = 0, material_version = 0;
 		uint64_t texture_version = 0;
 		uint64_t static_material_version = 0, dynamic_material_version = 0;
 		uint64_t capture_request = 0, history_version = 0;
-		int frames = 0, index = 0, stationary_samples = 0, motion_remaining = 0, epoch = 1;
-		float lighting_response = 0;
-		Vector3 previous_sun_direction, previous_sun_radiance, previous_sky_radiance, previous_sky_zenith;
-		PackedByteArray previous_local_lights;
-		uint32_t slots = 65536;
-		bool multibounce = true;
-		Projection previous_vp, previous_projection;
+		int frames = 0, index = 0;
+		Projection previous_projection;
 		Transform3D previous_camera;
+		Vector2 previous_jitter;
 		bool ready = false, tracing = false;
-		int ao_frames = 0, ao_quality = -1;
 		RID parameters;
-		KilnNRD *nrd = nullptr;
-		bool nrd_active = false;
-		bool nrd_checkerboard = false;
-		bool nrd_specular = false;
-		bool nrd_combined_specular = false;
 		RID ray_albedo;
 		RID environment;
 		RID hardware_vertices[2], hardware_blas[2], hardware_tlas;
@@ -116,7 +121,8 @@ public:
 		void free_cache();
 		~View() { free_cache(); }
 	};
-	bool process(Ref<RenderSceneBuffersRD> p_buffers, RenderSceneDataRD *p_scene, RID p_environment, RID p_normal, RID p_dfg, bool p_signed_normal = true);
+	bool process(Ref<RenderSceneBuffersRD> p_buffers, RenderSceneDataRD *p_scene, RID p_environment, RID p_normal);
+	RID process_display(Ref<RenderSceneBuffersRD> p_buffers, RID p_color);
 	KilnGI();
 	~KilnGI();
 };

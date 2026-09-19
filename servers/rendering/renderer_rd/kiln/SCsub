@@ -6,13 +6,28 @@ import sys
 
 Import("env")
 
+def blue_noise_builder(target, source, env):
+    data = Path(str(source[0])).read_bytes()
+    rows = [", ".join(str(b) for b in data[i:i+24]) for i in range(0, len(data), 24)]
+    Path(str(target[0])).write_text("// Generated from data/blue_noise.png (Christoph Peters, CC0).\n"
+                                  "static const unsigned char kiln_blue_noise_png[] = {\n" + ",\n".join(rows) + "\n};\n")
+
+env.CommandNoCache("blue_noise.gen.h", "data/blue_noise.png", env.Run(blue_noise_builder))
+
+def reflection_noise_builder(target, source, env):
+    data = Path(str(source[0])).read_bytes()
+    rows = [", ".join(str(b) for b in data[i:i+24]) for i in range(0, len(data), 24)]
+    Path(str(target[0])).write_text("// blue-noise-sampler 0.1.0 (MIT), see licenses/BLUE-NOISE-SPP64-NOTICE.txt.\n"
+                                  "static const unsigned char kiln_rtr_noise_bytes[] = {\n" + ",\n".join(rows) + "\n};\n")
+
+env.CommandNoCache("rtr_noise.gen.h", "data/blue_noise_spp64.bin", env.Run(reflection_noise_builder))
+
 def surfel_shader_builder(target, source, env):
     subprocess.check_call([sys.executable, str(source[0])])
 
 root = Path(env.Dir("#").abspath)
 inputs = [env.File("#kiln/tools/build_gi_shaders.py")]
 inputs += [env.File(str(p)) for p in sorted((root / "servers/rendering/renderer_rd/kiln/sources").glob("*")) if p.suffix in (".comp", ".inc")]
-inputs += [env.File("#kiln/demo/rendering/sky/sky_radiance.gdshaderinc")]
 env.CommandNoCache("#servers/rendering/renderer_rd/shaders/kiln_gi.glsl", inputs, env.Run(surfel_shader_builder))
 kiln_env = env.Clone()
 # SDK stays outside tracked source: NVIDIA's license is not the engine MIT license.

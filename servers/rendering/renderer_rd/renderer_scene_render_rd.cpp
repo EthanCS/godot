@@ -452,7 +452,7 @@ void RendererSceneRenderRD::_render_buffers_copy_depth_texture(const RenderDataR
 	RD::get_singleton()->draw_command_end_label();
 }
 
-void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const RenderDataRD *p_render_data, bool p_use_msaa) {
+void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const RenderDataRD *p_render_data, bool p_use_msaa, RID p_display_texture) {
 	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
 
 	ERR_FAIL_NULL(p_render_data);
@@ -466,7 +466,7 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 
 	Size2i target_size = rb->get_target_size();
 	bool can_use_effects = target_size.x >= 8 && target_size.y >= 8; // FIXME I think this should check internal size, we do all our post processing at this size...
-	can_use_effects &= _debug_draw_can_use_effects(debug_draw);
+	can_use_effects &= _debug_draw_can_use_effects(debug_draw) && p_display_texture.is_null();
 	bool can_use_storage = _render_buffers_can_be_storage();
 
 	RSE::ViewportScaling3DMode scale_mode = rb->get_scaling_3d_mode();
@@ -482,13 +482,13 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 		}
 	}
 
-	bool use_fxaa = rb->get_screen_space_aa() == RSE::VIEWPORT_SCREEN_SPACE_AA_FXAA;
-	bool use_smaa = smaa && rb->get_screen_space_aa() == RSE::VIEWPORT_SCREEN_SPACE_AA_SMAA;
+	bool use_fxaa = p_display_texture.is_null() && rb->get_screen_space_aa() == RSE::VIEWPORT_SCREEN_SPACE_AA_FXAA;
+	bool use_smaa = p_display_texture.is_null() && smaa && rb->get_screen_space_aa() == RSE::VIEWPORT_SCREEN_SPACE_AA_SMAA;
 	// If doing bilinear or nearest scaling + FXAA / SMAA, the framebuffer must be scaled in a framebuffer copy after AA is applied.
 	bool using_scaling_pass = spatial_upscaler || ((use_fxaa || use_smaa) && (scale_mode == RSE::VIEWPORT_SCALING_3D_MODE_BILINEAR || scale_mode == RSE::VIEWPORT_SCALING_3D_MODE_NEAREST));
 
 	RID render_target = rb->get_render_target();
-	RID color_texture = use_upscaled_texture ? rb->get_upscaled_texture() : rb->get_internal_texture();
+	RID color_texture = p_display_texture.is_valid() ? p_display_texture : (use_upscaled_texture ? rb->get_upscaled_texture() : rb->get_internal_texture());
 	Size2i color_size = use_upscaled_texture ? target_size : rb->get_internal_size();
 
 	bool dest_is_msaa_2d = rb->get_view_count() == 1 && texture_storage->render_target_get_msaa(render_target) != RSE::VIEWPORT_MSAA_DISABLED;
@@ -723,7 +723,7 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 		tonemap.use_fxaa = use_fxaa;
 		tonemap.texture_size = Vector2i(color_size.x, color_size.y);
 
-		if (p_render_data->environment.is_valid()) {
+		if (p_display_texture.is_null() && p_render_data->environment.is_valid()) {
 			// When we are using RGB10A2 render buffer format, our scene
 			// is limited to a maximum of 2.0. In this case we should limit
 			// the max white of tonemappers, specifically AgX which defaults
@@ -763,7 +763,7 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 			}
 		}
 
-		tonemap.luminance_multiplier = rb->get_luminance_multiplier();
+		tonemap.luminance_multiplier = p_display_texture.is_valid() ? 1.0f : rb->get_luminance_multiplier();
 		tonemap.view_count = rb->get_view_count();
 
 		RID dest_fb;
@@ -792,7 +792,7 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 		}
 
 		tonemap.debanding_mode = RendererRD::ToneMapper::TonemapSettings::DebandingMode::DEBANDING_MODE_DISABLED;
-		if (rb->get_use_debanding() && !using_hdr) {
+		if (p_display_texture.is_null() && rb->get_use_debanding() && !using_hdr) {
 			if (use_smaa) {
 				// SMAA will apply 8-bit debanding.
 				if (!can_use_storage) {

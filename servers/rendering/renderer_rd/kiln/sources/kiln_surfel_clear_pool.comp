@@ -1,0 +1,13 @@
+#version 450
+// lighting clear_surfel_pool.hlsl: one-time LIFO free-list initialization.
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_SURFEL@
+layout(local_size_x = 64) in;
+void main() {
+	uint idx = gl_GlobalInvocationID.x;
+	if (idx >= KILN_MAX_SURFELS) {
+		return;
+	}
+	kiln_surfel_pool_buf[idx] = idx;
+}

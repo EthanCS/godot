@@ -90,7 +90,6 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 
 	SceneShaderForwardClustered scene_shader;
 	bool kiln_deferred = false;
-	bool kiln_forward_gi_ready = false;
 	RendererRD::KilnGI *kiln_gi = nullptr;
 	HashMap<String, RID> kiln_resolve_pipelines;
 	void _kiln_resolve(Ref<RenderSceneBuffersRD> p_buffers, bool p_gi, RID p_render_pass_uniform_set, const SceneShaderForwardClustered::ShaderSpecialization &p_specialization, const Color &p_clear_color);

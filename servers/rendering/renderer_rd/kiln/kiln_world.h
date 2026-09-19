@@ -1,5 +1,5 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
+// Imported algorithm provenance and redistribution limits: kiln/provenance/gi-provenance.json.
 
 #pragma once
 
@@ -17,6 +17,9 @@ struct KilnWorld {
 	struct Geometry {
 		PackedByteArray nodes;
 		PackedByteArray triangles;
+		// Original float32 positions for hardware traversal. Reconstructing them
+		// from cached edges can move thin or coincident surfaces by an ULP.
+		PackedByteArray vertex_positions;
 		PackedByteArray texture_coordinates;
 		PackedInt32Array source_order;
 		PackedByteArray refit_order;

@@ -1,0 +1,571 @@
+{
+  "kiln_rtr_temporal": {
+    "bindings": [
+      0,
+      2,
+      6,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26
+    ],
+    "source_bindings": {
+      "gbuffer_tex": 10,
+      "half_view_normal_tex": 11,
+      "depth_tex": 12,
+      "candidate0_tex": 13,
+      "candidate1_tex": 14,
+      "candidate2_tex": 15,
+      "irradiance_history_tex": 16,
+      "ray_orig_history_tex": 17,
+      "ray_history_tex": 18,
+      "reservoir_history_tex": 19,
+      "reprojection_tex": 20,
+      "hit_normal_history_tex": 21,
+      "candidate_history_tex": 21,
+      "irradiance_out_tex": 22,
+      "ray_orig_output_tex": 23,
+      "ray_output_tex": 24,
+      "hit_normal_output_tex": 25,
+      "reservoir_out_tex": 26,
+      "candidate_out_tex": 27
+    }
+  },
+  "kiln_rtr_resolve": {
+    "bindings": [
+      0,
+      1,
+      2,
+      3,
+      6,
+      8,
+      11,
+      13,
+      14,
+      16,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+    ],
+    "source_bindings": {
+      "gbuffer_tex": 10,
+      "depth_tex": 11,
+      "hit0_tex": 12,
+      "hit1_tex": 13,
+      "hit2_tex": 14,
+      "history_tex": 15,
+      "reprojection_tex": 16,
+      "half_view_normal_tex": 17,
+      "half_depth_tex": 18,
+      "ray_len_history_tex": 19,
+      "restir_irradiance_tex": 20,
+      "restir_ray_tex": 21,
+      "restir_reservoir_tex": 22,
+      "restir_ray_orig_tex": 23,
+      "output_tex": 24,
+      "ray_len_output_tex": 25
+    }
+  },
+  "kiln_rtr_filter": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "history_tex": 11,
+      "depth_tex": 12,
+      "ray_len_tex": 13,
+      "reprojection_tex": 14,
+      "output_tex": 15
+    }
+  },
+  "kiln_rtr_cleanup": {
+    "bindings": [
+      0,
+      7,
+      10,
+      11,
+      13
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "depth_tex": 11,
+      "geometric_normal_tex": 12,
+      "output_tex": 13
+    }
+  },
+  "kiln_restir_temporal": {
+    "bindings": [
+      0,
+      2,
+      3,
+      6,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "source_bindings": {
+      "half_view_normal_tex": 10,
+      "depth_tex": 11,
+      "candidate_irradiance_tex": 12,
+      "candidate_hit_tex": 13,
+      "irradiance_history_tex": 14,
+      "ray_orig_history_tex": 15,
+      "ray_history_tex": 16,
+      "reservoir_history_tex": 17,
+      "reprojection_tex": 18,
+      "hit_normal_history_tex": 19,
+      "candidate_history_tex": 20,
+      "rt_invalidity_tex": 21,
+      "irradiance_out_tex": 22,
+      "ray_orig_output_tex": 23,
+      "ray_output_tex": 24,
+      "hit_normal_output_tex": 25,
+      "reservoir_out_tex": 26,
+      "candidate_out_tex": 27
+    }
+  },
+  "kiln_restir_spatial": {
+    "bindings": [
+      0,
+      1,
+      2,
+      6,
+      10,
+      11,
+      12,
+      13,
+      17,
+      19
+    ],
+    "source_bindings": {
+      "irradiance_tex": 10,
+      "hit_normal_tex": 11,
+      "ray_tex": 12,
+      "reservoir_input_tex": 13,
+      "gbuffer_tex": 14,
+      "half_view_normal_tex": 15,
+      "half_depth_tex": 16,
+      "ssao_tex": 17,
+      "candidate_input_tex": 18,
+      "reservoir_output_tex": 19
+    }
+  },
+  "kiln_restir_resolve": {
+    "bindings": [
+      0,
+      1,
+      2,
+      3,
+      6,
+      10,
+      12,
+      13,
+      15,
+      21
+    ],
+    "source_bindings": {
+      "irradiance_tex": 10,
+      "hit_normal_tex": 11,
+      "ray_tex": 12,
+      "reservoir_input_tex": 13,
+      "gbuffer_tex": 14,
+      "depth_tex": 15,
+      "half_view_normal_tex": 16,
+      "half_depth_tex": 17,
+      "ssao_tex": 18,
+      "candidate_irradiance_tex": 19,
+      "candidate_hit_tex": 20,
+      "irradiance_output_tex": 21
+    }
+  },
+  "kiln_rtdgi_validity": {
+    "bindings": [
+      0,
+      1,
+      10,
+      11,
+      12,
+      15
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "history_tex": 11,
+      "reprojection_tex": 12,
+      "half_view_normal_tex": 13,
+      "half_depth_tex": 14,
+      "output_tex": 15
+    }
+  },
+  "kiln_rtdgi_temporal_filter": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "history_tex": 11,
+      "variance_history_tex": 12,
+      "reprojection_tex": 13,
+      "rt_history_validity_tex": 14,
+      "output_tex": 15,
+      "history_output_tex": 16,
+      "variance_history_output_tex": 17
+    }
+  },
+  "kiln_rtdgi_spatial_filter": {
+    "bindings": [
+      0,
+      7,
+      10,
+      11,
+      12,
+      14
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "depth_tex": 11,
+      "ssao_tex": 12,
+      "geometric_normal_tex": 13,
+      "output_tex": 14
+    }
+  },
+  "kiln_ssgi": {
+    "bindings": [
+      0,
+      1,
+      2,
+      6,
+      15
+    ],
+    "source_bindings": {
+      "gbuffer_tex": 10,
+      "half_depth_tex": 11,
+      "half_view_normal_tex": 12,
+      "prev_radiance_tex": 13,
+      "reprojection_tex": 14,
+      "output_tex": 15,
+      "bent_normal_out_tex": 16
+    }
+  },
+  "kiln_ssgi_spatial": {
+    "bindings": [
+      0,
+      1,
+      2,
+      6,
+      10,
+      13
+    ],
+    "source_bindings": {
+      "ssgi_tex": 10,
+      "half_depth_tex": 11,
+      "half_view_normal_tex": 12,
+      "output_tex": 13
+    }
+  },
+  "kiln_ssgi_upsample": {
+    "bindings": [
+      0,
+      2,
+      10,
+      11,
+      13
+    ],
+    "source_bindings": {
+      "ssgi_tex": 10,
+      "depth_tex": 11,
+      "gbuffer_tex": 12,
+      "output_tex": 13
+    }
+  },
+  "kiln_ssgi_temporal": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "history_tex": 11,
+      "reprojection_tex": 12,
+      "final_output_tex": 13,
+      "history_output_tex": 14
+    }
+  },
+  "kiln_shadow_bitpack": {
+    "bindings": [
+      0,
+      10,
+      11
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "output_tex": 11
+    }
+  },
+  "kiln_shadow_temporal": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "source_bindings": {
+      "shadow_mask_tex": 10,
+      "bitpacked_shadow_mask_tex": 11,
+      "prev_moments_tex": 12,
+      "prev_accum_tex": 13,
+      "reprojection_tex": 14,
+      "output_moments_tex": 15,
+      "temporal_output_tex": 16,
+      "meta_output_tex": 17
+    }
+  },
+  "kiln_shadow_spatial": {
+    "bindings": [
+      0,
+      7,
+      10,
+      11,
+      13,
+      14
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "meta_tex": 11,
+      "geometric_normal_tex": 12,
+      "depth_tex": 13,
+      "output_tex": 14
+    }
+  },
+  "kiln_taa_reproject": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "source_bindings": {
+      "history_tex": 10,
+      "reprojection_tex": 11,
+      "depth_tex": 12,
+      "output_tex": 13,
+      "closest_velocity_output": 14
+    }
+  },
+  "kiln_taa_input": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "depth_tex": 11,
+      "output_tex": 12,
+      "dev_output_tex": 13
+    }
+  },
+  "kiln_taa_history": {
+    "bindings": [
+      0,
+      10,
+      11
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "output_tex": 11
+    }
+  },
+  "kiln_taa_prob": {
+    "bindings": [
+      0,
+      11,
+      12,
+      14,
+      15,
+      17,
+      18,
+      19
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "filtered_input_tex": 11,
+      "filtered_input_dev_tex": 12,
+      "history_tex": 13,
+      "filtered_history_tex": 14,
+      "reprojection_tex": 15,
+      "depth_tex": 16,
+      "smooth_var_history_tex": 17,
+      "velocity_history_tex": 18,
+      "output_tex": 19
+    }
+  },
+  "kiln_taa_prob_filter": {
+    "bindings": [
+      0,
+      10,
+      11
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "output_tex": 11
+    }
+  },
+  "kiln_taa_prob_filter2": {
+    "bindings": [
+      0,
+      10,
+      11
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "output_tex": 11
+    }
+  },
+  "kiln_taa": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "history_tex": 11,
+      "reprojection_tex": 12,
+      "closest_velocity_tex": 13,
+      "velocity_history_tex": 14,
+      "depth_tex": 15,
+      "smooth_var_history_tex": 16,
+      "input_prob_tex": 17,
+      "temporal_output_tex": 18,
+      "output_tex": 19,
+      "smooth_var_output_tex": 20,
+      "velocity_output_tex": 21
+    }
+  },
+  "kiln_display_lut": {
+    "bindings": [
+      10
+    ],
+    "source_bindings": {
+      "output_tex": 10
+    }
+  },
+  "kiln_post": {
+    "bindings": [
+      0,
+      3,
+      10,
+      12,
+      13,
+      60
+    ],
+    "source_bindings": {
+      "kiln_display_lut": 60,
+      "input_tex": 10,
+      "debug_input_tex": 11,
+      "blur_pyramid_tex": 11,
+      "rev_blur_pyramid_tex": 12,
+      "filtered_luminance_tex": 14,
+      "output_tex": 13
+    }
+  },
+  "kiln_post_blur0": {
+    "bindings": [
+      10,
+      11
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "output_tex": 11
+    }
+  },
+  "kiln_post_blur": {
+    "bindings": [
+      10,
+      11
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "output_tex": 11
+    }
+  },
+  "kiln_rtdgi_history_reproject": {
+    "bindings": [
+      0,
+      10,
+      11,
+      12
+    ],
+    "source_bindings": {
+      "input_tex": 10,
+      "reprojection_tex": 11,
+      "output_tex": 12
+    }
+  }
+}

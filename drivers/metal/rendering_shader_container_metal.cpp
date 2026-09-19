@@ -30,8 +30,6 @@
 
 #include "rendering_shader_container_metal.h"
 
-#include "kiln_specular_native.metal.gen.h"
-
 #include "core/io/file_access.h"
 #include "core/io/marshalls.h"
 #include "core/os/os.h"
@@ -670,23 +668,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 		const ReflectShaderStage &v = p_spirv[i];
 		RDC::ShaderStage stage = v.shader_stage;
 		std::string source;
-		if (String(shader_name.ptr()) == "KilnSpecularNativeShaderRD:0") {
-			// SPIR-V supplies only RD descriptor/dispatch metadata. No shader
-			// instructions are translated: compile the handwritten MSL verbatim.
-			ERR_FAIL_COND_V(p_spirv.size() != 1 || stage != RDC::SHADER_STAGE_COMPUTE || reflection_data.set_count != 1 || reflection_data.push_constant_size != 0, false);
-			ERR_FAIL_COND_V(reflection_data.compute_local_size[0] != 16 || reflection_data.compute_local_size[1] != 2 || reflection_data.compute_local_size[2] != 2, false);
-			String declarations = vformat("#define KILN_ARGUMENT_BUFFERS %d\n", msl_options.argument_buffers ? 1 : 0);
-			for (uint32_t binding_index = 0; binding_index < spirv_bindings.size(); binding_index++) {
-				const MSLResourceBinding &binding = spirv_bindings[binding_index].first;
-				declarations += vformat("#define KILN_BUFFER_%d %d\n#define KILN_TEXTURE_%d %d\n#define KILN_SAMPLER_%d %d\n", binding.binding, binding.msl_buffer, binding.binding, binding.msl_texture, binding.binding, binding.msl_sampler);
-				if (binding.binding == 0) {
-					declarations += vformat("#define KILN_PARAMETER_BYTES %d\n", reflection_binding_set_uniforms_data[binding_index].length);
-				}
-			}
-			source = declarations.utf8().get_data();
-			source += kiln_native_specular_msl;
-			stage_data.supports_fast_math = true;
-		} else {
+		{
 			Span<uint32_t> spirv = v.spirv();
 			Parser parser(spirv.ptr(), spirv.size());
 			try {

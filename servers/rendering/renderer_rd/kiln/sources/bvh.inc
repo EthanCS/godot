@@ -1,3 +1,9 @@
+#ifndef KILN_TRACE_MIN_DISTANCE
+#define KILN_TRACE_MIN_DISTANCE 0.006
+#endif
+#ifndef KILN_VISIBILITY_MIN_DISTANCE
+#define KILN_VISIBILITY_MIN_DISTANCE KILN_TRACE_MIN_DISTANCE
+#endif
 // Threaded SAH BVH. Internal: lo.w=-1, hi.w=escape node after subtree.
 // Leaf: lo.w=first triangle, hi.w=-triangle count-1. Children follow their parent.
 // Escape links identify the right child for near-first traversal; depth < 32 is
@@ -8,16 +14,15 @@ layout(set=0,binding=4,std430) readonly buffer Nodes { BvhNode nodes[]; };
 layout(set=0,binding=5,std430) readonly buffer Triangles { Triangle triangles[]; };
 layout(set=0,binding=16,std430) readonly buffer DynamicNodes { BvhNode dynamic_nodes[]; };
 layout(set=0,binding=17,std430) readonly buffer DynamicTriangles { Triangle dynamic_triangles[]; };
-layout(set=0,binding=18,std430) readonly buffer Emitters { vec4 emitters[]; };
-struct TextureCoordinates { vec4 ab; vec4 c_page_repeat; };
+struct TextureCoordinates { vec4 ab; vec4 c_page_repeat; vec4 base_roughness; };
 layout(set=0,binding=32) uniform sampler2DArray ray_albedo;
 layout(set=0,binding=33,std430) readonly buffer StaticUVs { TextureCoordinates static_uvs[]; };
 layout(set=0,binding=34,std430) readonly buffer DynamicUVs { TextureCoordinates dynamic_uvs[]; };
 Triangle world_triangle(int id){return id<int(p.source_bvh_state.y)?triangles[id]:dynamic_triangles[id-int(p.source_bvh_state.y)];}
-vec3 hit_albedo(int id, vec3 position) {
+vec4 hit_base_roughness(int id, vec3 position) {
     Triangle t = world_triangle(id);
     TextureCoordinates record = id < int(p.source_bvh_state.y) ? static_uvs[id] : dynamic_uvs[id-int(p.source_bvh_state.y)];
-    if (record.c_page_repeat.z < 0.5) return t.albedo.rgb;
+    if (record.c_page_repeat.z < 0.5) return record.base_roughness;
     vec3 delta = position - t.p0.xyz;
     float aa = dot(t.p1.xyz,t.p1.xyz), ab = dot(t.p1.xyz,t.p2.xyz), bb = dot(t.p2.xyz,t.p2.xyz);
     float da = dot(delta,t.p1.xyz), db = dot(delta,t.p2.xyz), denominator = max(aa*bb-ab*ab,1e-20);
@@ -28,7 +33,7 @@ vec3 hit_albedo(int id, vec3 position) {
     // before filtering, matching the original four-tap linear-light estimator.
     uv = record.c_page_repeat.w > 0.5 ? fract(uv) : clamp(uv, vec2(0.5/512.0), vec2(511.5/512.0));
     vec3 color = textureLod(ray_albedo, vec3(uv, record.c_page_repeat.z - 1.0), 0.0).rgb;
-    return t.albedo.rgb*color;
+    return vec4(record.base_roughness.rgb * color, record.base_roughness.w);
 }
 BvhNode world_node(int id,bool dynamic){return dynamic?dynamic_nodes[id]:nodes[id];}
 float box_near(vec3 origin,vec3 inverse_ray,BvhNode node,float maximum){
@@ -56,7 +61,7 @@ bool trace_blocker(vec3 origin,vec3 ray,float maximum,bool dynamic,out int trian
             float inv=1.0/det;vec3 s=origin-tri.p0.xyz;float u=dot(s,h)*inv;
             if(u<0.0||u>1.0)continue;
             vec3 q=cross(s,tri.p1.xyz);float v=dot(ray,q)*inv;if(v<0.0||u+v>1.0)continue;
-            float t=dot(tri.p2.xyz,q)*inv;if(t<=.006||t>=maximum)continue;
+            float t=dot(tri.p2.xyz,q)*inv;if(t<=KILN_VISIBILITY_MIN_DISTANCE||t>=maximum)continue;
             distance=t;triangle_id=i+(dynamic?int(p.source_bvh_state.y):0);return true;
         }
         index++;
@@ -93,11 +98,17 @@ bool trace_hierarchy(vec3 origin,vec3 ray,float maximum,bool any_hit,bool dynami
         int first=int(node.lo.w),end=first-int(node.hi.w)-1;
         for(int i=first;i<end;i++){
             Triangle tri=dynamic?dynamic_triangles[i]:triangles[i];vec3 e1=tri.p1.xyz,e2=tri.p2.xyz;
-            vec3 h=cross(ray,e2);float det=dot(e1,h);if(abs(det)<1e-9)continue;
+            vec3 h=cross(ray,e2);float det=dot(e1,h);
+#ifdef KILN_TRACE_CULL_BACK_FACES
+            // Godot stores clockwise front faces (opposite the glTF input).
+            if(det >= -1e-9)continue;
+#else
+            if(abs(det)<1e-9)continue;
+#endif
             float inv=1.0/det;vec3 s=origin-tri.p0.xyz;float u=dot(s,h)*inv;
             if(u<0.0||u>1.0)continue;
             vec3 q=cross(s,e1);float v=dot(ray,q)*inv;if(v<0.0||u+v>1.0)continue;
-            float t=dot(e2,q)*inv;if(t<=.006||t>=distance)continue;
+            float t=dot(e2,q)*inv;if(t<=KILN_TRACE_MIN_DISTANCE||t>=distance)continue;
             distance=t;triangle_id=i+(dynamic?int(p.source_bvh_state.y):0);
             if(any_hit)return true;
         }
@@ -136,7 +147,11 @@ bool world_trace_hardware(vec3 origin,vec3 direction,float maximum,bool any_hit,
     rayQueryEXT query;
     // Keep both flag alternatives constant so the Metal translator can prove
     // that traversal is opaque and lower it to its native intersector.
-    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,.006,direction,maximum);
+    #ifdef KILN_TRACE_CULL_BACK_FACES
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):(gl_RayFlagsOpaqueEXT|gl_RayFlagsCullFrontFacingTrianglesEXT),255u,origin,KILN_TRACE_MIN_DISTANCE,direction,maximum);
+#else
+    rayQueryInitializeEXT(query,scene_tlas,any_hit?(gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT):gl_RayFlagsOpaqueEXT,255u,origin,KILN_TRACE_MIN_DISTANCE,direction,maximum);
+#endif
     while(rayQueryProceedEXT(query)){}
     if(rayQueryGetIntersectionTypeEXT(query,true)==gl_RayQueryCommittedIntersectionNoneEXT)return false;
     int instance=int(rayQueryGetIntersectionInstanceCustomIndexEXT(query,true));
@@ -161,7 +176,7 @@ bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
     // from closest-hit shading so primitive/material/normal payloads never
     // enter its native Metal intersector or the surrounding live state.
     rayQueryEXT query;
-    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,.006,direction,maximum);
+    rayQueryInitializeEXT(query,scene_tlas,gl_RayFlagsOpaqueEXT|gl_RayFlagsTerminateOnFirstHitEXT,255u,origin,KILN_VISIBILITY_MIN_DISTANCE,direction,maximum);
     while(rayQueryProceedEXT(query)){}
     return rayQueryGetIntersectionTypeEXT(query,true)!=gl_RayQueryCommittedIntersectionNoneEXT;
 #else
@@ -171,72 +186,4 @@ bool visibility_blocked(vec3 origin,vec3 direction,float maximum){
 }
 bool occluded(vec3 origin,vec3 direction){
     return visibility_blocked(origin,direction,1000.0);
-}
-vec3 sky_at_surface(vec3 position,vec3 normal,vec2 xi){
-    vec3 ray=cosine_direction(normal,xi);
-    if(p.sun_color.w<=0.0||ray.y<=0.0)return vec3(0);
-    return occluded(position+normal*.025,ray)?vec3(0):environment_radiance(ray);
-}
-// Area-weighted next-event sampling makes a small crystal useful at the
-// production ray budget. This is surface emission with world-space visibility,
-// not an unshadowed point light or a screen-space bloom approximation.
-vec3 emitter_sample(vec3 position,vec3 normal,vec3 xi,out vec3 direction){
-    direction=normal;
-    int count=int(p.dynamic_scene.z);if(count==0)return vec3(0);
-    float target=xi.x*p.dynamic_scene.w;int lo=0,hi=count-1;
-    while(lo<hi){int mid=(lo+hi)/2;if(emitters[mid].y<target)lo=mid+1;else hi=mid;}
-    vec4 entry=emitters[lo];Triangle tri=world_triangle(int(entry.x));
-    float u=sqrt(xi.y);vec3 point=tri.p0.xyz+tri.p1.xyz*(u*(1.0-xi.z))+tri.p2.xyz*(u*xi.z);
-    vec3 origin=position+normal*.012,delta=point-origin;float squared=dot(delta,delta);
-    if(squared<.0004)return vec3(0);
-    float distance=sqrt(squared);direction=delta/distance;
-    if(dot(normal,direction)<=0.0)return vec3(0);
-    vec3 source_normal=safe_normalize(cross(tri.p1.xyz,tri.p2.xyz));
-    float cosine=abs(dot(source_normal,-direction));
-    if(cosine<.0001)return vec3(0);
-    int id;float hit_distance;vec3 n;
-    if(visibility_blocked(origin,direction,distance-.008))return vec3(0);
-    return tri.emission.rgb*(entry.z*cosine*p.dynamic_scene.w/(squared*entry.w));
-}
-// World-space light grid: each cell stores a complete, dynamically sized list.
-// One uniformly sampled overlapping analytic light per bounce is unbiased; the
-// sample weight includes list length. Visibility uses the same software BVH.
-layout(set=0,binding=25,std430) readonly buffer LocalLights { vec4 local_lights[]; };
-layout(set=0,binding=26,std430) readonly buffer LightGrid { uint light_grid[]; };
-vec3 local_light_unoccluded(uint id,vec3 position,vec3 normal,out vec3 direction,out float distance){
-    vec4 pr=local_lights[2u+id*4u],color=local_lights[3u+id*4u],cone=local_lights[4u+id*4u];
-    vec3 delta=pr.xyz-position;distance=length(delta);direction=delta/max(distance,.0001);
-    if(distance>=pr.w||distance<.001)return vec3(0);
-    float nl=max(0.0,dot(normal,direction));if(nl<=0.0)return vec3(0);
-    float window=max(1.0-pow(distance/pr.w,4.0),0.0);
-    float attenuation=window*window*pow(max(distance,.0001),-color.w);
-    if(cone.w>=-1.0){
-        float scos=max(dot(-direction,cone.xyz),cone.w);
-        float rim=max(1e-4,(1.0-scos)/(1.0-cone.w));
-        attenuation*=1.0-pow(rim,local_lights[5u+id*4u].x);
-    }
-    return max(vec3(0),color.rgb*(attenuation*nl/PI));
-}
-vec3 local_light_sample(vec3 position,vec3 normal,float xi){
-    vec4 origin=local_lights[0];ivec3 dims=ivec3(local_lights[1].xyz);
-    ivec3 cell=ivec3(floor((position-origin.xyz)/origin.w));
-    if(any(lessThan(cell,ivec3(0)))||any(greaterThanEqual(cell,dims)))return vec3(0);
-    int cell_id=(cell.z*dims.y+cell.y)*dims.x+cell.x;
-    uint count=light_grid[cell_id*2+1],start=light_grid[cell_id*2];
-    // Importance-sample actual incident power, including range and spot cone.
-    // A uniform light index spent most samples on irrelevant lamps in Sponza.
-    // The CDF uses cheap unoccluded weights, then traces ONE visibility ray.
-    float total=0.0,distance;vec3 direction;
-    for(uint i=0u;i<count;i++)total+=luminance(local_light_unoccluded(light_grid[start+i],position,normal,direction,distance));
-    if(total<=1e-10)return vec3(0);
-    float target=xi*total,accum=0.0;
-    for(uint i=0u;i<count;i++){
-        vec3 value=local_light_unoccluded(light_grid[start+i],position,normal,direction,distance);
-        float weight=luminance(value);accum+=weight;
-        if(weight>0.0 && (accum>=target || i+1u==count)){
-            if(visibility_blocked(position+normal*.025,direction,distance-.03))return vec3(0);
-            return value*(total/weight);
-        }
-    }
-    return vec3(0);
 }

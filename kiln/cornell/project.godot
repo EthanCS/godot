@@ -14,7 +14,6 @@ window/size/viewport_height=1080
 
 [rendering]
 
-kiln/nrd=false
 renderer/rendering_method="kiln_deferred"
 renderer/rendering_method.mobile="kiln_deferred"
 lights_and_shadows/directional_shadow/size=4096

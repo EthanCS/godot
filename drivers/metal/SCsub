@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 from misc.utility.scons_hints import *
-import subprocess
-import sys
 
 Import("env")
 
@@ -56,19 +54,9 @@ env_metal.Append(CCFLAGS=["-fmodules", "-fcxx-modules"])
 
 # Driver source files
 
-def kiln_metal_shader_builder(target, source, env):
-    subprocess.check_call([sys.executable, str(source[0]), str(source[1]), str(target[0])])
-
-native_shader = env.CommandNoCache(
-    "kiln_specular_native.metal.gen.h",
-    ["#kiln/tools/build_metal_shader.py", "#servers/rendering/renderer_rd/kiln/sources/surfel_specular.metal"],
-    env.Run(kiln_metal_shader_builder),
-)
-
 driver_obj = []
 
 env_metal.add_source_files(driver_obj, "*.cpp")
-env.Depends(driver_obj, native_shader)
 env.drivers_sources += driver_obj
 
 # Needed to force rebuilding the driver files when the thirdparty library is updated.

@@ -14,35 +14,20 @@ var animate := true
 var duration := 0
 var output := ""
 var suite := false
-var surfel_suite := false
 var floor_material: StandardMaterial3D
 var floor_roughness := 0.18
-var specular_suite := false
 var no_gi := false
 var no_taa := false
 var free_camera := false
 const DEBUG_VIEWS = {
-    0: ["Lit", "Final shaded scene. F4 / F5 browse Surfel views; F6 resets the cache."],
-    7: ["Composed indirect", "Indirect diffuse and glossy reflection with material reflectance."],
-    15: ["Surfel IDs", "Each color is a persistent GPU slot. Dark gaps separate display disks; use Coverage to find GI holes."],
-    16: ["Surfel irradiance", "Cached diffuse irradiance / PI on each disk. Display: 1 - exp(-value * gain)."],
-    17: ["Surfel normals", "World-space cached normal: RGB = XYZ * 0.5 + 0.5."],
-    18: ["Surfel radius", "Support radius in world units. Blue 0.12 m -> green 0.41 m -> red 0.70 m."],
-    19: ["Surfel age", "Frames since allocation. Blue 0 -> green 120 -> red 240+."],
-    20: ["Surfel samples", "Accumulated rays (log scale). Blue 0 -> green 31 -> red 1024+."],
-    21: ["Surfel updates", "Green: allocated < 4 frames ago. Orange: traced this frame. Blue: reused cache."],
-    22: ["Surfel coverage", "Red: no support. Yellow: below 0.65 allocation target. Green: covered. Blue: weight sum >= 2."],
-    23: ["Surfel contributors", "Compatible neighbors per pixel. Blue 1 -> green 16 -> red 32+. Magenta: none."],
-    24: ["Surfel variance", "MSME relative deviation: sqrt(variance) / max(short mean, 0.01). Blue 0 -> green 2 -> red 4+."],
-    25: ["Indirect diffuse values", "Linear irradiance / PI x gain. Before material, AO, denoising and tone mapping. F1 toggles this view."],
-    26: ["Surfel grid levels", "Dominant surfel cell: blue 0.25 m / green 0.50 m / orange 1 m. Lines show world-grid boundaries."],
-    27: ["Surfel anchors", "Blue: original static triangles. Orange: original dynamic triangles. No simplified proxy mesh."],
+    0: ["Lit", "Final shaded scene. F4 / F5 browse buffer views; F6 resets the cache."],
+    7: ["Indirect diffuse", "Filtered irradiance before the primary material response."],
     13: ["Instance IDs", "G-buffer draw-instance IDs."],
     14: ["Geometric normals", "G-buffer geometric normals used by Surfel GI."],
-    28: ["Indirect specular", "World-space GGX reflection rays, with Fresnel and multiple-scattering compensation."],
+    28: ["Reflection radiance", "Filtered GGX reflection radiance before the primary material response."],
     1: ["Albedo", "Material albedo."],
     2: ["Shading normals", "Material shading normals, including normal maps."],
-    8: ["Ambient occlusion", "Independent XeGTAO visibility."],
+    8: ["Ambient occlusion", "SSGI visibility used to guide indirect-light reconstruction."],
     3: ["Roughness", "Material perceptual roughness."],
     4: ["Emission", "Authored material emission."],
     5: ["Material channels", "Specular, occlusion and material data."],
@@ -50,10 +35,8 @@ const DEBUG_VIEWS = {
     9: ["Motion", "Material motion vectors."],
     10: ["Direct lighting", "Direct lighting without GI."],
     11: ["Cluster light count", "Number of lights in the visible cluster."],
-    12: ["GI coverage grayscale", "Clamped Surfel support weight. Use Surfel Coverage for the full heat map."]
 }
 var debug_mode := 0
-var surfel_debug_suite := false
 var debug_selector: OptionButton
 var debug_description: Label
 var debug_panel: PanelContainer
@@ -75,35 +58,9 @@ var sky_energy_value := 0.0
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
-		if arg == "--surfel-two-bounce": ProjectSettings.set_setting("rendering/kiln/surfel_multibounce", false)
 		if arg == "--dry-floor": floor_roughness = 0.85
 		if arg.begins_with("--roughness="): floor_roughness = clampf(float(arg.get_slice("=", 1)), 0.02, 1.0)
-		if arg == "--specular-suite": specular_suite = true
-		if arg == "--metal-specular-validate": ProjectSettings.set_setting("rendering/kiln/metal_specular_validation", true)
-		if arg == "--metal-native-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", true)
-		if arg == "--metal-translated-specular": ProjectSettings.set_setting("rendering/kiln/metal_native_specular", false)
-		if arg == "--no-specular": ProjectSettings.set_setting("rendering/kiln/surfel_specular", false)
-		if arg.begins_with("--surfel-ray-budget="):
-			ProjectSettings.set_setting("rendering/kiln/surfel_ray_budget", int(arg.get_slice("=", 1)))
-			# An explicit command-line value is a controlled fixed-budget run.
-			ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", false)
-		if arg == "--adaptive-budget": ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", true)
-		if arg == "--no-adaptive-budget": ProjectSettings.set_setting("rendering/kiln/surfel_adaptive_budget", false)
-		if arg == "--no-irradiance-sharing": ProjectSettings.set_setting("rendering/kiln/surfel_irradiance_sharing", false)
-		if arg.begins_with("--surfel-diameter="): ProjectSettings.set_setting("rendering/kiln/surfel_target_diameter_pixels", float(arg.get_slice("=", 1)))
-		if arg == "--raw-cache": ProjectSettings.set_setting("rendering/kiln/surfel_reconstruction", false)
-		if arg == "--no-nrd": ProjectSettings.set_setting("rendering/kiln/nrd", false)
-		if arg == "--nrd-diffuse-validate": ProjectSettings.set_setting("rendering/kiln/nrd_diffuse_validation", true)
-		if arg.begins_with("--nrd-diffuse-iterations="): ProjectSettings.set_setting("rendering/kiln/nrd_diffuse_iterations", int(arg.get_slice("=", 1)))
-		if arg == "--nrd": ProjectSettings.set_setting("rendering/kiln/nrd", true)
-		if arg == "--nrd-reference": ProjectSettings.set_setting("rendering/kiln/nrd_reference", true)
-		if arg == "--nrd-checkerboard": ProjectSettings.set_setting("rendering/kiln/nrd_specular_checkerboard", true)
-		if arg == "--nrd-separate-specular": ProjectSettings.set_setting("rendering/kiln/nrd_combined_specular", false)
-		if arg == "--full-specular-rate": ProjectSettings.set_setting("rendering/kiln/specular_checkerboard", false)
-		if arg.begins_with("--specular-rays="): ProjectSettings.set_setting("rendering/kiln/specular_rays", int(arg.get_slice("=", 1)))
 		if arg == "--suite": suite = true
-		if arg == "--surfel-suite": surfel_suite = true
-		if arg == "--surfel-debug-suite": surfel_debug_suite = true
 		if arg.begins_with("--debug-view="): debug_mode = int(arg.get_slice("=", 1))
 		if arg == "--multi-light": local_mode = true
 		if arg == "--software": query_backend = 1
@@ -255,19 +212,7 @@ func _ready() -> void:
 		animate = false
 		controls.hide()
 		_run_suite.call_deferred()
-	if specular_suite:
-		animate = false
-		controls.hide()
-		_run_specular_suite.call_deferred()
-	if surfel_suite:
-		animate = false
-		controls.hide()
-		_run_surfel_suite.call_deferred()
 
-	if surfel_debug_suite:
-		animate = false
-		controls.hide()
-		_run_surfel_debug_suite.call_deferred()
 
 func _build_debug_controls() -> void:
 	debug_panel = PanelContainer.new()
@@ -308,35 +253,6 @@ func _build_debug_controls() -> void:
 		floor_material.roughness = value
 		roughness_label.text = "Floor roughness: %.2f" % value)
 	column.add_child(roughness_slider)
-	for setting in ["surfel_specular", "nrd"]:
-		var toggle := CheckButton.new()
-		toggle.text = "Indirect specular" if setting == "surfel_specular" else "NRD denoising"
-		toggle.button_pressed = ProjectSettings.get_setting("rendering/kiln/" + setting, setting != "nrd")
-		toggle.toggled.connect(func(enabled: bool): ProjectSettings.set_setting("rendering/kiln/" + setting, enabled))
-		column.add_child(toggle)
-	for property in ["surfel_debug_radius", "surfel_debug_gain"]:
-		var row := HBoxContainer.new()
-		column.add_child(row)
-		var label := Label.new()
-		label.text = "Display disk scale" if property.ends_with("radius") else "GI display gain"
-		label.custom_minimum_size.x = 142
-		label.add_theme_font_size_override("font_size", 14)
-		row.add_child(label)
-		var slider := HSlider.new()
-		var radius: bool = property.ends_with("radius")
-		slider.min_value = 0.15 if radius else 0.1
-		slider.max_value = 1.0 if radius else 16.0
-		slider.step = 0.05 if radius else 0.1
-		slider.value = ProjectSettings.get_setting("rendering/kiln/" + property, 0.45 if radius else 4.0)
-		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(slider)
-		var value := Label.new()
-		value.custom_minimum_size.x = 42
-		value.text = "%.2f" % slider.value
-		row.add_child(value)
-		slider.value_changed.connect(func(number: float):
-			ProjectSettings.set_setting("rendering/kiln/" + property, number)
-			value.text = "%.2f" % number)
 	var reset := Button.new()
 	reset.text = "Reset Surfel cache (F6)"
 	reset.pressed.connect(func(): gi.reset_history())
@@ -359,9 +275,9 @@ func _set_debug_view(mode: int) -> void:
 		if RenderingServer.get_current_rendering_method() != "kiln_deferred":
 			debug_description.text = "Debug views require Kiln Deferred. This renderer retains its normal output."
 
-func _cycle_surfel_debug(step: int) -> void:
-	var current := debug_mode if debug_mode >= 15 and debug_mode <= 27 else (14 if step > 0 else 28)
-	_set_debug_view(15 + posmod(current - 15 + step, 13))
+func _cycle_debug_view(step: int) -> void:
+	var modes := DEBUG_VIEWS.keys()
+	_set_debug_view(modes[posmod(modes.find(debug_mode) + step, modes.size())])
 
 func _set_local_mode(enabled: bool) -> void:
 	local_mode = enabled
@@ -411,11 +327,10 @@ func _process(_delta: float) -> void:
 	if ticks % 30 == 0 and not tod_video:
 		var s := gi.get_statistics()
 		var hour := fposmod(tod_phase * 24.0 + 6.0, 24.0)
-		var algorithm := "Surfel GI / multi bounce" if s.get("surfel_multibounce", false) else "Surfel GI / two bounce"
-		if s.get("nrd_active", false): algorithm += " / NRD 4.17.3"
+		var algorithm: String = s.get("gi_algorithm", "Native renderer")
 		if not gi.is_enabled(): algorithm = "GI OFF"
-		hud.text = "SPONZA | %02d:%02d | %s | %d FPS\nG GI   B multi bounce   Space pause   RMB + WASD fly\n%s | Cache %d slots | %s" % [int(hour), int(fmod(hour, 1.0) * 60), algorithm, Engine.get_frames_per_second(), DEBUG_VIEWS[debug_mode][0], s.get("surfel_capacity", 0), "SUN + SKY + LOCAL" if local_mode else "SUN + SKY ONLY"]
-	if not specular_suite and not suite and not surfel_suite and not surfel_debug_suite and not tod_suite and not tod_video and duration > 0 and ticks == duration:
+		hud.text = "SPONZA | %02d:%02d | %s | %d FPS\nG GI   Space pause   RMB + WASD fly\n%s | Cache %d slots | %s" % [int(hour), int(fmod(hour, 1.0) * 60), algorithm, Engine.get_frames_per_second(), DEBUG_VIEWS[debug_mode][0], s.get("surfel_capacity", 0), "SUN + SKY + LOCAL" if local_mode else "SUN + SKY ONLY"]
+	if not suite and not tod_suite and not tod_video and duration > 0 and ticks == duration:
 		if benchmark and output != "":
 			FileAccess.open(output.path_join("benchmark.json"), FileAccess.WRITE).store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "width": get_window().size.x, "height": get_window().size.y, "gi": gi.is_enabled(), "taa": get_viewport().use_taa, "animated": animate, "warmup_frames": 60, "frame_ms": frame_ms, "statistics": gi.get_statistics()}))
 		elif output != "":
@@ -432,12 +347,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_G: gi.set_enabled(not gi.is_enabled())
-			KEY_B:
-				ProjectSettings.set_setting("rendering/kiln/surfel_multibounce", not ProjectSettings.get_setting("rendering/kiln/surfel_multibounce", true))
 			KEY_F2: _set_debug_view(13)
 			KEY_F3: _set_debug_view(14)
-			KEY_F4: _cycle_surfel_debug(1)
-			KEY_F5: _cycle_surfel_debug(-1)
+			KEY_F4: _cycle_debug_view(1)
+			KEY_F5: _cycle_debug_view(-1)
 			KEY_F6: gi.reset_history()
 			KEY_F7: _set_debug_view(0)
 			KEY_F8: debug_panel.visible = not debug_panel.visible
@@ -529,29 +442,6 @@ func _run_suite() -> void:
 	print("[SPONZA_SUITE] completed")
 	get_tree().quit()
 
-func _run_surfel_suite() -> void:
-	assert(output != "")
-	_set_local_mode(false)
-	_set_tod(0.25)
-	for mode in ["multibounce", "two_bounce", "restored"]:
-		ProjectSettings.set_setting("rendering/kiln/surfel_multibounce", mode != "two_bounce")
-		gi.reset_history()
-		await settle(256)
-		await shot(mode)
-	for mode in [13, 14, 7, 0]:
-		ProjectSettings.set_setting("rendering/kiln/debug_view", mode)
-		await settle(8)
-		await shot("debug_%d" % mode)
-	var original_size := get_window().size
-	resize_acceptance(Vector2i(961, 541))
-	await settle(64)
-	await shot("odd_resize")
-	resize_acceptance(original_size)
-	await settle(128)
-	await shot("resize_restored")
-	print("[SPONZA_SURFEL_SUITE] completed")
-	get_tree().quit()
-
 func _run_tod_suite() -> void:
 	assert(output != "")
 	_set_local_mode(false)
@@ -610,115 +500,4 @@ func _run_tod_video() -> void:
 		await settle(1)
 		get_viewport().get_texture().get_image().save_png(frames.path_join("%04d.png" % i))
 	print("[SPONZA_TOD_VIDEO] 480 frames, continuous sun/sky only")
-	get_tree().quit()
-
-func _run_surfel_debug_suite() -> void:
-	assert(output != "")
-	_set_debug_view(15)
-	_set_local_mode(true)
-	_set_tod(0.25)
-	await settle(160)
-	for mode in range(15, 28):
-		_set_debug_view(mode)
-		await settle(12)
-		await shot("surfel_%02d" % mode)
-	_set_debug_view(19)
-	gi.reset_history()
-	await settle(2)
-	await shot("cold_age")
-	_set_debug_view(22)
-	var original_size := get_window().size
-	resize_acceptance(Vector2i(961, 541))
-	await settle(64)
-	await shot("debug_odd_resize")
-	resize_acceptance(original_size)
-	_set_debug_view(15)
-	gi.set_enabled(false)
-	await settle(2)
-	await shot("debug_gi_off")
-	gi.set_enabled(true)
-	_set_debug_view(0)
-	await settle(96)
-	await shot("debug_return_lit")
-	FileAccess.open(output.path_join("debug_views.json"), FileAccess.WRITE).store_string(JSON.stringify(DEBUG_VIEWS, "\t"))
-	print("[SPONZA_SURFEL_DEBUG] completed")
-	get_tree().quit()
-
-func _run_specular_suite() -> void:
-	assert(output != "")
-	camera.position = Vector3(-9, 1.6, 0.4)
-	camera.look_at(Vector3(4, 1.0, 0))
-	_set_local_mode(false)
-	_set_tod(0.25)
-	floor_material.roughness = 0.85
-	await settle(160)
-	await shot("dry_day")
-	floor_material.roughness = 0.18
-	ProjectSettings.set_setting("rendering/kiln/surfel_specular", false)
-	await settle(64)
-	await shot("wet_specular_off")
-	ProjectSettings.set_setting("rendering/kiln/surfel_specular", true)
-	await settle(96)
-	await shot("wet_day")
-	for i in 8:
-		await settle(1)
-		await shot("wet_noise_%02d" % i)
-	_set_debug_view(28)
-	await settle(8)
-	await shot("wet_specular_only")
-	floor_material.metallic_specular = 0.0
-	await settle(48)
-	await shot("zero_f0")
-	floor_material.metallic_specular = 0.5
-	floor_material.metallic = 1.0
-	await settle(48)
-	await shot("metallic_reflection")
-	floor_material.metallic = 0.0
-	_set_debug_view(3)
-	await settle(2)
-	await shot("wet_roughness")
-	_set_debug_view(0)
-	sun.light_energy = 0.0
-	gi.set_lighting(Vector3.UP, Vector3.ONE, 0, 0, 0)
-	for light in lights: light.visible = false
-	for emitter in emitters: emitter.visible = false
-	var source := emitters[0]
-	source.visible = true
-	source.position = Vector3(-1, 2, 0)
-	source.material_override.emission = Color(1, 0.01, 0.005)
-	source.material_override.emission_energy_multiplier = 8.0
-	for r in [0.06, 0.18, 0.5, 0.85]:
-		floor_material.roughness = r
-		await settle(96)
-		await shot("emitter_rough_%02d" % int(r * 100))
-	floor_material.roughness = 0.18
-	source.material_override.emission = Color(0.005, 0.01, 1)
-	await settle(64)
-	await shot("emitter_blue")
-	# The source moves above the camera's field of view; the floor still sees it.
-	source.position = Vector3(-1, 5.5, 0)
-	camera.look_at(Vector3(4, -3.0, 0))
-	await settle(64)
-	await shot("offscreen_emitter")
-	for i in 60:
-		camera.position.z = 0.4 + sin(i * 0.04) * 0.5
-		camera.look_at(Vector3(4, -3.0, 0))
-		source.position.x = -1 + sin(i * 0.07)
-		await settle(1)
-		if i % 20 == 0: await shot("reflection_motion_%02d" % i)
-	await settle(32)
-	await shot("reflection_settled_32")
-	await settle(96)
-	await shot("reflection_reference")
-	source.material_override.emission_energy_multiplier = 0.0
-	await settle(32)
-	await shot("reflection_off_32")
-	_set_tod(0.25)
-	resize_acceptance(Vector2i(961, 541))
-	await settle(96)
-	await shot("reflection_odd_resize")
-	gi.set_enabled(false)
-	await settle(2)
-	await shot("reflection_gi_off")
-	print("[SPONZA_SPECULAR] completed")
 	get_tree().quit()

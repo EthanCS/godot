@@ -1,0 +1,24 @@
+#version 450
+// Adapted from Kajiya assets/shaders/lut/brdf_fg.hlsl (MIT).
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_BRDF@
+layout(set = 0, binding = 1, rg16f) uniform writeonly image2D fg_out;
+layout(local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    float nv = float(px.x) / 63.0 * (1.0 - 1e-3) + 1e-3;
+    vec3 wo = vec3(sqrt(1.0 - nv * nv), 0.0, nv);
+    KilnSpecularBrdf a, b;
+    a.roughness = max(1e-5, float(px.y) / 63.0); a.albedo = vec3(1.0);
+    b = a; b.albedo = vec3(0.0);
+    vec2 sum = vec2(0.0);
+    for (uint i = 0u; i < 1024u; ++i) {
+        KilnBrdfSample sa = kiln_specular_sample(a, wo, kiln_hammersley(i, 1024u));
+        if (kiln_brdf_sample_is_valid(sa)) {
+            KilnBrdfValue sb = kiln_specular_evaluate(b, wo, sa.wi);
+            sum += vec2(sa.value_over_pdf.x - sb.value_over_pdf.x, sb.value_over_pdf.x);
+        }
+    }
+    imageStore(fg_out, px, vec4(sum / 1024.0, 0.0, 0.0));
+}

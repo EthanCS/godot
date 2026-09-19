@@ -1,0 +1,24 @@
+#version 450
+// lighting prepare_surfel_assignment_dispatch_args / prepare_trace_dispatch_args,
+// Assignment bounds are captured BEFORE allocation, as in the reference.
+// Count/slot use this rounded dispatch bound, so newborn surfels beyond it
+// enter the spatial index on the next frame even though they trace immediately.
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_SURFEL@
+layout(set = 0, binding = 10, std430) writeonly buffer KilnArgs {
+	uint assignment_args[8];
+	uint trace_args[4];
+};
+layout(local_size_x = 1) in;
+void main() {
+	uint surfel_count = kiln_surfel_meta_buf[KILN_SURFEL_META_SURFEL_COUNT / 4u];
+	assignment_args[4] = (surfel_count + 63u) / 64u;
+	assignment_args[5] = 1u;
+	assignment_args[6] = 1u;
+	assignment_args[7] = 0u;
+	trace_args[0] = surfel_count;
+	trace_args[1] = 1u;
+	trace_args[2] = 1u;
+	trace_args[3] = 0u;
+}

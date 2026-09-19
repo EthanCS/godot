@@ -45,6 +45,33 @@ Copyright: 2014-present, Godot Engine contributors
  2007-2014, Juan Linietsky, Ariel Manzur
 License: Expat
 
+Files: servers/rendering/renderer_rd/kiln/sources/kiln*
+ servers/rendering/renderer_rd/kiln/sources/reference/*
+ servers/rendering/renderer_rd/shaders/kiln_gi.glsl
+ kiln/tools/prepare_cornell.py
+ kiln/tools/kajiya_capture.patch
+Comment: Kajiya rendering algorithms and their Kiln ports.
+ See servers/rendering/renderer_rd/kiln/sources/reference/provenance.json
+ for source revisions, hashes, adapters, and additional source-level notices.
+Copyright: 2019, Embark Studios
+ 2021, Felix Westin
+ 2021, Björn Ottosson
+ 2021, Advanced Micro Devices, Inc.
+ 2014-present, Godot Engine contributors
+License: Expat
+
+Files: servers/rendering/renderer_rd/kiln/data/blue_noise_spp64.bin
+Comment: blue-noise-sampler 0.1.0 declares the MIT license. See
+ servers/rendering/renderer_rd/kiln/licenses/BLUE-NOISE-SPP64-NOTICE.txt.
+Copyright: Jasper Bekkers and the sampler authors identified in the notice
+License: Expat
+
+Files: servers/rendering/renderer_rd/kiln/data/blue_noise.png
+Comment: Blue-noise texture; upstream CC0 notice is retained under
+ servers/rendering/renderer_rd/kiln/licenses.
+Copyright: Christoph Peters
+License: CC0-1.0
+
 Files: core/math/convex_hull.cpp
  core/math/convex_hull.h
 Comment: Bullet Continuous Collision Detection and Physics Library
@@ -201,15 +228,14 @@ Comment: AMD FidelityFX Super Resolution 2
 Copyright: 2022-2023, Advanced Micro Devices, Inc.
 License: Expat
 
-Files: servers/rendering/renderer_rd/kiln/sources/surfel_*
+Files: servers/rendering/renderer_rd/kiln/nrd/sources/surfel_*
  servers/rendering/renderer_rd/kiln/licenses/SURFELPLUS-*
 Comment: SurfelPlus and Kiln adaptations
 Copyright: Zhen Ren, Ruipeng Wang, Jinxiang Wang
  2021, NVIDIA CORPORATION
 License: Apache-2.0
 
-Files: servers/rendering/renderer_rd/kiln/sources/msme.inc
- servers/rendering/renderer_rd/kiln/licenses/MSME-LICENSE.txt
+Files: servers/rendering/renderer_rd/kiln/licenses/MSME-LICENSE.txt
 Comment: Multiscale Mean Estimator, Ray Tracing Gems Chapter 25
 Copyright: 2019, NVIDIA
 License: Expat

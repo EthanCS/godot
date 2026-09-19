@@ -490,7 +490,7 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 			case PIPELINE_VERSION_KILN_MATERIAL:
 				depth_stencil_state.enable_depth_write = true;
 				depth_stencil_state.depth_compare_operator = RD::COMPARE_OP_GREATER_OR_EQUAL;
-				blend_state = RD::PipelineColorBlendState::create_disabled(6);
+				blend_state = RD::PipelineColorBlendState::create_disabled(7);
 				break;
 			case PIPELINE_VERSION_DEPTH_PASS_WITH_MATERIAL:
 				// Writes to normal and roughness in opaque way.

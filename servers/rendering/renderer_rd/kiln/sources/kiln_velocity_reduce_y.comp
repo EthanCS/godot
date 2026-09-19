@@ -1,0 +1,17 @@
+#version 450
+// Kajiya rust-shaders/src/motion_blur.rs, MIT: longest velocity in a 16-pixel row/column.
+layout(binding=10) uniform sampler2D input_tex;
+layout(binding=11,rg16f) uniform writeonly image2D output_tex;
+layout(local_size_x=8,local_size_y=8) in;
+void main() {
+    ivec2 px=ivec2(gl_GlobalInvocationID.xy),size=imageSize(output_tex);
+    if(any(greaterThanEqual(px,size))) return;
+    vec3 largest=vec3(0);
+    for(int i=0;i<16;i++) {
+        ivec2 sp=px*ivec2(1,16)+ivec2(0,i);
+        vec2 v=any(greaterThanEqual(sp,textureSize(input_tex,0)))?vec2(0):texelFetch(input_tex,sp,0).xy;
+        float m=dot(v,v);
+        if(m>largest.z) largest=vec3(v,m);
+    }
+    imageStore(output_tex,px,vec4(largest.xy,0,0));
+}

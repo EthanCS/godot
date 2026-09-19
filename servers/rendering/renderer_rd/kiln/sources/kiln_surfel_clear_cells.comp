@@ -1,0 +1,21 @@
+#version 450
+// lighting clear_cells.hlsl: zero the per-cell counts before binning.
+// @GI_COMMON@
+// @KILN_COMMON@
+// @KILN_SURFEL@
+layout(local_size_x = 64) in;
+void main() {
+	uint base = gl_GlobalInvocationID.x * 4u;
+	if (base + 3u >= KILN_MAX_SURFEL_CELLS + 1u) {
+		for (uint i = 0u; i < 4u; i++) {
+			if (base + i < KILN_MAX_SURFEL_CELLS + 1u) {
+				kiln_cell_index_offset_buf[base + i] = 0u;
+			}
+		}
+		return;
+	}
+	kiln_cell_index_offset_buf[base + 0u] = 0u;
+	kiln_cell_index_offset_buf[base + 1u] = 0u;
+	kiln_cell_index_offset_buf[base + 2u] = 0u;
+	kiln_cell_index_offset_buf[base + 3u] = 0u;
+}

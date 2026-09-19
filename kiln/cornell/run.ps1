@@ -1,5 +1,5 @@
 # Cornell box (kajiya parity workload) runner.
-#   .\run.ps1 -- --frames=256 --output=captures\default
+#   .\run.ps1 -- --frames=256 --output=G:/KilnTemp/cornell
 param()
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot   # kiln/

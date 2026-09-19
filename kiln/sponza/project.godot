@@ -10,7 +10,6 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 
 [rendering]
-kiln/nrd=false
 renderer/rendering_method="kiln_deferred"
 renderer/rendering_method.mobile="kiln_deferred"
 anti_aliasing/quality/use_taa=true

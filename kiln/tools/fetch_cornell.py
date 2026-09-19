@@ -2,12 +2,13 @@
 """Copy the kajiya cornell box + car glTF sources into this project, pinned by hash.
 
 These are the exact files `kajiya bake.cmd` consumes (cornell box at scale 2.0,
-336_lrm car at scale 0.01), so both engines shade identical geometry and materials.
-Assets stay outside version control; this only copies bytes and verifies hashes.
+336_lrm car at scale 0.01). The separate preparation step adapts the imported
+scene representation. Asset payloads stay outside version control.
 """
 from pathlib import Path
 import hashlib
 import shutil
+from prepare_cornell import main as prepare
 
 # kajiya checkout that provides the reference renderer.
 KAJIYA_ROOT = Path(__file__).resolve().parents[3] / 'kajiya'
@@ -20,6 +21,7 @@ SOURCES = {
     'assets/meshes/336_lrm/license.txt': 'car/license.txt',
 }
 ROOT = Path(__file__).resolve().parents[1] / 'cornell' / 'assets'
+EXPECTED = Path(__file__).resolve().parents[1] / 'cornell' / 'ASSETS.sha256'
 
 
 def hash_file(path: Path) -> str:
@@ -33,6 +35,13 @@ def hash_file(path: Path) -> str:
 def main():
     if not KAJIYA_ROOT.exists():
         raise RuntimeError(f'kajiya checkout not found at {KAJIYA_ROOT}')
+    expected = {name: digest for digest, name in
+                (line.split(maxsplit=1) for line in EXPECTED.read_text().splitlines() if line.strip())}
+    # Validate every input before copying anything. A changed checkout must not
+    # silently redefine the comparison's supposedly pinned scene.
+    for source, destination in SOURCES.items():
+        if hash_file(KAJIYA_ROOT / source) != expected[destination]:
+            raise RuntimeError(f'Asset differs from pinned reference: {source}')
     manifest_lines = []
     ROOT.mkdir(parents=True, exist_ok=True)
     for source, destination in SOURCES.items():
@@ -45,9 +54,12 @@ def main():
         if not destination_path.exists() or hash_file(destination_path) != source_hash:
             shutil.copyfile(source_path, destination_path)
             print(f'copied {source} -> {destination_path}')
+        if hash_file(destination_path) != expected[destination]:
+            raise RuntimeError(f'Copied asset failed verification: {destination_path}')
         manifest_lines.append(f'{source_hash}  {destination}')
     (ROOT / 'MANIFEST.sha256').write_text('\n'.join(manifest_lines) + '\n')
     print(f'Verified {len(SOURCES)} files under {ROOT}')
+    prepare(ROOT)
 
 
 if __name__ == '__main__':

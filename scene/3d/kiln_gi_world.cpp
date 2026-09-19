@@ -1,5 +1,5 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
+// Imported algorithm provenance and redistribution limits: kiln/provenance/gi-provenance.json.
 
 #include "kiln_gi_world.h"
 #ifdef RD_ENABLED
@@ -222,6 +222,9 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				continue;
 			}
 			Vector3 color = response.albedo, emission = response.emission;
+			r_material_hash = hash_murmur3_one_32(Variant(response.base_color).hash(), r_material_hash);
+			r_material_hash = hash_murmur3_one_float(response.roughness, r_material_hash);
+			r_material_hash = hash_murmur3_one_float(response.metallic, r_material_hash);
 			r_material_hash = hash_murmur3_one_32(Variant(color).hash(), r_material_hash);
 			r_material_hash = hash_murmur3_one_32(Variant(emission).hash(), r_material_hash);
 			r_material_hash = hash_murmur3_one_32(response.texture_page + 1, r_material_hash);
@@ -245,11 +248,17 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 				tri.b = transform.xform(geometry.positions[b]);
 				tri.c = transform.xform(geometry.positions[c]);
 				Vector3 face = (tri.b - tri.a).cross(tri.c - tri.a);
-				if (face.length_squared() < 1e-12) {
+				// Keep small, valid source triangles after instance scaling. The
+				// old absolute area cutoff removed millimeter-scale car details
+				// that remain visible in the raster G-buffer.
+				if (face.length_squared() <= 1e-30) {
 					continue;
 				}
 				tri.normal = geometry.normals.size() == geometry.positions.size() ? normal_transform.xform(geometry.normals[a] + geometry.normals[b] + geometry.normals[c]).normalized() : -face.normalized();
 				tri.albedo = color;
+				tri.base_color = response.base_color;
+				tri.roughness = response.roughness;
+				tri.metallic = response.metallic;
 				if (response.texture_page >= 0 && (response.world_mapping || geometry.uvs.size() == geometry.positions.size())) {
 					auto uv = [&](int index) {
 						Vector3 point = transform.xform(geometry.positions[index]);
@@ -263,10 +272,12 @@ void KilnGIWorld::collect(Node *p_node, bool p_dynamic_parent, bool p_dynamic_pa
 					tri.texture_repeat = response.texture_repeat;
 				} else if (response.texture_page >= 0) {
 					tri.albedo *= response.texture_fallback;
+					tri.base_color *= response.texture_fallback;
 				}
 				if (response.vertex_color && geometry.colors.size() == geometry.positions.size()) {
 					Color vertex_color = (geometry.colors[a].srgb_to_linear() + geometry.colors[b].srgb_to_linear() + geometry.colors[c].srgb_to_linear()) / 3.0;
 					tri.albedo *= Vector3(vertex_color.r, vertex_color.g, vertex_color.b);
+					tri.base_color *= Vector3(vertex_color.r, vertex_color.g, vertex_color.b);
 				}
 				tri.emission = emission;
 				r_triangles.push_back(tri);
@@ -420,26 +431,34 @@ void KilnGIWorld::pack_triangles(RendererRD::KilnWorld::Geometry &result, const 
 	result.power = 0;
 	result.triangles.resize(MAX(1, triangles.size()) * 80);
 	result.triangles.fill(0);
-	result.texture_coordinates.resize(MAX(1, triangles.size()) * 32);
+	result.vertex_positions.resize(triangles.size() * 9 * sizeof(float));
+	float *vertices = reinterpret_cast<float *>(result.vertex_positions.ptrw());
+	result.texture_coordinates.resize(MAX(1, triangles.size()) * 48);
 	result.texture_coordinates.fill(0);
 	float *uvs = reinterpret_cast<float *>(result.texture_coordinates.ptrw());
 	auto pack = [](float *p, Vector3 v, float w) { p[0] = v.x; p[1] = v.y; p[2] = v.z; p[3] = w; };
 	float *out = reinterpret_cast<float *>(result.triangles.ptrw());
 	for (int i = 0; i < triangles.size(); i++) {
 		const Triangle &t = triangles[result.source_order[i]];
+		for (const Vector3 &vertex : { t.a, t.b, t.c }) {
+			*vertices++ = vertex.x;
+			*vertices++ = vertex.y;
+			*vertices++ = vertex.z;
+		}
 		pack(out + i * 20, t.a, t.normal.x);
 		pack(out + i * 20 + 4, t.b - t.a, t.normal.y);
 		pack(out + i * 20 + 8, t.c - t.a, t.normal.z);
 		pack(out + i * 20 + 12, t.albedo, 1);
-		pack(out + i * 20 + 16, t.emission, 0);
-		uvs[i * 8] = t.uv_a.x;
-		uvs[i * 8 + 1] = t.uv_a.y;
-		uvs[i * 8 + 2] = t.uv_b.x;
-		uvs[i * 8 + 3] = t.uv_b.y;
-		uvs[i * 8 + 4] = t.uv_c.x;
-		uvs[i * 8 + 5] = t.uv_c.y;
-		uvs[i * 8 + 6] = t.texture_page + 1;
-		uvs[i * 8 + 7] = t.texture_repeat;
+		pack(out + i * 20 + 16, t.emission, t.metallic);
+		uvs[i * 12] = t.uv_a.x;
+		uvs[i * 12 + 1] = t.uv_a.y;
+		uvs[i * 12 + 2] = t.uv_b.x;
+		uvs[i * 12 + 3] = t.uv_b.y;
+		uvs[i * 12 + 4] = t.uv_c.x;
+		uvs[i * 12 + 5] = t.uv_c.y;
+		uvs[i * 12 + 6] = t.texture_page + 1;
+		uvs[i * 12 + 7] = t.texture_repeat;
+		pack(uvs + i * 12 + 8, t.base_color, t.roughness);
 		float luminance = t.emission.dot(Vector3(0.2126, 0.7152, 0.0722));
 		float area = (t.b - t.a).cross(t.c - t.a).length() * 0.5;
 		float weight = area * luminance;

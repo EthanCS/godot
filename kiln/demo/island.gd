@@ -204,9 +204,9 @@ func _build_diagnostics(canvas: CanvasLayer) -> void:
 	var view := OptionButton.new()
 	view.disabled = RenderingServer.get_current_rendering_method() != "kiln_deferred"
 	view.tooltip_text = "Channel views are provided by the Kiln deferred resolve pass."
-	for name in ["Lit", "Albedo / metallic", "Normal", "Roughness", "Authored emission", "Material channels", "Depth", "Indirect light", "AO", "Motion vectors", "Direct light", "Cluster occupancy", "History confidence"]:
+	for name in ["Lit", "Albedo / metallic", "Normal", "Roughness", "Authored emission", "Material channels", "Depth", "Indirect light", "AO", "Motion vectors", "Direct light", "Cluster occupancy"]:
 		view.add_item(name)
-	view.select(clampi(int(ProjectSettings.get_setting("rendering/kiln/debug_view", 0)), 0, 12))
+	view.select(clampi(int(ProjectSettings.get_setting("rendering/kiln/debug_view", 0)), 0, 11))
 	view.item_selected.connect(func(index: int): ProjectSettings.set_setting("rendering/kiln/debug_view", index))
 	rows.add_child(view)
 	diagnostics_text = Label.new()

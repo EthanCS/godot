@@ -505,10 +505,6 @@ vec3 get_energy_compensation(vec3 f0, float env) {
 
 /* Set 2 Skeleton & Instancing (can change per item) */
 
-layout(set = 1, binding = 37) uniform texture2D kiln_forward_diffuse;
-layout(set = 1, binding = 38) uniform texture2D kiln_forward_specular;
-layout(set = 1, binding = 39) uniform texture2D kiln_forward_ao;
-layout(set = 1, binding = 40) uniform texture2D kiln_forward_fresnel;
 
 layout(set = 2, binding = 0, std430) restrict readonly buffer Transforms {
 	vec4 data[];

@@ -1,0 +1,31 @@
+#version 450
+#ifndef KILN_MAX_SURFEL_CELLS
+#define KILN_MAX_SURFEL_CELLS 262144u
+#endif
+// lighting inclusive_prefix_scan_merge.hlsl: add the previous segment sums.
+// @GI_COMMON@
+// @KILN_COMMON@
+#define KILN_SCAN_THREAD_GROUP_SIZE 512
+#define KILN_SCAN_SEGMENT_SIZE (KILN_SCAN_THREAD_GROUP_SIZE * 2)
+layout(set = 0, binding = 10, std430) buffer KilnScanBuf {
+	uint values[];
+};
+layout(set = 0, binding = 11, std430) readonly buffer KilnScanSegments {
+	uint segment_sums[];
+};
+layout(local_size_x = KILN_SCAN_THREAD_GROUP_SIZE) in;
+void main() {
+	uint idx = gl_LocalInvocationID.x;
+	uint segment = gl_WorkGroupID.x;
+
+	uint linear0 = idx * 2u + segment * KILN_SCAN_SEGMENT_SIZE;
+	uint linear1 = linear0 + 1u;
+	uint prev0 = segment == 0u ? 0u : segment_sums[segment - 1u];
+
+	if (linear0 < KILN_MAX_SURFEL_CELLS + 1u) {
+		values[linear0] += prev0;
+	}
+	if (linear1 < KILN_MAX_SURFEL_CELLS + 1u) {
+		values[linear1] += prev0;
+	}
+}

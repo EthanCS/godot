@@ -1,5 +1,5 @@
 // Kiln engine integration. Engine licensing: LICENSE.txt.
-// Imported algorithm provenance and redistribution limits: kiln/docs/gi-provenance.json.
+// Imported algorithm provenance and redistribution limits: kiln/provenance/gi-provenance.json.
 
 #include "kiln_world.h"
 

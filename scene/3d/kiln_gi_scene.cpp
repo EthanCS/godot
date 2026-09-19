@@ -133,6 +133,7 @@ KilnGIWorld::Transport KilnGIWorld::transport(const Ref<Material> &p_material) {
 		}
 		result.albedo = Vector3(c.r, c.g, c.b);
 		metal = base->get_metallic();
+		result.roughness = base->get_roughness();
 		result.uv_scale = Vector2(base->get_uv1_scale().x, base->get_uv1_scale().y);
 		result.uv_offset = Vector2(base->get_uv1_offset().x, base->get_uv1_offset().y);
 		result.texture_repeat = base->get_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT);
@@ -195,13 +196,15 @@ KilnGIWorld::Transport KilnGIWorld::transport(const Ref<Material> &p_material) {
 			}
 		}
 	}
+	result.base_color = result.albedo.clamp(Vector3(), Vector3(1, 1, 1));
+	result.metallic = CLAMP(metal, 0.0f, 1.0f);
 	result.albedo = result.albedo.clamp(Vector3(), Vector3(1, 1, 1)) * (1.0f - CLAMP(metal, 0.0f, 1.0f));
 	if (!result.supported && !unsupported_materials.has(id)) {
 		unsupported_materials.insert(id);
 		WARN_PRINT(vformat("Kiln GI omitted material '%s': blended/cutout materials and arbitrary shaders are not yet supported by ray-hit material evaluation. Opaque BaseMaterial3D and kiln_uniform_transport are supported.", p_material->get_path()));
 	}
 	const Transport *previous = material_cache.getptr(id);
-	if (!previous || previous->albedo != result.albedo || previous->emission != result.emission || previous->supported != result.supported || previous->texture_page != result.texture_page) {
+	if (!previous || previous->albedo != result.albedo || previous->emission != result.emission || previous->roughness != result.roughness || previous->metallic != result.metallic || previous->base_color != result.base_color || previous->supported != result.supported || previous->texture_page != result.texture_page) {
 		material_updates++;
 		material_cache.insert(id, result);
 	}
